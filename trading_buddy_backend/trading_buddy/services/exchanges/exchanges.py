@@ -1,5 +1,7 @@
+import os
+import sys
 from decimal import Decimal
-from typing import List, Dict, Tuple, Optional, Any, Union
+from typing import List, Dict, Tuple, Any
 import threading
 
 from django.utils import timezone
@@ -7,9 +9,10 @@ from django.utils import timezone
 from bingX.perpetual.v2 import PerpetualV2
 from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType)
 from bingX.exceptions import ClientError
-from trading_buddy_backend.trading_buddy.models import Account, User, Position, Trade, Tool
+from ...models import Account, User, Position, Trade, Tool
 
-from trading_buddy_backend.trading_buddy.services.exchanges import math_helper as mh
+from ..exchanges import math_helper as mh
+from .listeners import BingXOrderListenerManager, BingXPriceListener
 
 
 class Exchange:
@@ -68,8 +71,6 @@ class Exchange:
             # so skip the initialization logic.
             return
 
-        print(f"Initializing {self.account_name} client for user: {user}")
-
         # Store the user identifier with the instance if needed
         self.user = user
         self.account = Account.objects.filter(user=user).first()
@@ -119,7 +120,7 @@ class Exchange:
 
 class BingXExc(Exchange):
     """
-    BingX Exchange implementation as a Singleton class.
+    BingX Exchange implementation as a Singleton per-account class.
     Tool format: "<name>-USDT"
     """
     account_name = "BingX"
@@ -132,8 +133,13 @@ class BingXExc(Exchange):
 
         self.client = PerpetualV2(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
 
-        # Listeners for cancel prices of tools
-        self.listeners_threads = []
+        # Listeners
+        self.price_listeners_and_threads = {}
+        self.order_listener_manager = None
+        self.order_listener_manager_thread = None
+
+        self.restore_price_listeners()
+        self.create_order_listener_manager_in_thread()
 
     def get_deposit_and_risk(self) -> Tuple[Decimal, Decimal]:
         """
@@ -215,6 +221,59 @@ class BingXExc(Exchange):
         """
         self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
 
+    def create_price_listener_in_thread(self, tool_name):
+        p_listener = BingXPriceListener(tool_name, self)
+
+        price_listener_thread = threading.Thread(target=p_listener.listen_for_events)
+        # Daemon threads exit automatically when the main program exits.
+        price_listener_thread.daemon = True
+        price_listener_thread.start()
+
+        self.price_listeners_and_threads[tool_name] = [p_listener, price_listener_thread]
+
+    def restore_price_listeners(self):
+        """
+        After crash of the server, it will still be able to restore all listeners.
+        :return:
+        """
+        # Delete all exising price listeners
+        for listener, thread in self.price_listeners_and_threads:
+            try:
+                tool_name = listener.tool
+                listener.stop_listening()
+                thread.exit()
+
+                del self.price_listeners_and_threads[tool_name]
+            except Exception as e:
+                print("Price listener already deleted")
+
+        # Create new ones for each tool
+        positions = self.account.positions.objects.all()
+
+        for pos in positions:
+            self.create_price_listener_in_thread(pos.tool)
+
+    def delete_price_listener(self, tool_name):
+        try:
+            listener, thread = self.price_listeners_and_threads[tool_name]
+            listener.stop_listening()
+            thread.exit()
+
+            del self.price_listeners_and_threads[tool_name]
+        except Exception as e:
+            print("Price listener already deleted")
+
+    def _create_order_listener_manager(self):
+        self.order_listener_manager = BingXOrderListenerManager()
+
+    def create_order_listener_manager_in_thread(self):
+        listener_thread = threading.Thread(target=self._create_order_listener_manager)
+        # Daemon threads exit automatically when the main program exits.
+        listener_thread.daemon = True
+        listener_thread.start()
+
+        self.order_listener_manager_thread = listener_thread
+
     def _place_primary_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                              pos_side: PositionSide, volume: Decimal) -> str:
         """
@@ -267,19 +326,12 @@ class BingXExc(Exchange):
 
             print(f"POTENTIAL LOSS OF A TRADE: {pot_loss} \n WITH VOLUME: {volume}")
 
-            tool_obj = Tool.objects.get(name=tool)
-
-            # Creating trade in db
+            # Creating trade and linked position in db
             deposit, risk = self.get_deposit_and_risk()
+            Trade.create_trade(pos_side, self.account, tool, risk, deposit * risk / 100, leverage, trigger_p, entry_p,
+                               stop_p, take_profits, move_stop_after, volume)
 
-            trade = Trade.objects.create(side=pos_side, tool=tool_obj, risk_percent=risk, risk_usd=deposit * risk / 100)
-
-            # Adding primary order info to db
-            Position.objects.create(tool=tool_obj, side=pos_side, leverage=leverage, trigger_price=trigger_p,
-                                    entry_price=entry_p,
-                                    stop_price=stop_p, take_profit_prices=take_profits, cancel_levels=[take_profits[0]],
-                                    move_stop_after=move_stop_after, primary_volume=volume, current_volume=0,
-                                    account=self.user.accounts.get(name=self.account_name), trade=trade)
+            self.create_price_listener_in_thread(tool)
 
             return "Primary order placed"
         except ClientError as e:
@@ -289,7 +341,7 @@ class BingXExc(Exchange):
             else:
                 return "Volume is too small"
 
-    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: str) -> None:
+    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
         """
         Places a stop loss order.
         :param tool: The trading pair.
@@ -371,15 +423,14 @@ class BingXExc(Exchange):
 
                 trade.save()
                 pos.delete()
-
-                # TODO delete price listener
             else:
                 # For manual cancellation of position, data doesn't go to db
                 trade.delete()  # position will be auto deleted, see models.py for this
-                # TODO delete price listener
+
+        self.delete_price_listener(tool)
 
     def place_take_profit_orders(self, tool: str, take_profits: List[Decimal], cum_volume: Decimal,
-                                 pos_side: str) -> None:
+                                 pos_side: PositionSide) -> None:
         """
         Places take profit orders for a trading pair.
         :param tool: The trading pair.

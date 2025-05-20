@@ -9,11 +9,16 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
+
+sys.path.insert(0, PROJECT_ROOT_DIR)
 
 
 # Quick-start development settings - unsuitable for production
@@ -39,7 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'trading_buddy',
+    'trading_buddy.apps.TradingBuddyConfig' # to use custom startup defined in apps.py
 ]
 
 MIDDLEWARE = [
@@ -78,7 +83,7 @@ WSGI_APPLICATION = 'trading_buddy_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
 
