@@ -225,10 +225,10 @@ class BingXExc(Exchange):
                 print("Price listener already deleted")
 
         # Create new ones for each tool
-        positions = self.account.positions.objects.all()
-
-        for pos in positions:
-            self.create_price_listener_in_thread(pos.tool)
+        # positions = self.account.positions.objects.all()
+        #
+        # for pos in positions:
+        #     self.create_price_listener_in_thread(pos.tool)
 
     def delete_price_listener(self, tool_name):
         try:
@@ -241,7 +241,7 @@ class BingXExc(Exchange):
             print("Price listener already deleted")
 
     def _create_order_listener_manager(self):
-        self.order_listener_manager = BingXOrderListenerManager()
+        self.order_listener_manager = BingXOrderListenerManager(self)
 
     def create_order_listener_manager_in_thread(self):
         listener_thread = threading.Thread(target=self._create_order_listener_manager)

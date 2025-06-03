@@ -34,7 +34,7 @@ class Tool(models.Model):
         ('forex', 'Forex'),
     ]
     market = models.CharField(max_length=50, choices=MARKET_CHOICES)
-    account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE) # when account is deleted, all tools are deleted as well
 
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
@@ -75,7 +75,7 @@ class Position(models.Model):
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
-    account = models.ForeignKey('Account', related_name='positions', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
 
     def close_position(self):
@@ -112,7 +112,7 @@ class Trade(models.Model):
     result = models.TextField(null=True)
     screenshot = models.ImageField(upload_to='screenshots', null=True)
 
-    account = models.ForeignKey('Account', related_name='trades', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 
     @classmethod
     def create_trade(cls, side, account, tool_name, risk_percent, risk_usd, leverage, trigger_price, entry_price,
