@@ -63,7 +63,7 @@ class Listener:
 
 class BingXListener(Listener):
     def __init__(self, exchange):
-        super().__init__(self.user)
+        super().__init__(exchange.user)
         self.ws_url = "wss://open-api-swap.bingx.com/swap-market"
         self.exchange = exchange
 
@@ -79,8 +79,8 @@ class BingXOrderListener(BingXListener):
         job = schedule.every(7).minutes.do(self.extend_listen_key_validity)
         self.scheduled_jobs.append(job)
 
-    def __init__(self, manager):
-        super().__init__()
+    def __init__(self, manager, exchange):
+        super().__init__(exchange)
 
         self.other = Other(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
 
@@ -301,20 +301,21 @@ class BingXOrderListenerManager:
     Needed for automatic restart of Order Listener
     """
 
-    def __init__(self):
-        self.order_listener = BingXOrderListener(self)
+    def __init__(self, exchange):
+        self.exchange = exchange
+        self.order_listener = BingXOrderListener(self, self.exchange)
         self.order_listener.listen_for_events()
 
     def on_close_listener(self):
         print("OrderListenerManager: Restarting BingX Order Listener...")
 
-        self.order_listener = BingXOrderListener(self)
+        self.order_listener = BingXOrderListener(self, self.exchange)
         self.order_listener.listen_for_events()
 
 
 class BingXPriceListener(BingXListener):
-    def __init__(self, tool):
-        super().__init__()
+    def __init__(self, tool, exchange):
+        super().__init__(exchange)
 
         self.tool = tool
 

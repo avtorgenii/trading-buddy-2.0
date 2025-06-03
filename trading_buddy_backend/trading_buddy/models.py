@@ -7,7 +7,6 @@ from django.utils import timezone
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     deposit = models.DecimalField(decimal_places=2, default=0.00, max_digits=20)
-    risk_percent = models.DecimalField(decimal_places=5, default=0.00, max_digits=10)
 
 
 # Exchange account
@@ -17,10 +16,14 @@ class Account(models.Model):
         ('ByBit', 'ByBit'),
     ]
     name = models.CharField(max_length=120)
+    risk_percent = models.DecimalField(decimal_places=5, default=3.00, max_digits=10)
     exchange = models.CharField(max_length=120, choices=EXCHANGE_CHOICES)
     api_key = models.TextField()
     secret_key = models.TextField()
     user = ForeignKey('User', related_name='accounts', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('name', 'user'),)
 
 
 class Tool(models.Model):
@@ -31,7 +34,7 @@ class Tool(models.Model):
         ('forex', 'Forex'),
     ]
     market = models.CharField(max_length=50, choices=MARKET_CHOICES)
-    account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE)
+    account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE) # when account is deleted, all tools are deleted as well
 
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
@@ -72,7 +75,7 @@ class Position(models.Model):
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
-    account = models.ForeignKey('Account', related_name='positions', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
 
     def close_position(self):
@@ -109,7 +112,7 @@ class Trade(models.Model):
     result = models.TextField(null=True)
     screenshot = models.ImageField(upload_to='screenshots', null=True)
 
-    account = models.ForeignKey('Account', related_name='trades', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 
     @classmethod
     def create_trade(cls, side, account, tool_name, risk_percent, risk_usd, leverage, trigger_price, entry_price,

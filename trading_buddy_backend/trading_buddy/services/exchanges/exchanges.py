@@ -1,5 +1,3 @@
-import os
-import sys
 from decimal import Decimal
 from typing import List, Dict, Tuple, Any
 import threading
@@ -17,69 +15,42 @@ from .listeners import BingXOrderListenerManager, BingXPriceListener
 
 class Exchange:
     """
-    Base Exchange class that defines the interface for all exchanges.
-    Implements a per-user, per-exchange type singleton pattern.
+    Base Exchange class. Enforces one exchange instance per account.
+    Subclasses must define `exchange_name`.
     """
 
-    #  {user_identifier: {exchange_name: exchange_instance}}
-    _instances_by_user: Dict[Any, Dict[str, 'Exchange']] = {}
-    _lock = threading.Lock()  # Lock for thread-safe access to _instances_by_user
+    _instances: Dict[Any, 'Exchange'] = {}
+    _lock = threading.Lock()
 
-    # This class attribute must be defined in subclasses
-    account_name: str = "BASE_EXCHANGE"
+    exchange_name: str = "BASE_EXCHANGE"  # Should be overridden in subclasses
 
-    def __new__(cls, user_identifier: User, *args, **kwargs):
-        """
-        Controls the creation of instances, ensuring only one instance exists
-        per user for each specific subclass of Exchange.
-        """
-        if cls.account_name == "BASE_EXCHANGE":
-            raise TypeError("Cannot instantiate base Exchange class directly. Use a subclass.")
+    def __new__(cls, account: Any, *args, **kwargs):
+        if cls.exchange_name == "BASE_EXCHANGE":
+            raise TypeError("Cannot instantiate the base Exchange class directly. Use a subclass.")
 
-        if not user_identifier:
-            raise ValueError("user_identifier must be provided to instantiate an Exchange client.")
+        if not account:
+            raise ValueError("An account must be provided to instantiate an Exchange.")
 
         with cls._lock:
-            # Get the dictionary of exchanges for this user, or create it if it doesn't exist
-            instances_for_user = cls._instances_by_user.setdefault(user_identifier, {})
-
-            # Check if an instance of this specific exchange type already exists for this user
-            if cls.account_name not in instances_for_user:
+            if account not in cls._instances:
                 instance = super().__new__(cls)
-                # Store the newly created instance in the dictionary for this user and exchange type
-                instances_for_user[cls.account_name] = instance
-                # Indicate that __init__ should be called on this new instance
-                instance._initialized = False  # Use a flag to manage initialization in __init__
+                cls._instances[account] = instance
+                instance._initialized = False
             else:
-                # If an instance already exists, retrieve it
-                instance = instances_for_user[cls.account_name]
-                # Indicate that __init__ should NOT be fully re-run if it has an init guard
-                instance._initialized = True  # Mark as already initialized (for __init__ check)
+                instance = cls._instances[account]
+                instance._initialized = True
 
-            # Return the instance (either newly created or existing)
             return instance
 
-    def __init__(self, user: User, *args, **kwargs):
-        """
-        Initializes the instance. This method is called *after* __new__.
-        It is only fully executed the first time an instance for a user/exchange is created.
-        """
-        # This check ensures that the main initialization logic runs only once
-        # for a given instance (i.e., the first time __new__ created it).
+    def __init__(self, account: Any, *args, **kwargs):
         if self._initialized:
-            # If _initialized is True, it means __new__ returned an existing instance,
-            # so skip the initialization logic.
-            return
+            return  # Skip re-initialization
 
-        # Store the user identifier with the instance if needed
-        self.user = user
-        self.account = Account.objects.filter(user=user).first()
+        self.account = account
+        self.user = account.user
 
         self.API_KEY = self.account.api_key
         self.SECRET_KEY = self.account.secret_key
-
-        # Mark the instance as fully initialized
-        self._initialized = True
 
     def get_account_details(self) -> Tuple[float, float, float, float]:
         raise NotImplementedError("Method not implemented")
@@ -123,13 +94,16 @@ class BingXExc(Exchange):
     BingX Exchange implementation as a Singleton per-account class.
     Tool format: "<name>-USDT"
     """
-    account_name = "BingX"
+    exchange_name = "BingX"
 
-    def __init__(self, user: User, *args, **kwargs):
+    def __init__(self, account: Account, *args, **kwargs):
         """
         Initialize the BingX exchange with API credentials.
         """
-        super().__init__(user, *args, **kwargs)
+        super().__init__(account, *args, **kwargs)
+
+        if self._initialized:
+            return
 
         self.client = PerpetualV2(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
 
@@ -141,12 +115,15 @@ class BingXExc(Exchange):
         self.restore_price_listeners()
         self.create_order_listener_manager_in_thread()
 
+        # Mark the instance as fully initialized
+        self._initialized = True
+
     def get_deposit_and_risk(self) -> Tuple[Decimal, Decimal]:
         """
         Returns the deposit and risk % values from the database.
         :return: A tuple containing deposit and risk %.
         """
-        return self.user.deposit, self.user.risk_percent
+        return self.user.deposit, self.account.risk_percent
 
     def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
         """
@@ -248,10 +225,10 @@ class BingXExc(Exchange):
                 print("Price listener already deleted")
 
         # Create new ones for each tool
-        positions = self.account.positions.objects.all()
-
-        for pos in positions:
-            self.create_price_listener_in_thread(pos.tool)
+        # positions = self.account.positions.objects.all()
+        #
+        # for pos in positions:
+        #     self.create_price_listener_in_thread(pos.tool)
 
     def delete_price_listener(self, tool_name):
         try:
@@ -264,7 +241,7 @@ class BingXExc(Exchange):
             print("Price listener already deleted")
 
     def _create_order_listener_manager(self):
-        self.order_listener_manager = BingXOrderListenerManager()
+        self.order_listener_manager = BingXOrderListenerManager(self)
 
     def create_order_listener_manager_in_thread(self):
         listener_thread = threading.Thread(target=self._create_order_listener_manager)
