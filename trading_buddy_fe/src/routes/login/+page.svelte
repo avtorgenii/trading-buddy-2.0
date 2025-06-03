@@ -1,4 +1,6 @@
 <script>
+	import NavMenu   from '$lib/components/NavMenu.svelte';
+
 	let email = '';
 	let password = '';
 
@@ -13,8 +15,11 @@
 	}
 
 </script>
+
+
+<NavMenu />
+
 <div class="page-wrapper flex items-center flex-col ">
-	<h1 class="text-4xl font-bold mb-30">Trading buddy</h1>
 	<div class="form-wrapper bg-zinc-900 px-2 md:px-12 pt-8 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[520px] max-w-xs md:max-w-lg shadow-xl shadow-white/10">
 		<h2 class="text-3xl font-bold mb-10">Sign In</h2>
 		<div>

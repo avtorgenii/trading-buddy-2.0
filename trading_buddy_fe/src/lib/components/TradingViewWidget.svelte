@@ -10,8 +10,8 @@
 		script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
 		script.async = true;
 		script.innerHTML = JSON.stringify({
-			autosize: true,
 			symbol,
+			autosize: true,
 			interval: "60",
 			timezone: "Europe/Warsaw",
 			theme: "dark",

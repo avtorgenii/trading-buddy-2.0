@@ -1,5 +1,5 @@
 <script>
-	import NavMenu   from '$lib/NavMenu.svelte';
+	import NavMenu   from '$lib/components/NavMenu.svelte';
 
 	let bybitCredentials = { api: '', secret: '' };
 	let bingxCredentials = { api: '', secret: '' };
@@ -18,7 +18,6 @@
 	}
 
 </script>
-<h1 class="text-4xl font-bold mb-10 text-center">Trading buddy</h1>
 <NavMenu />
 <div class="page-wrapper flex items-center flex-col ">
 	<div
