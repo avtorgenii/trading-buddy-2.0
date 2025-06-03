@@ -7,7 +7,6 @@ from django.utils import timezone
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     deposit = models.DecimalField(decimal_places=2, default=0.00, max_digits=20)
-    risk_percent = models.DecimalField(decimal_places=5, default=0.00, max_digits=10)
 
 
 # Exchange account
@@ -17,10 +16,14 @@ class Account(models.Model):
         ('ByBit', 'ByBit'),
     ]
     name = models.CharField(max_length=120)
+    risk_percent = models.DecimalField(decimal_places=5, default=3.00, max_digits=10)
     exchange = models.CharField(max_length=120, choices=EXCHANGE_CHOICES)
     api_key = models.TextField()
     secret_key = models.TextField()
     user = ForeignKey('User', related_name='accounts', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = (('name', 'user'),)
 
 
 class Tool(models.Model):

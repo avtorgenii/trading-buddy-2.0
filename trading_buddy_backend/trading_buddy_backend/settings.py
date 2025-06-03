@@ -20,7 +20,6 @@ PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 
 sys.path.insert(0, PROJECT_ROOT_DIR)
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -31,7 +30,6 @@ SECRET_KEY = 'django-insecure-d%4xihekgd$q)+vytw8cw&_^$--4ew6(q^(gh7-z9l5c!x24yq
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -44,8 +42,19 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'trading_buddy.apps.TradingBuddyConfig' # to use custom startup defined in apps.py
+    'rest_framework.authtoken',
+    'trading_buddy.apps.TradingBuddyConfig'  # to use custom startup defined in apps.py
 ]
+
+# Whole API by default is accessible only for authorized users
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated'
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -76,7 +85,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'trading_buddy_backend.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
@@ -86,7 +94,6 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -118,7 +125,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
