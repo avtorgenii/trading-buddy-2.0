@@ -28,12 +28,6 @@ class Account(models.Model):
 
 class Tool(models.Model):
     name = models.CharField(max_length=120)
-    MARKET_CHOICES = [
-        ('crypto', 'Crypto'),
-        ('fund', 'Fund'),
-        ('forex', 'Forex'),
-    ]
-    market = models.CharField(max_length=50, choices=MARKET_CHOICES)
     account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE) # when account is deleted, all tools are deleted as well
 
     class Meta:
