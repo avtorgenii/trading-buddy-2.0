@@ -23,14 +23,21 @@ initialize_exchanges()
 from . import views
 
 urlpatterns = [
-    # Auth
-    path('auth/register/', views.register),
-    path('auth/login/', views.login),
-    # path('auth/logout/', views.logout, name='logout'),
+    # Auth and user
+    path('auth/register/', views.register), # POST
+    path('auth/login/', views.login), # POST
+    path('auth/logout/', views.logout), # POST
 
-    # Accounts
+    path('deposit/', views.update_deposit), # PUT
+
+    # Account
     path('accounts/', views.create_account),  # POST
-    path('accounts/details/', views.get_deposit_and_account_details),  # GET
+    path('accounts/<str:account_name>/', views.delete_account),  # DELETE
+    path('accounts/<str:account_name>/details/', views.get_deposit_and_account_details),  # GET
+
+    # Tools under specific account
+    path('accounts/<str:account_name>/tools/', views.add_tool),  # POST
+    path('accounts/<str:account_name>/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
     # Trading
     # path('positions/open/', views.open_position),  # POST

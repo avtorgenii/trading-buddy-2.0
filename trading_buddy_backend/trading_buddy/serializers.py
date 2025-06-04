@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Position, User, Account
+from .models import Position, User, Account, Tool
 
 """
 By default, DRF’s save() calls create(validated_data) with just one argument.
@@ -41,6 +41,9 @@ class LoginSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError('Invalid credentials.')
 
+##### USER #####
+class DepositSerializer(serializers.Serializer):
+    deposit = serializers.DecimalField(decimal_places=2, default=0.00, max_digits=20)
 
 ##### ACCOUNT #####
 class AccountSerializer(serializers.ModelSerializer):
@@ -65,6 +68,12 @@ class DepositAndAccountDataSerializer(serializers.Serializer):
     risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10)
     available_margin = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
     pnl_usd = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
+
+
+class ToolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tool
+        fields = ('name', )
 
 
 ##### TRADING #####
