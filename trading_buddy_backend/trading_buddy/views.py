@@ -1,5 +1,6 @@
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -49,6 +50,9 @@ def register(request):
 
 
 # Logging In
+@extend_schema(
+    request=LoginSerializer,
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -77,6 +81,29 @@ def logout(request):
 
 ##### ACCOUNT #####
 # Create an account
+##### AUTHORIZATION AND AUTHENTICATION #####
+# Signing Up
+@extend_schema(
+    request=RegisterSerializer,
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            'message': 'User created successfully',
+            'user_id': user.id
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Creating account
+@extend_schema(
+    responses=AccountSerializer,
+    request=AccountSerializer
+)
 @api_view(['POST'])
 def create_account(request):
     serializer = AccountSerializer(data=request.data, context={'user': request.user})
@@ -95,6 +122,9 @@ def delete_account(request, account_name):
 
 
 # Get account details
+@extend_schema(
+    responses=DepositAndAccountDataSerializer
+)
 @api_view(['GET'])
 def get_deposit_and_account_details(request, account_name):
     if not account_name:
@@ -129,6 +159,9 @@ def get_deposit_and_account_details(request, account_name):
 
 
 # Change deposit
+@extend_schema(
+    request = DepositSerializer,
+)
 @api_view(['PUT'])
 def update_deposit(request):
     serializer = DepositSerializer(data=request.data)
@@ -146,6 +179,9 @@ def update_deposit(request):
 
 ##### TOOLS #####
 # Add new tool
+@extend_schema(
+    request = ToolSerializer,
+)
 @api_view(['POST'])
 def add_tool(request, account_name):
     serializer = ToolSerializer(data=request.data)
