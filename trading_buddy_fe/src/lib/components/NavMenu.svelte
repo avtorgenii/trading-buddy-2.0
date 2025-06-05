@@ -15,23 +15,23 @@
 		},
 		{
 			name: 'Trade',
-			link: '/'
+			link: '/trade'
 		},
 		{
 			name: 'Positions',
-			link: '/'
+			link: '/positions'
 		},
 		{
 			name: 'Stats',
-			link: '/'
+			link: '/stats'
 		},
 		{
 			name: 'Settings',
-			link: '/'
+			link: '/settings'
 		},
 		{
 			name: 'Log out',
-			link: '/learnings'
+			link: '/logout'
 		}
 	];
 	let positionMotion = (node: HTMLElement) => {
