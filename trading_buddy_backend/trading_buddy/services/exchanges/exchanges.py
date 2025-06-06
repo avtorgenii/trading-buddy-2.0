@@ -46,27 +46,39 @@ class Exchange:
         if self._initialized:
             return  # Skip re-initialization
 
-        self.account = account
-        self.user = account.user
+        self._account = account
+        self._user = account.user
 
-        self.API_KEY = self.account.api_key
-        self.SECRET_KEY = self.account.secret_key
+        self.API_KEY = self._account.api_key
+        self.SECRET_KEY = self._account.secret_key
 
-    def get_account_details(self) -> Tuple[float, float, float, float]:
+    ##### TWO PROPERTIES BELOW ARE ABSOLUTELY CRUCIAL FOR PREVENTING DATA STALENESS, use only them in code #####
+    @property
+    def fresh_account(self):
+        return Account.objects.get(pk=self._account.pk)
+
+    @property
+    def fresh_user(self):
+        return User.objects.get(pk=self._user.pk)
+
+    def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
         raise NotImplementedError("Method not implemented")
 
-    def get_max_leverage(self, tool: str) -> Tuple[float, float]:
+    ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH APPROPRIATE FOR EXCHANGE SUFFIX #####
+
+    def get_max_leverage(self, tool: str) -> Tuple[int, int]:
         raise NotImplementedError("Method not implemented")
 
-    def calc_position_volume_and_margin(self, tool: str, entry_p: float, stop_p: float, leverage: float) -> Tuple[
-        float, float]:
+    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: Decimal) -> Tuple[
+        Decimal, Decimal]:
         raise NotImplementedError("Method not implemented")
 
-    def place_open_order(self, tool: str, trigger_p: float, entry_p: float, stop_p: float, take_profits: List[float],
-                         move_stop_after: int, leverage: float, volume: float) -> str:
+    def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
+                         take_profits: List[Decimal],
+                         move_stop_after: int, leverage: int, volume: Decimal) -> str:
         raise NotImplementedError("Method not implemented")
 
-    def place_stop_loss_order(self, tool: str, stop_p: float, volume: float, pos_side: PositionSide) -> None:
+    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
         raise NotImplementedError("Method not implemented")
 
     def cancel_stop_loss_for_tool(self, tool: str) -> None:
@@ -78,7 +90,7 @@ class Exchange:
     def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False) -> None:
         raise NotImplementedError("Method not implemented")
 
-    def place_take_profit_orders(self, tool: str, take_profits: List[float], cum_volume: float,
+    def place_take_profit_orders(self, tool: str, take_profits: List[Decimal], cum_volume: Decimal,
                                  pos_side: PositionSide) -> None:
         raise NotImplementedError("Method not implemented")
 
@@ -118,86 +130,6 @@ class BingXExc(Exchange):
         # Mark the instance as fully initialized
         self._initialized = True
 
-    def get_deposit_and_risk(self) -> Tuple[Decimal, Decimal]:
-        """
-        Returns the deposit and risk % values from the database.
-        :return: A tuple containing deposit and risk %.
-        """
-        return self.user.deposit, self.account.risk_percent
-
-    def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
-        """
-        Returns the account details.
-        :return: A tuple containing deposit, risk %, unrealized profit, and available margin.
-        """
-        details = self.client.account.get_details()['balance']
-
-        deposit, risk = self.get_deposit_and_risk()
-
-        return deposit, risk, Decimal(details['unrealizedProfit']), Decimal(details['availableMargin'])
-
-    def _get_tool_precision_info(self, tool: str) -> Dict[str, int]:
-        """
-        Gets precision information for a trading pair.
-        :param tool: The trading pair.
-        :return: Dictionary with quantity and price precision.
-        """
-        info = self.client.market.get_contract_info(tool)
-        return {"quantityPrecision": info['quantityPrecision'], "pricePrecision": info['pricePrecision']}
-
-    def get_max_leverage(self, tool: str) -> Tuple[Decimal, Decimal]:
-        """
-        Returns the maximum leverage for a trading pair.
-        :param tool: The trading pair.
-        :return: A tuple containing the maximum long leverage and maximum short leverage.
-        """
-        info = self.client.trade.get_leverage(tool)
-        return info["maxLongLeverage"], info["maxShortLeverage"]
-
-    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: Decimal) -> Tuple[
-        Decimal, Decimal]:
-        """
-        Calculates the position volume and margin.
-        :param tool: The trading pair.
-        :param entry_p: Entry price.
-        :param stop_p: Stop loss price.
-        :param leverage: Leverage for the trade.
-        :return: A tuple containing the calculated volume and margin.
-        """
-        _, _, _, available_margin = self.get_account_details()
-
-        precision_info = self._get_tool_precision_info(tool)
-        quantity_precision = precision_info['quantityPrecision']
-
-        deposit, risk = self.get_deposit_and_risk()
-
-        volume, margin = mh.calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_margin, leverage,
-                                                            quantity_precision)
-        return volume, margin
-
-    def calculate_position_potential_loss_and_profit(self, tool: str, entry_p: Decimal, stop_p: Decimal,
-                                                     take_ps: List[Decimal], volume: Decimal) -> Tuple[
-        Decimal, Decimal]:
-        """
-        Calculates the potential loss and profit for a position.
-        :param tool: The trading pair.
-        :param entry_p: Entry price.
-        :param stop_p: Stop loss price.
-        :param take_ps: List of take profit prices.
-        :param volume: Trading volume.
-        :return: A tuple containing the potential loss and profit.
-        """
-        quantity_precision = self._get_tool_precision_info(tool)['quantityPrecision']
-
-        return mh.calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volume, quantity_precision)
-
-    def _switch_margin_mode_to_cross(self, tool: str) -> None:
-        """
-        Switches the margin mode to cross for a trading pair.
-        :param tool: The trading pair.
-        """
-        self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
-
     def create_price_listener_in_thread(self, tool_name):
         p_listener = BingXPriceListener(tool_name, self)
 
@@ -225,10 +157,10 @@ class BingXExc(Exchange):
                 print("Price listener already deleted")
 
         # Create new ones for each tool
-        # positions = self.account.positions.objects.all()
-        #
-        # for pos in positions:
-        #     self.create_price_listener_in_thread(pos.tool)
+        positions = self.fresh_account.positions.objects.all()
+
+        for pos in positions:
+            self.create_price_listener_in_thread(pos.tool)
 
     def delete_price_listener(self, tool_name):
         try:
@@ -250,6 +182,99 @@ class BingXExc(Exchange):
         listener_thread.start()
 
         self.order_listener_manager_thread = listener_thread
+
+    def get_deposit_and_risk(self) -> Tuple[Decimal, Decimal]:
+        """
+        Returns the deposit and risk % values from the database.
+        :return: A tuple containing deposit and risk %.
+        """
+        return self.fresh_user.deposit, self.fresh_account.risk_percent
+
+    def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
+        """
+        Returns the account details.
+        :return: A tuple containing deposit, risk %, unrealized profit, and available margin.
+        """
+        details = self.client.account.get_details()['balance']
+
+        deposit, risk = self.get_deposit_and_risk()
+
+        return deposit, risk, Decimal(details['unrealizedProfit']), Decimal(details['availableMargin'])
+
+    def _get_tool_precision_info(self, tool: str) -> Dict[str, int]:
+        """
+        Gets precision information for a trading pair.
+        :param tool: The trading pair.
+        :return: Dictionary with quantity and price precision.
+        """
+        info = self.client.market.get_contract_info(tool)
+        return {"quantityPrecision": info['quantityPrecision'], "pricePrecision": info['pricePrecision']}
+
+    def get_max_leverage(self, tool: str) -> Tuple[int, int]:
+        """
+        Returns the maximum leverage for a trading pair.
+        :param tool: The trading pair.
+        :return: A tuple containing the maximum long leverage and maximum short leverage.
+        """
+        info = self.client.trade.get_leverage(tool)
+        return info["maxLongLeverage"], info["maxShortLeverage"]
+
+    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: int) -> Tuple[
+        Decimal, Decimal]:
+        """
+        Calculates the position volume and margin.
+        :param tool: The trading pair.
+        :param entry_p: Entry price.
+        :param stop_p: Stop loss price.
+        :param leverage: Leverage for the trade.
+        :return: A tuple containing the calculated volume and margin.
+        """
+        _, _, _, available_margin = self.get_account_details()
+
+        precision_info = self._get_tool_precision_info(tool)
+        quantity_precision = precision_info['quantityPrecision']
+
+        deposit, risk = self.get_deposit_and_risk()
+
+        volume, margin = mh.calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_margin, leverage,
+                                                            quantity_precision)
+
+        return volume, margin
+
+    def calc_position_margin(self, entry_p: Decimal, volume: Decimal, leverage: int) -> Decimal:
+        """
+        Calculates the position margin.
+        :param entry_p: Entry price.
+        :param volume: Position volume.
+        :param leverage: Leverage for the trade.
+        :return: Margin required to open position.
+        """
+
+        return mh.calculate_position_margin(entry_p, volume, leverage)
+
+    def calculate_position_potential_loss_and_profit(self, tool: str, entry_p: Decimal, stop_p: Decimal,
+                                                     take_ps: List[Decimal], volume: Decimal) -> Tuple[
+        Decimal, Decimal]:
+        """
+        Calculates the potential loss and profit for a position.
+        :param tool: The trading pair.
+        :param entry_p: Entry price.
+        :param stop_p: Stop loss price.
+        :param take_ps: List of take profit prices.
+        :param volume: Trading volume.
+        :return: A tuple containing the potential loss and profit.
+        """
+
+        quantity_precision = self._get_tool_precision_info(tool)['quantityPrecision']
+
+        return mh.calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volume, quantity_precision)
+
+    def _switch_margin_mode_to_cross(self, tool: str) -> None:
+        """
+        Switches the margin mode to cross for a tool
+        :param tool: The tool name
+        """
+        self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
 
     def _place_primary_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                              pos_side: PositionSide, volume: Decimal) -> str:
@@ -275,7 +300,7 @@ class BingXExc(Exchange):
         return order_response['order']['orderId']
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
-                         take_profits: List[Decimal], move_stop_after: int, leverage: Decimal,
+                         take_profits: List[Decimal], move_stop_after: int, leverage: int,
                          volume: Decimal) -> str:
         """
         Places an open order.
@@ -296,6 +321,8 @@ class BingXExc(Exchange):
         self.client.trade.change_leverage(tool, pos_side, leverage)
 
         try:
+            volume, margin = self.calc_position_volume_and_margin(tool, entry_p, stop_p, leverage)
+
             self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
 
             pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
@@ -305,7 +332,8 @@ class BingXExc(Exchange):
 
             # Creating trade and linked position in db
             deposit, risk = self.get_deposit_and_risk()
-            Trade.create_trade(pos_side, self.account, tool, risk, deposit * risk / 100, leverage, trigger_p, entry_p,
+            Trade.create_trade(pos_side, self.fresh_account, tool, risk, deposit * risk / 100, leverage, trigger_p,
+                               entry_p,
                                stop_p, take_profits, move_stop_after, volume)
 
             self.create_price_listener_in_thread(tool)
@@ -321,7 +349,7 @@ class BingXExc(Exchange):
     def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
         """
         Places a stop loss order.
-        :param tool: The trading pair.
+        :param tool: The tool name.
         :param stop_p: Stop loss price.
         :param volume: Trading volume.
         :param pos_side: Position side (LONG/SHORT).
@@ -329,7 +357,8 @@ class BingXExc(Exchange):
         order_side = Side.SELL if pos_side == "LONG" else Side.BUY
         order_type = OrderType.STOP_MARKET
 
-        order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
+        order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume,
+                      type=order_type,
                       stopPrice=stop_p)
         self.client.trade.create_order(order)
 
@@ -337,8 +366,8 @@ class BingXExc(Exchange):
 
     def cancel_stop_loss_for_tool(self, tool: str) -> None:
         """
-        Cancels the stop loss order for a trading pair.
-        :param tool: The trading pair.
+        Cancels the stop loss order for a tool
+        :param tool: Tool name
         """
         orders = self.get_orders_for_tool(tool)
 
@@ -387,7 +416,7 @@ class BingXExc(Exchange):
 
         if not only_cancel:
             tool_obj = Tool.objects.get(name=tool)
-            trade = Trade.objects.filter(account=self.account, tool=tool_obj).last()
+            trade = Trade.objects.filter(account=self.fresh_account, tool=tool_obj).last()
             if save_to_db:
                 # For positions closing, cancellation via overhigh/overlow and automatic cancellation of orders when reached take-profit level, their data is being saved into database
                 pos = trade.position
@@ -415,6 +444,7 @@ class BingXExc(Exchange):
         :param cum_volume: Cumulative volume.
         :param pos_side: Position side (LONG/SHORT).
         """
+
         order_side = Side.SELL if pos_side == "LONG" else Side.BUY
         order_type = OrderType.TAKE_PROFIT_MARKET
 
@@ -467,9 +497,10 @@ class BingXExc(Exchange):
                 'pos_side': position['positionSide'],
                 'leverage': position['leverage'],
                 'volume': position['availableAmt'],
-                'margin': round(float(position['margin']), 3),
+                'margin': round(Decimal(position['margin']), 3),
                 'avg_open': position['avgPrice'],
-                'pnl': mh.floor_to_digits(float(position['unrealizedProfit']) + float(position['realisedProfit']), 4)
+                'pnl': mh.floor_to_digits(Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
+                                          4)
             }
 
             dicts.append(d)
@@ -481,7 +512,7 @@ class BingXExc(Exchange):
         Gets information about all pending positions.
         :return: List of dictionaries containing pending position information.
         """
-        positions = Position.objects.filter(account=self.account).all()
+        positions = Position.objects.filter(account=self.fresh_account).all()
 
         print(positions)
 

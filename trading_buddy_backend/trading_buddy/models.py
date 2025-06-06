@@ -27,8 +27,10 @@ class Account(models.Model):
 
 
 class Tool(models.Model):
-    name = models.CharField(max_length=120)
-    account = models.ForeignKey(Account, related_name='tools', on_delete=models.CASCADE) # when account is deleted, all tools are deleted as well
+    name = models.CharField(max_length=120,
+                            help_text="Tool name WITH exchange-appropriate suffix, e.g: BTC-USDT, not just BTC")
+    account = models.ForeignKey(Account, related_name='tools',
+                                on_delete=models.CASCADE)  # when account is deleted, all tools are deleted as well
 
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
@@ -97,10 +99,10 @@ class Trade(models.Model):
     start_time = models.DateTimeField(null=True)
     end_time = models.DateTimeField(null=True)
 
-    risk_percent = models.DecimalField(decimal_places=2, max_digits=10, default=0)
-    risk_usd = models.DecimalField(decimal_places=2, max_digits=10, default=0)
-    pnl_usd = models.DecimalField(decimal_places=2, max_digits=10, default=0, help_text="Net profit, after commissions")
-    commission_usd = models.DecimalField(decimal_places=2, max_digits=10, default=0)
+    risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
+    risk_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
+    pnl_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0, help_text="Net profit, after commissions")
+    commission_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
 
     description = models.TextField(null=True)
     result = models.TextField(null=True)

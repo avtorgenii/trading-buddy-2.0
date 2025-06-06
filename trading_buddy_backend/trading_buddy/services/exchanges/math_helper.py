@@ -1,24 +1,25 @@
 import math
+from decimal import Decimal, ROUND_DOWN
+from typing import Tuple, List
+
 import pytz
 from datetime import datetime
 
 
-def floor_to_digits(number, digits):
-    """
-    Floor the number to a specified number of digits after the decimal point.
-
-    :param number: The number to be floored.
-    :type number: float
-    :param digits: The number of digits to keep after the decimal point.
-    :type digits: int
-    :return: The floored number.
-    :rtype: float
-    """
-    factor = 10 ** digits
-    return math.floor(number * factor) / factor
+def floor_to_digits(number: Decimal, digits: int) -> Decimal:
+    quant = Decimal('1.' + '0' * digits)
+    return number.quantize(quant, rounding=ROUND_DOWN)
 
 
-def calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_margin, leverage, quantity_precision):
+def calc_position_volume_and_margin(
+        deposit: Decimal,
+        risk: Decimal,
+        entry_p: Decimal,
+        stop_p: Decimal,
+        available_margin: Decimal,
+        leverage: int,
+        quantity_precision: int
+) -> Tuple[Decimal, Decimal]:
     diff_pips = abs(entry_p - stop_p)
 
     allowed_loss = deposit * risk / 100
@@ -28,15 +29,23 @@ def calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_ma
     required_margin = volume * entry_p / leverage
 
     if available_margin >= required_margin:
-        print(f"Required: {required_margin}")
-        return volume, round(required_margin, 2)
+        print(f"Margin required: {required_margin}")
+        return volume, Decimal(round(required_margin, 2))
     else:
         allowed_volume = floor_to_digits(leverage * available_margin / entry_p, quantity_precision)
-        print(f"Allowed: {allowed_volume * entry_p / leverage}")
-        return allowed_volume, round(allowed_volume * entry_p / leverage, 2)
+        print(f"Margin allowed: {allowed_volume * entry_p / leverage}")
+        return allowed_volume, Decimal(round(allowed_volume * entry_p / leverage, 2))
 
 
-def calc_take_profits_volumes(volume, quantity_precision, num_take_profits):
+def calculate_position_margin(entry_p: Decimal, volume: Decimal, leverage: int) -> Decimal:
+    return Decimal(round(volume * entry_p / leverage, 2))
+
+
+def calc_take_profits_volumes(
+        volume: Decimal,
+        quantity_precision: int,
+        num_take_profits: int
+) -> List[Decimal]:
     """
     Calculate the volumes for take profits.
 
@@ -48,15 +57,15 @@ def calc_take_profits_volumes(volume, quantity_precision, num_take_profits):
 
     def round_with_precision(value, precision):
         factor = 10 ** precision
-        return round(value * factor) / factor
+        return Decimal(round(value * factor) / factor)
 
-    base_volume = volume / num_take_profits
+    base_volume = Decimal(volume / num_take_profits)
 
     base_volume = round_with_precision(base_volume, quantity_precision)
 
     take_profits_volumes = [base_volume] * num_take_profits
 
-    remaining_volume = round_with_precision(volume - sum(take_profits_volumes), quantity_precision)
+    remaining_volume = Decimal(round_with_precision(volume - sum(take_profits_volumes), quantity_precision))
 
     # Adjust the first take profit volume to account for the remaining volume
     if remaining_volume != 0:
@@ -68,7 +77,13 @@ def calc_take_profits_volumes(volume, quantity_precision, num_take_profits):
     return take_profits_volumes
 
 
-def calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volume, quantity_precision):
+def calculate_position_potential_loss_and_profit(
+        entry_p: Decimal,
+        stop_p: Decimal,
+        take_ps: List[Decimal],
+        volume: Decimal,
+        quantity_precision: int
+) -> Tuple[Decimal, Decimal]:
     volumes = calc_take_profits_volumes(volume, quantity_precision, len(take_ps))
 
     pot_loss = abs(entry_p - stop_p) * volume
@@ -85,7 +100,7 @@ def calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volum
     return floor_to_digits(pot_loss, 2), floor_to_digits(pot_profit, 2)
 
 
-def convert_to_unix(utc_plus_2_string):
+def convert_to_unix(utc_plus_2_string: str) -> int:
     # Define the timezone
     utc_plus_2 = pytz.timezone('Etc/GMT-2')  # Etc/GMT-2 is equivalent to UTC+2
 

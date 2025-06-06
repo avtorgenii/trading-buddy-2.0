@@ -9,8 +9,7 @@ from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 
 from .models import Position, Account, Tool
-from .serializers import PositionSerializer, RegisterSerializer, LoginSerializer, DepositAndAccountDataSerializer, \
-    AccountSerializer, ToolSerializer, DepositSerializer
+from .serializers import *
 from .services.exchanges.exchanges import Exchange, BingXExc
 
 """
@@ -31,7 +30,34 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 {
     "deposit": 200.05
 }
+{
+    "account_name": "BingX_Main",
+    "tool": "WLD-USDT",
+    "trigger_p": "1.0600",
+    "entry_p": "1.0500",
+    "stop_p": "1.0400",
+    "take_profits": ["1.09", "1.1", "1.5"],
+    "move_stop_after": "1",
+    "leverage": "20"
+}
+{
+    "account_name": "BingX_Main",
+    "tool": "WLD-USDT",
+    "trigger_p": "1.0600",
+    "entry_p": "1.0500",
+    "stop_p": "1.0400",
+    "take_profits": ["1.09", "1.1", "1.5"],
+    "move_stop_after": "1",
+    "leverage": "20",
+    "volume": "1.05"
+}
 """
+
+# Exchanges map
+exc_map = {
+    "BingX": BingXExc,
+    # "ByBit": ByBitExc
+}
 
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
@@ -46,7 +72,7 @@ def register(request):
             'message': 'User created successfully',
             'user_id': user.id
         }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Logging In
@@ -67,7 +93,7 @@ def login(request):
             'message': 'Logged in successfully',
             'user_id': user.id
         }, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Logging Out
@@ -77,6 +103,25 @@ def logout(request):
         django_logout(request)
         return Response({"message": "Logged out successfully."}, status=status.HTTP_200_OK)
     return Response({"error": "User is not authenticated."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Change deposit
+@extend_schema(
+    request=DepositSerializer,
+)
+@api_view(['PUT'])
+def update_deposit(request):
+    serializer = DepositSerializer(data=request.data)
+
+    if serializer.is_valid():
+        user = request.user
+
+        user.deposit = serializer.validated_data['deposit']
+        user.save()
+
+        return Response({"message": "Deposit updated successfully."}, status=status.HTTP_200_OK)
+
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 ##### ACCOUNT #####
@@ -96,7 +141,7 @@ def register(request):
             'message': 'User created successfully',
             'user_id': user.id
         }, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Creating account
@@ -110,7 +155,7 @@ def create_account(request):
     if serializer.is_valid():
         account = serializer.save()  # will use create() with user set
         return Response(AccountSerializer(account).data, status=201)
-    return Response(serializer.errors, status=400)
+    return Response({"error": "".join(serializer.errors)}, status=400)
 
 
 # Delete account
@@ -136,12 +181,7 @@ def get_deposit_and_account_details(request, account_name):
     if account is None:
         return Response({"error": "account does not exist"}, status=400)
 
-    map = {
-        "BingX": BingXExc,
-        # "ByBit": ByBitExc
-    }
-
-    exc = map[account.exchange](account)
+    exc = exc_map[account.exchange](account)
 
     deposit, risk_percent, pnl, available_margin = exc.get_account_details()
 
@@ -155,32 +195,30 @@ def get_deposit_and_account_details(request, account_name):
     if serializer.is_valid():
         return Response(serializer.data, status=status.HTTP_200_OK)
     else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Change deposit
 @extend_schema(
-    request = DepositSerializer,
+    request=RiskSerializer,
 )
 @api_view(['PUT'])
-def update_deposit(request):
-    serializer = DepositSerializer(data=request.data)
+def update_risk_for_account(request, account_name):
+    serializer = RiskSerializer(data=request.data)
 
     if serializer.is_valid():
         user = request.user
 
-        user.deposit = serializer.validated_data['deposit']
-        user.save()
+        user.accounts.filter(name=account_name).update(risk_percent=serializer.validated_data['risk_percent'])
+        return Response({"message": "Risk updated successfully."}, status=status.HTTP_200_OK)
 
-        return Response({"message": "Deposit updated successfully."}, status=status.HTTP_200_OK)
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 ##### TOOLS #####
 # Add new tool
+# TODO IMPORTANT: ADD HINT FOR SUFFIX STYLE FOR ADD TOOL MODAL
 @extend_schema(
-    request = ToolSerializer,
+    request=ToolSerializer,
 )
 @api_view(['POST'])
 def add_tool(request, account_name):
@@ -198,7 +236,7 @@ def add_tool(request, account_name):
         except IntegrityError:
             return Response({"error": "tool already exists"}, status=400)
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Remove tool
@@ -218,13 +256,66 @@ def remove_tool(request, account_name, tool_name):
     tool.delete()
     return Response({"message": "Tool removed successfully"}, status=204)
 
+
 ##### TRADING #####
+# Get position data before opening
+@extend_schema(
+    request=PositionToOpenSerializer,
+    responses=ProcessedPositionToOpenSerializer,
+)
+@api_view(['POST'])
+def process_position_data(request):
+    serializer = PositionToOpenSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    account = request.user.accounts.filter(name=data['account_name']).first()
+    if not account:
+        return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    exc = exc_map[account.exchange](account)
+
+    volume = data.get('volume')
+    if volume is not None:
+        margin = exc.calc_position_margin(data['entry_p'], volume, data['leverage'])
+    else:
+        volume, margin = exc.calc_position_volume_and_margin(
+            data['tool'], data['entry_p'], data['stop_p'], data['leverage']
+        )
+
+    loss, profit = exc.calculate_position_potential_loss_and_profit(
+        data['tool'], data['entry_p'], data['stop_p'], data['take_profits'], volume
+    )
+
+    result_data = {
+        "volume": str(volume),
+        "margin": str(margin),
+        "potential_loss": str(loss),
+        "potential_profit": str(profit),
+    }
+
+    result_serializer = ProcessedPositionToOpenSerializer(data=result_data)
+    if result_serializer.is_valid():
+        return Response(result_serializer.data, status=status.HTTP_200_OK)
+
+    return Response({"error": "".join(result_serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
 # Open position
 # @api_view(['POST'])
-# def open_position(request):
-#     positions = Position.objects.all()
-#     serializer = PositionSerializer(positions, many=True)
-#     return Response(serializer.data)
+# def place_position(request):
+#     serializer = PositionToOpenSerializer(data=request.data)
+#
+#     if serializer.is_valid():
+#         user = request.user
+#         account = user.accounts.filter(name=account_name).first()
+#
+#         if account is None:
+#             return Response({"error": "account does not exist"}, status=400)
+#
+#         exc = exc_map[account.exchange](account)
+#
+#     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 #
 #
 # # Cancel position
