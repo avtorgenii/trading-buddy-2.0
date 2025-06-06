@@ -8,7 +8,7 @@ Before running db, make sure you have created ```.env``` file in ```trading_budd
 DB_USER=<>
 DB_PASSWORD=<>
 ```
-Postgres is used, to run it simply execute command below in ```trading_buddy_backend``` directory:
+Postgres is used, to run it simply execute command below in root directory:
 ```
 docker-compose up -d
 ```
