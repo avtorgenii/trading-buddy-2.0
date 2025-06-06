@@ -157,7 +157,7 @@ class BingXExc(Exchange):
                 print("Price listener already deleted")
 
         # Create new ones for each tool
-        positions = self.fresh_account.positions.objects.all()
+        positions = self.fresh_account.positions.all()
 
         for pos in positions:
             self.create_price_listener_in_thread(pos.tool)
@@ -321,8 +321,6 @@ class BingXExc(Exchange):
         self.client.trade.change_leverage(tool, pos_side, leverage)
 
         try:
-            volume, margin = self.calc_position_volume_and_margin(tool, entry_p, stop_p, leverage)
-
             self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
 
             pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
@@ -332,7 +330,8 @@ class BingXExc(Exchange):
 
             # Creating trade and linked position in db
             deposit, risk = self.get_deposit_and_risk()
-            Trade.create_trade(pos_side, self.fresh_account, tool, risk, deposit * risk / 100, leverage, trigger_p,
+            Trade.create_trade(pos_side.value, self.fresh_account, tool, risk, deposit * risk / 100, leverage,
+                               trigger_p,
                                entry_p,
                                stop_p, take_profits, move_stop_after, volume)
 
@@ -340,11 +339,7 @@ class BingXExc(Exchange):
 
             return "Primary order placed"
         except ClientError as e:
-            if e.error_message == "Insufficient margin":
-                return "Please enter volume manually"
-
-            else:
-                return "Volume is too small"
+            return e.error_message
 
     def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
         """

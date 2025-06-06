@@ -15,23 +15,23 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 """
 {
     "email": "test@gmail.com",
-    "password": "123"
+    "password": "dizhihao!!!"
 }
 
 {
-    "name": "BingX_Main",
+    "name": "BingX",
     "exchange": "BingX",
     "api_key": "6NBKZNJeMfKCLviCZC4NhjKhnhhI60rnLqdPqurn49WITIYpFfHQE9GqgApK9OAZ1HDtz86GHDClGzuAplTEg",
     "secret_key": "IPwqlPr6kSo1Ik96mpCvCjD4eXaZS1z07Xm1WlcX3AwH8TxMeZT7PkwXiP2nVATwDLzuHndmeyblV5IaOxg"
 }
 {
-    "name": "BTC"
+    "name": "WLD"
 }
 {
     "deposit": 200.05
 }
 {
-    "account_name": "BingX_Main",
+    "account_name": "BingX",
     "tool": "WLD-USDT",
     "trigger_p": "1.0600",
     "entry_p": "1.0500",
@@ -41,7 +41,7 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "leverage": "20"
 }
 {
-    "account_name": "BingX_Main",
+    "account_name": "BingX",
     "tool": "WLD-USDT",
     "trigger_p": "1.0600",
     "entry_p": "1.0500",
@@ -154,7 +154,7 @@ def create_account(request):
     serializer = AccountSerializer(data=request.data, context={'user': request.user})
     if serializer.is_valid():
         account = serializer.save()  # will use create() with user set
-        return Response(AccountSerializer(account).data, status=201)
+        return Response({"message": "Account created successfully"}, status=201)
     return Response({"error": "".join(serializer.errors)}, status=400)
 
 
@@ -301,21 +301,36 @@ def process_position_data(request):
 
     return Response({"error": "".join(result_serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
-# Open position
-# @api_view(['POST'])
-# def place_position(request):
-#     serializer = PositionToOpenSerializer(data=request.data)
-#
-#     if serializer.is_valid():
-#         user = request.user
-#         account = user.accounts.filter(name=account_name).first()
-#
-#         if account is None:
-#             return Response({"error": "account does not exist"}, status=400)
-#
-#         exc = exc_map[account.exchange](account)
-#
-#     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+# Placing position
+@extend_schema(
+    request=PositionToOpenSerializer
+)
+@api_view(['POST'])
+def place_position(request):
+    serializer = PositionToOpenSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+    if data.get('volume'):
+        account = request.user.accounts.filter(name=data['account_name']).first()
+        if not account:
+            return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        exc = exc_map[account.exchange](account)
+
+        result = exc.place_open_order(data['tool'], data['trigger_p'], data['entry_p'], data['stop_p'],
+                                      data['take_profits'],
+                                      data['move_stop_after'],
+                                      data['leverage'], data['volume'])
+
+        if result == "Primary order placed":
+            return Response({"message": "Order placed successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": "volume is required"}, status=status.HTTP_400_BAD_REQUEST)
 #
 #
 # # Cancel position

@@ -1,4 +1,3 @@
-import math
 from decimal import Decimal, ROUND_DOWN
 from typing import Tuple, List
 
@@ -93,6 +92,8 @@ def calculate_position_potential_loss_and_profit(
     for exit_price, exit_volume in zip(take_ps, volumes):
         sum_of_weighted_prices += exit_price * exit_volume
 
+    if volume == 0:
+        return Decimal(0), Decimal(0)
     price_of_exit = sum_of_weighted_prices / volume
 
     pot_profit = abs(entry_p - price_of_exit) * volume

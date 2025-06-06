@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres
+    container_name: tb-postgres-db
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: avtorpetrovich
+      POSTGRES_PASSWORD: b3braPetrovna1
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

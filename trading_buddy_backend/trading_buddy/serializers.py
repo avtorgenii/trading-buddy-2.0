@@ -68,7 +68,7 @@ class LoginSerializer(serializers.Serializer):
 
 ##### USER #####
 class DepositSerializer(serializers.Serializer):
-    deposit = serializers.DecimalField(decimal_places=2, default=0.00, max_digits=20)
+    deposit = serializers.DecimalField(decimal_places=2, default=0.00, max_digits=20, min_value=0)
 
 
 ##### ACCOUNT #####
@@ -103,7 +103,7 @@ class ToolSerializer(serializers.ModelSerializer):
 
 
 class RiskSerializer(serializers.Serializer):
-    risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10)
+    risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10, min_value=0)
 
 
 ##### TRADING #####
@@ -125,9 +125,30 @@ class PositionToOpenSerializer(serializers.Serializer):
     take_profits = serializers.ListField(
         child=serializers.DecimalField(decimal_places=10, max_digits=20)
     )
-    move_stop_after = serializers.IntegerField()
-    leverage = serializers.IntegerField()
+    move_stop_after = serializers.IntegerField(min_value=0, default=0, required=False)
+    leverage = serializers.IntegerField(min_value=1)
+    # Actually required for order placement, but optional for processing data
     volume = serializers.DecimalField(decimal_places=10, max_digits=20, required=False, allow_null=True)
+
+    def validate(self, data):
+        """Ensure all relevant price fields are positive decimals."""
+        price_fields = ['trigger_p', 'entry_p', 'stop_p']
+        for field in price_fields:
+            if data.get(field) is not None and data[field] <= 0:
+                raise serializers.ValidationError({field: f"{field} must be greater than 0"})
+
+        for i, tp in enumerate(data.get('take_profits', [])):
+            if tp <= 0:
+                raise serializers.ValidationError(
+                    {'take_profits': f"All take_profits must be greater than 0 (invalid at index {i})"})
+
+        return data
+
+    def validate_volume(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Volume cannot be negative or equal to 0.")
+        else:
+            return value
 
 
 class ProcessedPositionToOpenSerializer(serializers.Serializer):

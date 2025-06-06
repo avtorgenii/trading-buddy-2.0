@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import ForeignKey
 from django.utils import timezone
+from django.contrib.postgres.fields import ArrayField
 
 
 class User(AbstractUser):
@@ -53,8 +54,14 @@ class Position(models.Model):
     entry_price = models.DecimalField(decimal_places=12, max_digits=20)
     stop_price = models.DecimalField(decimal_places=12, max_digits=20)
 
-    take_profit_prices = models.JSONField(default=list)
-    cancel_levels = models.JSONField(default=list)
+    take_profit_prices = ArrayField(
+        base_field=models.DecimalField(decimal_places=12, max_digits=20),
+        default=list
+    )
+    cancel_levels = ArrayField(
+        base_field=models.DecimalField(decimal_places=12, max_digits=20),
+        default=list
+    )
 
     start_time = models.DateTimeField(null=True)
 
@@ -63,7 +70,11 @@ class Position(models.Model):
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
     current_volume = models.DecimalField(decimal_places=12, max_digits=20)
 
-    fill_history = models.JSONField(default=list, null=True)  # e.g., [[101.5, 0.5], []] price and volume tuples
+    fill_history = ArrayField(
+        base_field=ArrayField(models.DecimalField(decimal_places=12, max_digits=20)),
+        default=list,
+        null=True
+    )  # e.g., [[101.5, 0.5], []] price and volume tuples
 
     last_status = models.CharField(max_length=50, null=True)
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not

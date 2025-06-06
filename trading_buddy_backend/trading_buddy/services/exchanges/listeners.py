@@ -13,14 +13,24 @@ from ...models import User, Account, Position
 
 
 class Listener:
-    def __init__(self, user: User):
-        self.user = user
-        self.account = Account.objects.filter(user=user).first()
+    def __init__(self, user: User, account: Account):
+        self._user = user
+        self._account = account
 
-        self.API_KEY = self.account.api_key
-        self.SECRET_KEY = self.account.secret_key
+        # Thanks to the logic where you cannot update account data (API stuff), below variables initializing once is perfectly okay
+        self.API_KEY = self.fresh_account.api_key
+        self.SECRET_KEY = self.fresh_account.secret_key
 
         self.ws = None
+        self.ws_url = None
+
+    @property
+    def fresh_account(self):
+        return Account.objects.get(pk=self._account.pk)
+
+    @property
+    def fresh_user(self):
+        return User.objects.get(pk=self._user.pk)
 
     def decode_data(self, message):
         compressed_data = gzip.GzipFile(fileobj=io.BytesIO(message), mode='rb')
@@ -63,7 +73,7 @@ class Listener:
 
 class BingXListener(Listener):
     def __init__(self, exchange):
-        super().__init__(exchange.user)
+        super().__init__(exchange.fresh_user, exchange.fresh_account)
         self.ws_url = "wss://open-api-swap.bingx.com/swap-market"
         self.exchange = exchange
 
@@ -111,7 +121,7 @@ class BingXOrderListener(BingXListener):
         return tool, order_type, volume, avg_price, status, pnl, commission
 
     def place_takes_and_stops(self, tool, volume):
-        pos = Position.objects.filter(user=self.user, tool__name=tool).first()
+        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
         pos_side, takes, stop, ls = pos.side, pos.take_profit_prices, pos.stop_price, pos.last_status
 
         print(f"READ TAKES AND STOP:                             {takes}, {stop}")
@@ -140,7 +150,7 @@ class BingXOrderListener(BingXListener):
         # bit this function so rm would finish its business
         time.sleep(3)
 
-        pos = Position.objects.filter(user=self.user, tool__name=tool).first()
+        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
         left_volume_to_fill, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
 
         if last_status == "PARTIALLY_FILLED":
@@ -170,7 +180,7 @@ class BingXOrderListener(BingXListener):
         # bit this function so rm would finish its business
         time.sleep(3)
 
-        pos = Position.objects.filter(user=self.user, tool__name=tool).first()
+        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
         left_volume_to_fill, current_volume, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
 
         current_volume += volume
@@ -199,7 +209,7 @@ class BingXOrderListener(BingXListener):
         self.exchange.delete_price_listener(tool)
 
     def on_stop(self, tool, new_pnl, new_commission):
-        pos = Position.objects.filter(user=self.user, tool__name=tool).first()
+        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
         commission, pnl = pos.commission_usd, pos.pnl
 
         pos.pnl_usd = pnl + new_pnl
@@ -213,7 +223,7 @@ class BingXOrderListener(BingXListener):
         print(f"{self.__class__.__name__}: FILLING TAKE_PROFIT")
 
         # Cancel previous stop-loss and place new if stop-loss wasn't moved yet
-        pos = Position.objects.filter(user=self.user, tool__name=tool).first()
+        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
         breakeven, pnl, commission, last_status = pos.breakeven, pos.pnl_usd, pos.commission_usd, pos.last_status
 
         pos.pnl_usd = pnl + new_pnl
@@ -322,7 +332,8 @@ class BingXPriceListener(BingXListener):
         self.CHANNEL = {"id": "24dd0e35-56a4-4f7a-af8a-394c7060909c", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
 
     def check_price_for_order_cancelation(self, price):
-        pos = Position.objects.filter(user=self.user, tool__name=self.tool).first()
+        pos = self.fresh_user.positions.filter(tool__name=self.tool).first()
+
         over_and_take, pos_side = pos.cancel_levels, pos.side
 
         try:
