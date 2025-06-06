@@ -76,7 +76,7 @@ class Position(models.Model):
         null=True
     )  # e.g., [[101.5, 0.5], []] price and volume tuples
 
-    last_status = models.CharField(max_length=50, null=True)
+    last_status = models.CharField(max_length=50, null=True, default="NEW")
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not
 
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)

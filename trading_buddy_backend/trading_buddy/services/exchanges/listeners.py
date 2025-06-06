@@ -1,5 +1,6 @@
 import json
 import time
+from decimal import Decimal
 
 import websocket
 import gzip
@@ -112,16 +113,16 @@ class BingXOrderListener(BingXListener):
 
         tool = order["s"]
         order_type = order["o"]
-        volume = float(order["q"])
-        avg_price = float(order["ap"])
+        volume = Decimal(order["q"])
+        avg_price = Decimal(order["ap"])
         status = order["X"]
-        pnl = float(order["rp"])
-        commission = float(order["n"])
+        pnl = Decimal(order["rp"])
+        commission = Decimal(order["n"])
 
         return tool, order_type, volume, avg_price, status, pnl, commission
 
     def place_takes_and_stops(self, tool, volume):
-        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         pos_side, takes, stop, ls = pos.side, pos.take_profit_prices, pos.stop_price, pos.last_status
 
         print(f"READ TAKES AND STOP:                             {takes}, {stop}")
@@ -150,7 +151,7 @@ class BingXOrderListener(BingXListener):
         # bit this function so rm would finish its business
         time.sleep(3)
 
-        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         left_volume_to_fill, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
 
         if last_status == "PARTIALLY_FILLED":
@@ -162,7 +163,6 @@ class BingXOrderListener(BingXListener):
 
             fill_history.append([avg_price, volume])
 
-            pos.left_volume_to_fill = left_volume_to_fill - volume
             pos.last_status = "FILLED"
             pos.current_volume = volume
             pos.commission_usd = commission + new_commission
@@ -180,7 +180,7 @@ class BingXOrderListener(BingXListener):
         # bit this function so rm would finish its business
         time.sleep(3)
 
-        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         left_volume_to_fill, current_volume, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
 
         current_volume += volume
@@ -209,7 +209,7 @@ class BingXOrderListener(BingXListener):
         self.exchange.delete_price_listener(tool)
 
     def on_stop(self, tool, new_pnl, new_commission):
-        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         commission, pnl = pos.commission_usd, pos.pnl
 
         pos.pnl_usd = pnl + new_pnl
@@ -223,7 +223,7 @@ class BingXOrderListener(BingXListener):
         print(f"{self.__class__.__name__}: FILLING TAKE_PROFIT")
 
         # Cancel previous stop-loss and place new if stop-loss wasn't moved yet
-        pos = Position.objects.filter(user=self.fresh_user, tool__name=tool).first()
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         breakeven, pnl, commission, last_status = pos.breakeven, pos.pnl_usd, pos.commission_usd, pos.last_status
 
         pos.pnl_usd = pnl + new_pnl
@@ -331,8 +331,8 @@ class BingXPriceListener(BingXListener):
 
         self.CHANNEL = {"id": "24dd0e35-56a4-4f7a-af8a-394c7060909c", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
 
-    def check_price_for_order_cancelation(self, price):
-        pos = self.fresh_user.positions.filter(tool__name=self.tool).first()
+    def check_price_for_order_cancellation(self, price):
+        pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
 
         over_and_take, pos_side = pos.cancel_levels, pos.side
 
@@ -363,13 +363,13 @@ class BingXPriceListener(BingXListener):
     def on_message(self, ws, message):
         utf8_data = super().on_message(ws, message)
 
-        if utf8_data != "Ping":
+        if utf8_data and utf8_data != "Ping":
             dict_data = json.loads(utf8_data)
 
-            price = float(dict_data["data"]["c"])
+            price = Decimal(dict_data["data"]["c"])
 
             if price is not None:
-                self.check_price_for_order_cancelation(price)
+                self.check_price_for_order_cancellation(price)
 
     def listen_for_events(self):
         self.ws = websocket.WebSocketApp(

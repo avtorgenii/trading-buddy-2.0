@@ -43,13 +43,13 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 {
     "account_name": "BingX",
     "tool": "WLD-USDT",
-    "trigger_p": "1.0600",
+    "trigger_p": "0.0",
     "entry_p": "1.0500",
     "stop_p": "1.0400",
-    "take_profits": ["1.09", "1.1", "1.5"],
+    "take_profits": ["2.09", "2.1", "2.5"],
     "move_stop_after": "1",
     "leverage": "20",
-    "volume": "1.05"
+    "volume": "2"
 }
 """
 
@@ -331,9 +331,47 @@ def place_position(request):
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"error": "volume is required"}, status=status.HTTP_400_BAD_REQUEST)
-#
-#
-# # Cancel position
-# @api_view(['POST'])
-# def cancel_position(request):
-#     pass
+
+
+# Get pending positions
+@extend_schema(
+    responses=PendingPositionSerializer(many=True)
+)
+@api_view(['GET'])
+def get_pending_positions(request, account_name):
+    user = request.user
+    account = user.accounts.filter(name=account_name).first()
+
+    if account:
+        exc = exc_map[account.exchange](account)
+        pending_data = exc.get_pending_positions_info()  # list of dicts
+
+        serializer = PendingPositionSerializer(data=pending_data, many=True)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Get current positions
+@extend_schema(
+    responses=CurrentPositionSerializer
+)
+@api_view(['GET'])
+def get_current_positions(request, account_name):
+    user = request.user
+    account = user.accounts.filter(name=account_name).first()
+
+    if account:
+        exc = exc_map[account.exchange](account)
+        pending_data = exc.get_current_positions_info()  # list of dicts
+
+        serializer = CurrentPositionSerializer(data=pending_data, many=True)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)

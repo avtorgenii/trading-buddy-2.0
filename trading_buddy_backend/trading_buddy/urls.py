@@ -17,8 +17,9 @@ def initialize_exchanges():
     for account in accounts:
         map[account.exchange](account)  # simply initialize class to restore all listeners
 
+
 # Comment out while doing migrations
-# initialize_exchanges()
+initialize_exchanges()
 
 from . import views
 
@@ -44,4 +45,6 @@ urlpatterns = [
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
     # path('trading/positions/cancel/', views.cancel_position),  # POST
+    path('trading/positions/pending/<str:account_name>', views.get_pending_positions),  # GET
+    path('trading/positions/current/<str:account_name>', views.get_current_positions),  # GET
 ]

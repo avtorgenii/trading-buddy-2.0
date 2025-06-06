@@ -490,12 +490,13 @@ class BingXExc(Exchange):
             d = {
                 'tool': position['symbol'],
                 'pos_side': position['positionSide'],
-                'leverage': position['leverage'],
-                'volume': position['availableAmt'],
-                'margin': round(Decimal(position['margin']), 3),
-                'avg_open': position['avgPrice'],
-                'pnl': mh.floor_to_digits(Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
-                                          4)
+                'leverage': str(position['leverage']),
+                'volume': str(position['availableAmt']),
+                'margin': str(round(Decimal(position['margin']), 3)),
+                'avg_open': str(position['avgPrice']),
+                'pnl': str(
+                    mh.floor_to_digits(Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
+                                       4))
             }
 
             dicts.append(d)
@@ -516,13 +517,13 @@ class BingXExc(Exchange):
         for pos in positions:
             if pos.last_status == "NEW":
                 d = {
-                    'tool': pos.tool,
-                    'entry_price': pos.entry_price,
-                    'pos_side': pos.pos_side,
-                    'leverage': pos.leverage,
-                    'volume': pos.primary_volume,
-                    'margin': pos.entry_price * pos.primary_volume / pos.leverage,
-                    'trigger_price': pos.trigger_p
+                    'tool': pos.tool.name,
+                    'entry_price': str(pos.entry_price),
+                    'pos_side': pos.side,
+                    'leverage': str(pos.leverage),
+                    'volume': str(pos.primary_volume),
+                    'margin': str(round(Decimal(pos.entry_price * pos.primary_volume / pos.leverage), 3)),
+                    'trigger_price': str(pos.trigger_price)
                 }
 
                 dicts.append(d)

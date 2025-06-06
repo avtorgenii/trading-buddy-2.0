@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_email
 from rest_framework import serializers
@@ -9,6 +11,11 @@ By default, DRF’s save() calls create(validated_data) with just one argument.
 """
 
 User = get_user_model()
+
+
+def clean_decimal_str(d: Decimal) -> str:
+    s = format(d.normalize(), 'f')  # Fixed-point format without scientific notation
+    return s.rstrip('0').rstrip('.') if '.' in s else s
 
 
 ##### AUTH #####
@@ -70,6 +77,12 @@ class LoginSerializer(serializers.Serializer):
 class DepositSerializer(serializers.Serializer):
     deposit = serializers.DecimalField(decimal_places=2, default=0.00, max_digits=20, min_value=0)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if 'deposit' in data:
+            data['deposit'] = clean_decimal_str(Decimal(data['deposit']))
+        return data
+
 
 ##### ACCOUNT #####
 class AccountSerializer(serializers.ModelSerializer):
@@ -95,6 +108,13 @@ class DepositAndAccountDataSerializer(serializers.Serializer):
     available_margin = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
     pnl_usd = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field in ['deposit', 'risk_percent', 'available_margin', 'pnl_usd']:
+            if field in data:
+                data[field] = clean_decimal_str(Decimal(data[field]))
+        return data
+
 
 class ToolSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,21 +125,18 @@ class ToolSerializer(serializers.ModelSerializer):
 class RiskSerializer(serializers.Serializer):
     risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10, min_value=0)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if 'risk_percent' in data:
+            data['risk_percent'] = clean_decimal_str(Decimal(data['risk_percent']))
+        return data
+
 
 ##### TRADING #####
-class PositionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Position
-        fields = '__all__'
-
-
 class PositionToOpenSerializer(serializers.Serializer):
-    """
-    Tool name should include exchange-appropriate suffix, which should be dealt on tool adding stadia
-    """
     account_name = serializers.CharField()
     tool = serializers.CharField()
-    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
+    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0.00)
     entry_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     stop_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     take_profits = serializers.ListField(
@@ -127,28 +144,17 @@ class PositionToOpenSerializer(serializers.Serializer):
     )
     move_stop_after = serializers.IntegerField(min_value=0, default=0, required=False)
     leverage = serializers.IntegerField(min_value=1)
-    # Actually required for order placement, but optional for processing data
     volume = serializers.DecimalField(decimal_places=10, max_digits=20, required=False, allow_null=True)
 
-    def validate(self, data):
-        """Ensure all relevant price fields are positive decimals."""
-        price_fields = ['trigger_p', 'entry_p', 'stop_p']
-        for field in price_fields:
-            if data.get(field) is not None and data[field] <= 0:
-                raise serializers.ValidationError({field: f"{field} must be greater than 0"})
-
-        for i, tp in enumerate(data.get('take_profits', [])):
-            if tp <= 0:
-                raise serializers.ValidationError(
-                    {'take_profits': f"All take_profits must be greater than 0 (invalid at index {i})"})
-
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field in ['trigger_p', 'entry_p', 'stop_p', 'volume']:
+            if field in data and data[field] is not None:
+                data[field] = clean_decimal_str(Decimal(data[field]))
+        # Also clean each take_profit decimal string
+        if 'take_profits' in data and data['take_profits'] is not None:
+            data['take_profits'] = [clean_decimal_str(Decimal(tp)) for tp in data['take_profits']]
         return data
-
-    def validate_volume(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Volume cannot be negative or equal to 0.")
-        else:
-            return value
 
 
 class ProcessedPositionToOpenSerializer(serializers.Serializer):
@@ -156,3 +162,44 @@ class ProcessedPositionToOpenSerializer(serializers.Serializer):
     margin = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     potential_loss = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     potential_profit = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field in ['volume', 'margin', 'potential_loss', 'potential_profit']:
+            if field in data:
+                data[field] = clean_decimal_str(Decimal(data[field]))
+        return data
+
+
+class PendingPositionSerializer(serializers.Serializer):
+    tool = serializers.CharField()
+    trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)
+    pos_side = serializers.CharField(max_length=5)
+    entry_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    leverage = serializers.IntegerField(min_value=1)
+    volume = serializers.DecimalField(decimal_places=12, max_digits=20)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field in ['entry_price', 'trigger_price', 'margin', 'volume']:
+            if field in data:
+                data[field] = clean_decimal_str(Decimal(data[field]))
+        return data
+
+
+class CurrentPositionSerializer(serializers.Serializer):
+    tool = serializers.CharField()
+    avg_open = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)
+    pos_side = serializers.CharField(max_length=5)
+    pnl = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    leverage = serializers.IntegerField(min_value=1)
+    volume = serializers.DecimalField(decimal_places=12, max_digits=20)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        for field in ['avg_open', 'pnl', 'margin', 'volume']:
+            if field in data:
+                data[field] = clean_decimal_str(Decimal(data[field]))
+        return data
