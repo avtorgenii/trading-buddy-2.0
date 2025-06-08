@@ -68,6 +68,13 @@ exc_map = {
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
 # Signing Up
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def auth_status(request):
+    return Response({"logged_in": request.user.is_authenticated}, status=status.HTTP_200_OK)
+
+
+# Signing Up
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -418,3 +425,7 @@ def get_current_positions(request, account_name):
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+# Calendar pnl
+# format
+# date: pnl, 2025-08-10: -729.0

@@ -28,6 +28,7 @@ urlpatterns = [
     path('auth/register/', views.register),  # POST
     path('auth/login/', views.login),  # POST
     path('auth/logout/', views.logout),  # POST
+    path('auth/status/', views.auth_status),  # GET
 
     path('deposit/', views.update_deposit),  # PUT
 
@@ -46,7 +47,8 @@ urlpatterns = [
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
     # path('trading/positions/cancel/', views.cancel_position),  # POST
-    path('trading/positions/pending/<str:account_name>/cancel-levels/<str:tool_name>', views.update_cancel_levels),  # PUT
+    path('trading/positions/pending/<str:account_name>/cancel-levels/<str:tool_name>', views.update_cancel_levels),
+    # PUT
     path('trading/positions/pending/<str:account_name>', views.get_pending_positions),  # GET
     path('trading/positions/current/<str:account_name>', views.get_current_positions),  # GET
 ]
