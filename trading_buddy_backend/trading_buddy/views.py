@@ -344,11 +344,19 @@ def place_position(request):
         return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
     data = serializer.validated_data
-    if data.get('volume'):
-        account = request.user.accounts.filter(name=data['account_name']).first()
-        if not account:
-            return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
 
+    user = request.user
+    account = user.accounts.filter(name=data['account_name']).first()
+    tool_name = data['tool']
+
+    if account:
+        if account.positions.filter(tool__name=tool_name).exists():
+            return Response({"error": "Cannot open multiple positions with the same tool within one account"},
+                            status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('volume'):
         exc = exc_map[account.exchange](account)
 
         result = exc.place_open_order(data['tool'], data['trigger_p'], data['entry_p'], data['stop_p'],
