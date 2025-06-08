@@ -14,7 +14,7 @@
 	let riskPercent = 1;
 	let leverage = 1;
 	let entryPrice = null;
-	let limitPrice = null;
+	let cancelLevel = null;
 	let stopLoss = null;
 
 	let takeProfits = [
@@ -38,47 +38,7 @@
 		const riskAmount = accountBalance * (riskPercent / 100);
 		const currentPrice = getCurrentPrice(selectedTicker.label);
 
-		if (!entryPrice || !stopLoss || stopLoss <= 0 || entryPrice <= 0 || riskAmount <= 0 || entryPrice === stopLoss) {
-			positionSize = null;
-			requiredMargin = null;
-			potentialLoss = null;
-			potentialProfit = null;
-			riskRewardRatio = null;
-		} else {
-			const priceDifferenceSL = Math.abs(entryPrice - stopLoss);
 
-			if (priceDifferenceSL > 0) {
-				const positionSizeInAsset = riskAmount / priceDifferenceSL;
-
-				const positionSizeInUSD = positionSizeInAsset * entryPrice;
-				positionSize = positionSizeInUSD;
-
-				requiredMargin = positionSizeInUSD / leverage;
-				potentialLoss = riskAmount;
-
-				const validTakeProfits = takeProfits.filter(tp => tp.price > 0 && tp.percent > 0);
-				let totalProfit = 0;
-				if (validTakeProfits.length > 0) {
-					totalProfit = validTakeProfits.reduce((sum, tp) => {
-						let profitPerUnit = 0;
-						if (isLong && tp.price > entryPrice) {
-							profitPerUnit = tp.price - entryPrice;
-						} else if (!isLong && tp.price < entryPrice) {
-							profitPerUnit = entryPrice - tp.price;
-						}
-						const profitFromThisTP = profitPerUnit * positionSizeInAsset * (tp.percent / 100);
-						return sum + profitFromThisTP;
-					}, 0);
-				}
-				potentialProfit = totalProfit;
-
-				if (potentialProfit > 0 && potentialLoss > 0) {
-					riskRewardRatio = potentialProfit / potentialLoss;
-				} else {
-					riskRewardRatio = null;
-				}
-			}
-		}
 	}
 
 
@@ -179,17 +139,17 @@
 				<input
 					bind:value={entryPrice}
 					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Entry Price"
+					placeholder="Limit Entry Price"
 					type="number"
 				/>
 			</div>
 
 			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Limit:</span>
+				<span class="text-zinc-400 w-24 text-start">Cancel:</span>
 				<input
-					bind:value={limitPrice}
+					bind:value={cancelLevel}
 					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Limit Price"
+					placeholder="Cancel Level"
 					type="number"
 				/>
 			</div>
@@ -199,14 +159,14 @@
 				<input
 					bind:value={stopLoss}
 					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Stop Loss Price"
+					placeholder="Stop Loss"
 					type="number"
 				/>
 			</div>
 
 			{#each takeProfits as tp, index (index)}
-				<div class="flex items-center gap-2 mb-4">
-					<span class="text-zinc-400 w-25 text-start text-nowrap ">{index + 1}. TP:</span>
+				<div class="flex items-center gap-2 mb-4 flex-col md:flex-row align">
+					<span class="text-zinc-400 w-25 text-center md:text-start text-nowrap ">{index + 1}. TP:</span>
 					<div class="flex-1 flex gap-2">
 						<input
 							type="number"
@@ -222,16 +182,17 @@
 						/>
 
 						<span class="text-zinc-400 text-sm my-auto">%</span>
-						<button
-							class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
-							on:click={() => removeTakeProfit(index)}
-							disabled={takeProfits.length <= 1}
-							tabindex="0"
-							type="button">
-							Remove
-						</button>
 
 					</div>
+					<button
+						class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed "
+						on:click={() => removeTakeProfit(index)}
+						disabled={takeProfits.length <= 1}
+						tabindex="0"
+						type="button">
+						Remove
+					</button>
+
 				</div>
 			{/each}
 			<button
@@ -247,6 +208,10 @@
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Pos. size:</span>
 					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>
+				</div>
+				<div class="flex justify-between">
+					<span class="text-zinc-400">Required margin:</span>
+					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
 				</div>
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Required margin:</span>
@@ -270,7 +235,7 @@
 				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
             transition-colors duration-200 max-w-xs mx-auto"
 			>
-				Open Long
+				Open {isLong ? 'Long' : "Short"}
 			</button>
 		</div>
 	</div>

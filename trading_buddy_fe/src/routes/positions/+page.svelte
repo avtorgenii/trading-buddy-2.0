@@ -91,54 +91,72 @@
 				positionId: 'P-001',
 				ticker: 'BYBIT:BTCUSDT.P',
 				side: 'long',
+				leverage: 50,
 				quantity: 2.5,
+				cancelLevel: 105000.0,
+				takeProfit: 175000.0,
 				orderType: 'Limit',
-				price: 172.0,
+				margin: 172.0,
 				status: 'Open'
 			},
 			{
 				positionId: 'P-002',
 				ticker: 'BYBIT:ETHUSDT.P',
 				side: 'short',
+				leverage: 50,
 				quantity: 5,
+				cancelLevel: 2800.0,
+				takeProfit: 2700.0,
 				orderType: 'Limit',
-				price: 180.0,
+				margin: 180.0,
 				status: 'Open'
 			},
 			{
 				positionId: 'P-003',
 				ticker: 'BYBIT:SOLUSDT.P',
 				side: 'long',
+				leverage: 50,
 				quantity: 10,
+				cancelLevel: 210.0,
+				takeProfit: 410.0,
 				orderType: 'Limit',
-				price: 410.0,
+				margin: 410.0,
 				status: 'Open'
 			},
 			{
 				positionId: 'P-004',
 				ticker: 'BYBIT:XRPUSDT.P',
 				side: 'short',
+				leverage: 50,
 				quantity: 15,
+				cancelLevel: 0.55,
+				takeProfit: 0.50,
 				orderType: 'Stop',
-				price: 0.50,
+				margin: 0.50,
 				status: 'Open'
 			},
 			{
 				positionId: 'P-005',
 				ticker: 'BYBIT:ADAUSDT.P',
 				side: 'long',
+				leverage: 50,
 				quantity: 20,
+				cancelLevel: 1.25,
+				takeProfit: 1.30,
 				orderType: 'Stop',
-				price: 1.20,
+				margin: 1.20,
 				status: 'Open'
 			},
 			{
 				positionId: 'P-006',
 				ticker: 'BYBIT:DOGEUSDT.P',
 				side: 'short',
+				leverage: 50,
 				quantity: 30,
+				cancelLevel: 0.08,
+				takeProfit: 0.07,
 				orderType: 'Limit',
-				price: 0.08,
+				margin: 0.08,
 				status: 'Open'
 			}
 		];
@@ -199,7 +217,7 @@
 				{#if pendingPositions.length === 0}
 					<p class="text-center text-zinc-400">No pending orders.</p>
 				{/if}
-				<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11 ">
+				<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
 					{#each pendingPositions as order (order.positionId)}
 						<PendingCard {order} on:cancel={1+1} />
 					{/each}
