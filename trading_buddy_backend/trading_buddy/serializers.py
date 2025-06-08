@@ -136,7 +136,7 @@ class RiskSerializer(serializers.Serializer):
 class PositionToOpenSerializer(serializers.Serializer):
     account_name = serializers.CharField()
     tool = serializers.CharField()
-    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0.00)
+    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0)
     entry_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     stop_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     take_profits = serializers.ListField(
@@ -213,3 +213,8 @@ class CancelLevelsSerializer(serializers.Serializer):
     cancel_levels = serializers.ListField(
         child=serializers.DecimalField(decimal_places=12, max_digits=20, allow_null=True),
     )
+
+    def validate_cancel_levels(self, value):
+        if len(value) != 2:
+            raise serializers.ValidationError("cancel_levels must contain exactly 2 items.")
+        return value

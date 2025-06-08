@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from decimal import Decimal
 
@@ -66,6 +67,7 @@ class Listener:
             on_error=self.on_error,
             on_close=self.on_close,
         )
+
         self.ws.run_forever()
 
     def stop_listening(self):
@@ -334,21 +336,23 @@ class BingXPriceListener(BingXListener):
     def check_price_for_order_cancellation(self, price):
         pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
 
+        # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
         over_and_take, pos_side = pos.cancel_levels, pos.side
+        print("PRICE LISTENER ALIVE")
 
         try:
             over, take = over_and_take
 
             if pos_side == "LONG":
-                if price <= over:
-                    self.exchange.cancel_primary_order_for_tool(self.tool, False)
-                elif price >= take:
-                    self.exchange.cancel_primary_order_for_tool(self.tool, True)
+                if (over is not None and price <= over) or (take is not None and price >= take):
+                    print(f"LONG: over: {over}, take: {take}, price: {price}")
+                    self.exchange.cancel_primary_order_for_tool(self.tool, True,
+                                                                reason="Overlow or price got too close to take-profit")
             else:
-                if price >= over:
-                    self.exchange.cancel_primary_order_for_tool(self.tool, False)
-                elif price <= take:
-                    self.exchange.cancel_primary_order_for_tool(self.tool, True)
+                if (over is not None and price >= over) or (take is not None and price <= take):
+                    print(f"SHORT: over: {over}, take: {take}, price: {price}")
+                    self.exchange.cancel_primary_order_for_tool(self.tool, True,
+                                                                reason="Overbuy or price got too close to take-profit")
 
         except Exception as e:
             # print(f"{__class__.__name__}, {self.tool}: Cancelation levels for {self.tool} not specified: {e}")

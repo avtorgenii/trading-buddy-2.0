@@ -2,8 +2,6 @@ from decimal import Decimal
 from typing import List, Dict, Tuple, Any
 import threading
 
-from django.utils import timezone
-
 from bingX.perpetual.v2 import PerpetualV2
 from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType)
 from bingX.exceptions import ClientError
@@ -148,7 +146,7 @@ class BingXExc(Exchange):
         # Delete all exising price listeners
         for listener, thread in self.price_listeners_and_threads:
             try:
-                tool_name = listener.tool
+                tool_name = listener.tool.name
                 listener.stop_listening()
                 thread.exit()
 
@@ -160,7 +158,7 @@ class BingXExc(Exchange):
         positions = self.fresh_account.positions.all()
 
         for pos in positions:
-            self.create_price_listener_in_thread(pos.tool)
+            self.create_price_listener_in_thread(pos.tool.name)
 
     def delete_price_listener(self, tool_name):
         try:
@@ -290,7 +288,7 @@ class BingXExc(Exchange):
         """
         order_side = Side.BUY if entry_p > stop_p else Side.SELL
 
-        # If trigger price is not specified, system treats order as limit order
+        # If trigger price is not specified, system treats order as a limit order
         order_type = OrderType.TRIGGER_LIMIT if trigger_p != 0 else OrderType.LIMIT
 
         order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
@@ -366,7 +364,7 @@ class BingXExc(Exchange):
         """
         orders = self.get_orders_for_tool(tool)
 
-        print(orders)
+        print(f"Orders: {orders}")
 
         stop_order_id = orders['stop']['orderId']
 
@@ -392,13 +390,16 @@ class BingXExc(Exchange):
 
             print(f"TAKE ORDER CANCELLATION RESPONSE: {resp}")
 
-    def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False) -> None:
+    def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False,
+                                      reason: str = None) -> None:
         """
         Cancels the primary order for a trading pair.
+        :param reason: Reason for canceling position.
         :param tool: The trading pair.
         :param save_to_db: Whether to save the cancellation to the database.
         :param only_cancel: Whether to only cancel the order without updating db.
         """
+
         orders = self.get_orders_for_tool(tool)
 
         print(orders)
@@ -410,20 +411,12 @@ class BingXExc(Exchange):
         print(f"PRIMARY ORDER CANCELLATION RESPONSE: {resp}")
 
         if not only_cancel:
-            tool_obj = Tool.objects.get(name=tool)
-            trade = Trade.objects.filter(account=self.fresh_account, tool=tool_obj).last()
+            # LAST IS CRUCIAL, as we only fetch trades by name of tool, and some unique ID within whole account
+            trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
             if save_to_db:
                 # For positions closing, cancellation via overhigh/overlow and automatic cancellation of orders when reached take-profit level, their data is being saved into database
-                pos = trade.position
-
-                trade.volume = pos.volume
-                trade.pnl_usd = pos.pnl_usd
-                trade.commission_usd = pos.commission_usd
-                trade.start_time = pos.start_time
-                trade.end_time = timezone.now()
-
-                trade.save()
-                pos.delete()
+                pos = Position.objects.filter(pk=trade.position.pk).first()
+                pos.close_position(reason)
             else:
                 # For manual cancellation of position, data doesn't go to db
                 trade.delete()  # position will be auto deleted, see models.py for this

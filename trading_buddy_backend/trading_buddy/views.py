@@ -43,10 +43,10 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 {
     "account_name": "BingX",
     "tool": "WLD-USDT",
-    "trigger_p": "0.0",
-    "entry_p": "1.0500",
-    "stop_p": "1.0400",
-    "take_profits": ["2.09", "2.1", "2.5"],
+    "trigger_p": "1.2",
+    "entry_p": "1.12",
+    "stop_p": "1.06",
+    "take_profits": ["1.4", "1.6"],
     "move_stop_after": "1",
     "leverage": "20",
     "volume": "2"
@@ -54,7 +54,7 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 {
   "side": "LONG",
   "cancel_levels": [
-    "1.0", "1.2"
+    "1.1023", "1.4"
   ]
 }
 """
@@ -198,7 +198,7 @@ def get_deposit_and_account_details(request, account_name):
         "pnl_usd": pnl,
     })
 
-    if serializer.is_valid():
+    if serializer.is_valid():  # needed because constructing response from raw data, not models
         return Response(serializer.data, status=status.HTTP_200_OK)
     else:
         return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
@@ -261,6 +261,24 @@ def remove_tool(request, account_name, tool_name):
 
     tool.delete()
     return Response({"message": "Tool removed successfully"}, status=204)
+
+
+# Get all tools under account
+@extend_schema(
+    responses=ToolSerializer(many=True),
+)
+@api_view(['GET'])
+def get_tools(request, account_name):
+    user = request.user
+    account = user.accounts.filter(name=account_name).first()
+
+    if account is None:
+        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+    tools = Tool.objects.all()
+    serializer = ToolSerializer(tools, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 ##### TRADING #####
@@ -353,7 +371,7 @@ def update_cancel_levels(request, account_name, tool_name):
             return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
         account.positions.filter(tool__name=tool_name).update(cancel_levels=serializer.validated_data['cancel_levels'])
-        return Response({"message": "cancel level updated successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "cancel levels updated successfully"}, status=status.HTTP_200_OK)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -382,7 +400,7 @@ def get_pending_positions(request, account_name):
 
 # Get current positions
 @extend_schema(
-    responses=CurrentPositionSerializer
+    responses=CurrentPositionSerializer(many=True)
 )
 @api_view(['GET'])
 def get_current_positions(request, account_name):

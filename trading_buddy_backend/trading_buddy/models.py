@@ -88,7 +88,7 @@ class Position(models.Model):
     account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
 
-    def close_position(self):
+    def close_position(self, reason=None):
         """
         Called to transfer data to Trade when position is closed
         :return:
@@ -98,6 +98,7 @@ class Position(models.Model):
         self.trade.volume = sum(item[1] for item in self.fill_history)
         self.trade.pnl_usd = self.pnl_usd
         self.trade.commission_usd = self.commission_usd
+        self.trade.result = reason
         self.delete()
 
     def save(self, *args, **kwargs):
@@ -105,8 +106,8 @@ class Position(models.Model):
         self.take_profit_prices = sorted(self.take_profit_prices, key=Decimal, reverse=self.side == 'SHORT')
         # Configure default cancel levels
         self.cancel_levels = [
-            self.cancel_levels[0] if len(self.cancel_levels) > 0 else Decimal('0.0'),  # overbuy/overlow
-            self.take_profit_prices[0] if len(self.take_profit_prices) > 0 else Decimal('0.0')  # take-profit
+            self.cancel_levels[0] if len(self.cancel_levels) > 0 else None,  # overbuy/overlow
+            self.take_profit_prices[0] if len(self.take_profit_prices) > 0 else None  # take-profit
         ]
         # Then call the original save method
         super().save(*args, **kwargs)
@@ -144,10 +145,11 @@ class Trade(models.Model):
         """
         tool_obj = Tool.objects.get(account=account, name=tool_name)
 
-        trade = cls.objects.create(side=side, tool=tool_obj, risk_percent=risk_percent, risk_usd=risk_usd)
+        trade = cls.objects.create(side=side, tool=tool_obj, risk_percent=risk_percent, risk_usd=risk_usd,
+                                   account=account)
 
         Position.objects.create(tool=tool_obj, side=side, leverage=leverage, trigger_price=trigger_price,
                                 entry_price=entry_price,
-                                stop_price=stop_price, take_profit_prices=take_profits, cancel_levels=[take_profits[0]],
+                                stop_price=stop_price, take_profit_prices=take_profits,
                                 move_stop_after=move_stop_after, primary_volume=primary_volume, current_volume=0,
                                 account=account, trade=trade)

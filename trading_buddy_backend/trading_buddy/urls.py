@@ -38,14 +38,15 @@ urlpatterns = [
     path('accounts/<str:account_name>/risk-percent/', views.update_risk_for_account),  # PUT
 
     # Tools under specific account
+    path('accounts/<str:account_name>/tools/', views.get_tools),  # GET
     path('accounts/<str:account_name>/tools/', views.add_tool),  # POST
     path('accounts/<str:account_name>/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
-    # Trading
+    # Trading under specific account
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
     # path('trading/positions/cancel/', views.cancel_position),  # POST
-    path('trading/positions/pending/<str:account_name>/<str:tool_name>', views.update_cancel_levels),  # PUT
+    path('trading/positions/pending/<str:account_name>/cancel-levels/<str:tool_name>', views.update_cancel_levels),  # PUT
     path('trading/positions/pending/<str:account_name>', views.get_pending_positions),  # GET
     path('trading/positions/current/<str:account_name>', views.get_current_positions),  # GET
 ]
