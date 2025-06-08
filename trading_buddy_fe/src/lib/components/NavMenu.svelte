@@ -10,10 +10,6 @@
 
 	let navs = [
 		{
-			name: 'Home',
-			link: '/'
-		},
-		{
 			name: 'Trade',
 			link: '/trade'
 		},
@@ -83,7 +79,7 @@
 		</ul>
 	</div>
 {:else }
-	<h1 class="text-4xl font-bold mb-10 text-center">Trading buddy</h1>
+	<h1 class="text-4xl font-bold mb-3 text-center">Trading buddy</h1>
 	<div class="py-10 w-full">
 		<ul
 			on:mouseleave={() => {
