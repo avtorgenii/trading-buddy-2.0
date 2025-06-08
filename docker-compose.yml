@@ -4,8 +4,8 @@ services:
     container_name: tb-postgres-db
     environment:
       POSTGRES_DB: postgres
-      POSTGRES_USER: avtorpetrovich
-      POSTGRES_PASSWORD: b3braPetrovna1
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:

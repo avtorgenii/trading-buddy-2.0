@@ -510,8 +510,6 @@ class BingXExc(Exchange):
         """
         positions = Position.objects.filter(account=self.fresh_account).all()
 
-        print(positions)
-
         dicts = []
 
         for pos in positions:
@@ -523,7 +521,8 @@ class BingXExc(Exchange):
                     'leverage': str(pos.leverage),
                     'volume': str(pos.primary_volume),
                     'margin': str(round(Decimal(pos.entry_price * pos.primary_volume / pos.leverage), 3)),
-                    'trigger_price': str(pos.trigger_price)
+                    'trigger_price': str(pos.trigger_price),
+                    'cancel_levels': [str(level) for level in pos.cancel_levels],
                 }
 
                 dicts.append(d)

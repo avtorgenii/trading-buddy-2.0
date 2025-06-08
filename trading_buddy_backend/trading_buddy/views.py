@@ -51,6 +51,12 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "leverage": "20",
     "volume": "2"
 }
+{
+  "side": "LONG",
+  "cancel_levels": [
+    "1.0", "1.2"
+  ]
+}
 """
 
 # Exchanges map
@@ -246,7 +252,7 @@ def remove_tool(request, account_name, tool_name):
     account = user.accounts.filter(name=account_name).first()
 
     if account is None:
-        return Response({"error": "account does not exist"}, status=400)
+        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
     tool = Tool.objects.filter(account=account, name=tool_name).first()
 
@@ -331,6 +337,25 @@ def place_position(request):
             return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"error": "volume is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=CancelLevelsSerializer
+)
+@api_view(['PUT'])
+def update_cancel_levels(request, account_name, tool_name):
+    serializer = CancelLevelsSerializer(data=request.data)
+    if serializer.is_valid():
+        user = request.user
+        account = user.accounts.filter(name=account_name).first()
+
+        if account is None:
+            return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+        account.positions.filter(tool__name=tool_name).update(cancel_levels=serializer.validated_data['cancel_levels'])
+        return Response({"message": "cancel level updated successfully"}, status=status.HTTP_200_OK)
+
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Get pending positions
