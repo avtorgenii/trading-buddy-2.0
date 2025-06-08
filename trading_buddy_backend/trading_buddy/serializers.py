@@ -179,6 +179,9 @@ class PendingPositionSerializer(serializers.Serializer):
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
+    cancel_levels = serializers.ListField(
+        child=serializers.DecimalField(decimal_places=12, max_digits=20, allow_null=True),
+    )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -203,3 +206,10 @@ class CurrentPositionSerializer(serializers.Serializer):
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
         return data
+
+
+class CancelLevelsSerializer(serializers.Serializer):
+    side = serializers.CharField(max_length=5)
+    cancel_levels = serializers.ListField(
+        child=serializers.DecimalField(decimal_places=12, max_digits=20, allow_null=True),
+    )

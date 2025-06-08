@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import ForeignKey
@@ -58,6 +60,7 @@ class Position(models.Model):
         base_field=models.DecimalField(decimal_places=12, max_digits=20),
         default=list
     )
+    # Overhigh/overlow and take-profit level - ORDER IS CRUCIAL FOR LISTENERS AND DB LOGIC
     cancel_levels = ArrayField(
         base_field=models.DecimalField(decimal_places=12, max_digits=20),
         default=list
@@ -96,6 +99,17 @@ class Position(models.Model):
         self.trade.pnl_usd = self.pnl_usd
         self.trade.commission_usd = self.commission_usd
         self.delete()
+
+    def save(self, *args, **kwargs):
+        # Sort them in order as they are being approached by price if in favor of position, reverse=False - ascending
+        self.take_profit_prices = sorted(self.take_profit_prices, key=Decimal, reverse=self.side == 'SHORT')
+        # Configure default cancel levels
+        self.cancel_levels = [
+            self.cancel_levels[0] if len(self.cancel_levels) > 0 else Decimal('0.0'),  # overbuy/overlow
+            self.take_profit_prices[0] if len(self.take_profit_prices) > 0 else Decimal('0.0')  # take-profit
+        ]
+        # Then call the original save method
+        super().save(*args, **kwargs)
 
 
 class Trade(models.Model):
