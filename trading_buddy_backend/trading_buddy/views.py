@@ -71,7 +71,10 @@ exc_map = {
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def auth_status(request):
-    return Response({"logged_in": request.user.is_authenticated}, status=status.HTTP_200_OK)
+    if request.user.is_authenticated:
+        return Response({"logged_in": True}, status=status.HTTP_200_OK)
+    else:
+        return Response({"logged_in": False}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # Signing Up
