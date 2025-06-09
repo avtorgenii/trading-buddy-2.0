@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 
 def initialize_exchanges():
@@ -22,6 +22,13 @@ def initialize_exchanges():
 initialize_exchanges()
 
 from . import views
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+
 
 urlpatterns = [
     # Auth and user
@@ -29,6 +36,7 @@ urlpatterns = [
     path('auth/login/', views.login),  # POST
     path('auth/logout/', views.logout),  # POST
     path('auth/status/', views.auth_status),  # GET
+    path('auth/social/google/', GoogleLogin.as_view(), name='google_login'),  # SSO
 
     path('deposit/', views.update_deposit),  # PUT
 

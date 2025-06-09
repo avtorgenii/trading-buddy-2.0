@@ -141,25 +141,6 @@ def update_deposit(request):
 
 
 ##### ACCOUNT #####
-# Create an account
-##### AUTHORIZATION AND AUTHENTICATION #####
-# Signing Up
-@extend_schema(
-    request=RegisterSerializer,
-)
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def register(request):
-    serializer = RegisterSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        return Response({
-            'message': 'User created successfully',
-            'user_id': user.id
-        }, status=status.HTTP_201_CREATED)
-    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 # Creating account
 @extend_schema(
     responses=AccountSerializer,
