@@ -67,7 +67,7 @@ exc_map = {
 
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
-# Signing Up
+# Sign status
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def auth_status(request):
@@ -78,12 +78,16 @@ def auth_status(request):
 
 
 # Signing Up
+@extend_schema(
+    request=RegisterSerializer,
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
     serializer = RegisterSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+        django_login(request, user)  # automatically log user in after registration
         return Response({
             'message': 'User created successfully',
             'user_id': user.id
