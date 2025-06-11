@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { Motion } from 'svelte-motion';
+	export let user = null;
+
 
 	let screenWidth = 0;
 	let mobileOpen = false;
@@ -8,28 +10,17 @@
 	let width = 0;
 	let opacity = 0;
 
-	let navs = [
-		{
-			name: 'Trade',
-			link: '/trade'
-		},
-		{
-			name: 'Positions',
-			link: '/positions'
-		},
-		{
-			name: 'Stats',
-			link: '/stats'
-		},
-		{
-			name: 'Settings',
-			link: '/settings'
-		},
-		{
-			name: 'Log out',
-			link: '/logout'
-		}
+	const baseNavs = [
+		{ name: 'Trade', link: '/trade' },
+		{ name: 'Positions', link: '/positions' },
+		{ name: 'Stats', link: '/stats' },
+		{ name: 'Settings', link: '/settings' }
 	];
+
+	$: navs = user
+		? [...baseNavs, { name: 'Log out', link: '/logout' }]
+		: [...baseNavs, { name: 'Log in', link: '/login' }];
+
 	let positionMotion = (node: HTMLElement) => {
 		let refNode = () => {
 			let mint = node.getBoundingClientRect();

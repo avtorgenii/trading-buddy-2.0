@@ -174,7 +174,6 @@
 </script>
 
 
-<NavMenu />
 <div class="flex items-center flex-col">
 	<div
 		class="w-auto md:min-w-4/5 bg-zinc-900 md:px-10 pt-4 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[60vh] max-w-full md:max-w-lg shadow-xl shadow-white/10">

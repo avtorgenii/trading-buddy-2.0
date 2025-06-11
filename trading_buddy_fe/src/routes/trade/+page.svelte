@@ -1,5 +1,4 @@
 <script>
-	import NavMenu from '$lib/components/NavMenu.svelte';
 	import { onMount } from 'svelte';
 	import Select from 'svelte-select';
 	import TradingViewWidget from '$lib/components/TradingViewWidget.svelte';
@@ -74,7 +73,7 @@
 </script>
 
 
-<NavMenu />
+
 <div class="flex items-center flex-col">
 	<div
 		class="w-auto md:min-w-2/3 bg-zinc-900 md:px-10 pt-4 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[60vh] max-w-full md:max-w-lg shadow-xl shadow-white/10">
@@ -163,6 +162,16 @@
 					type="number"
 				/>
 			</div>
+			<div class="flex items-center space-x-2 mb-4">
+				<span class="text-zinc-400 w-24 text-start">Position Size:</span>
+				<input
+					bind:value={positionSize}
+					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					placeholder="Position Size (Optional)"
+					type="number"
+				/>
+			</div>
+
 
 			{#each takeProfits as tp, index (index)}
 				<div class="flex items-center gap-2 mb-4 flex-col md:flex-row align">
@@ -204,11 +213,13 @@
 				Add Take Profit
 			</button>
 
+
+
 			<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Pos. size:</span>
-					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>
-				</div>
+<!--				<div class="flex justify-between">-->
+<!--					<span class="text-zinc-400">Pos. size:</span>-->
+<!--					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>-->
+<!--				</div>-->
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Required margin:</span>
 					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
