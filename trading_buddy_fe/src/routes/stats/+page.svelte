@@ -1,7 +1,5 @@
 <script>
 	import PnLCalendar from '$lib/components/PnLCalendar.svelte';
-	import NavMenu from '$lib/components/NavMenu.svelte';
-
 
 
 	const myProfitLossData = {
