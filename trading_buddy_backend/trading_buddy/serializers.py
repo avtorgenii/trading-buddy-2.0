@@ -121,6 +121,19 @@ class ToolSerializer(serializers.ModelSerializer):
         model = Tool
         fields = ('name',)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Access the custom parameter from context
+        preprocess_mode = self.context.get('preprocess_mode')
+
+        if preprocess_mode == 'bybit':
+            data['name'] = instance.to_bybit_trading_view_convention()
+        elif preprocess_mode == 'binance':
+            data['name'] = instance.to_binance_trading_view_convention()
+
+        return data
+
 
 class RiskSerializer(serializers.Serializer):
     risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10, min_value=0)
@@ -130,6 +143,22 @@ class RiskSerializer(serializers.Serializer):
         if 'risk_percent' in data:
             data['risk_percent'] = clean_decimal_str(Decimal(data['risk_percent']))
         return data
+
+
+class PnLCalendarSerializer(serializers.Serializer):
+    pnl_by_day = serializers.DictField(
+        child=serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20),
+    )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        cleaned_data = {
+            day: clean_decimal_str(Decimal(amount))
+            for day, amount in data['pnl_by_day'].items()
+        }
+
+        return {'pnl_by_day': cleaned_data}
 
 
 ##### TRADING #####

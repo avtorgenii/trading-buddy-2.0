@@ -35,6 +35,32 @@ class Tool(models.Model):
     account = models.ForeignKey(Account, related_name='tools',
                                 on_delete=models.CASCADE)  # when account is deleted, all tools are deleted as well
 
+    def to_bybit_trading_view_convention(self):
+        name = self.name.upper()
+        exchange_name = 'BYBIT'
+
+        # If there's a hyphen (e.g., WLD-USDT), split and return the base
+        if '-' in name:
+            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
+
+        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
+
+    def to_binance_trading_view_convention(self):
+        name = self.name.upper()
+        exchange_name = 'BINANCE'
+
+        # If there's a hyphen (e.g., WLD-USDT), split and return the base
+        if '-' in name:
+            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
+
+        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
+
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
         unique_together = (('name', 'account'),)
@@ -96,9 +122,10 @@ class Position(models.Model):
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
         self.trade.volume = sum(item[1] for item in self.fill_history)
-        self.trade.pnl_usd = self.pnl_usd
+        self.trade.pnl_usd = self.pnl_usd - self.commission_usd
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
+        self.trade.save()
         self.delete()
 
     def save(self, *args, **kwargs):
@@ -127,8 +154,8 @@ class Trade(models.Model):
 
     risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
     risk_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
-    pnl_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0, help_text="Net profit, after commissions")
-    commission_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
+    pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text="Net profit, after commissions")
+    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
     description = models.TextField(null=True)
     result = models.TextField(null=True)

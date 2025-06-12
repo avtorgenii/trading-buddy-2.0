@@ -47,13 +47,13 @@ class Listener:
         utf8_data = self.decode_data(message)
 
         if utf8_data == "Ping":  # this is very important , if you receive 'Ping' you need to send 'Pong'
-            print(f"{self.__class__.__name__}: Ping")
+            print(f"{self.__class__.__name__}: {timezone.now()} Ping")
             ws.send("Pong")
 
         return utf8_data
 
     def on_error(self, ws, error):
-        print(f"{self.__class__.__name__}: Error: {error}")
+        print(f"{self.__class__.__name__}: {timezone.now()} Error: {error}")
 
     def on_close(self, ws, close_status_code, close_msg):
         print(
@@ -85,7 +85,7 @@ class BingXOrderListener(BingXListener):
     def extend_listen_key_validity(self):
         self.other.extend_listen_key_validity_period(self.listen_key)
 
-        print(f"{self.__class__.__name__}: Extended listen key validity: {self.listen_key}")
+        print(f"{self.__class__.__name__}: {timezone.now()} Extended listen key validity: {self.listen_key}")
 
     def run_scheduler(self):
         print(self.listen_key)
@@ -165,6 +165,7 @@ class BingXOrderListener(BingXListener):
 
             fill_history.append([avg_price, volume])
 
+            pos.entry_price = avg_price  # ABSOLUTELY CRUCIAL FOR MOVING STOP-LOSS TO BREAK-EVEN
             pos.last_status = "FILLED"
             pos.current_volume = volume
             pos.commission_usd = commission + new_commission
@@ -212,7 +213,7 @@ class BingXOrderListener(BingXListener):
 
     def on_stop(self, tool, new_pnl, new_commission):
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        commission, pnl = pos.commission_usd, pos.pnl
+        commission, pnl = pos.commission_usd, pos.pnl_usd
 
         pos.pnl_usd = pnl + new_pnl
         pos.commission_usd = commission + new_commission
@@ -230,6 +231,7 @@ class BingXOrderListener(BingXListener):
 
         pos.pnl_usd = pnl + new_pnl
         pos.commission_usd = commission + new_commission
+        pos.last_status = "TAKE-PROFIT"
 
         if last_status == "PARTIALLY_FILLED":
             self.exchange.cancel_primary_order_for_tool(tool, only_cancel=True)
@@ -246,16 +248,18 @@ class BingXOrderListener(BingXListener):
                 # Moving stop-loss to breakeven
                 pos_side, move_stop_after = pos.side, pos.move_stop_after
 
-                if move_stop_after == 1:
+                if move_stop_after == 1:  # decremented below
                     self.exchange.cancel_stop_loss_for_tool(tool)
 
                     entry_p = pos.entry_price
+                    print(f"PLACING STOP LOSS ON {entry_p}")
 
                     self.exchange.place_stop_loss_order(tool, entry_p, volume_for_stop_loss, pos_side)
                     pos.move_stop_after -= 1
                     pos.breakeven = True
-
-        pos.save()
+                    pos.save()
+        else:
+            pos.save()
 
     def on_message(self, ws, message):
         utf8_data = super().on_message(ws, message)

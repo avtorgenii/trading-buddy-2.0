@@ -327,8 +327,8 @@ class BingXExc(Exchange):
             print(f"POTENTIAL LOSS OF A TRADE: {pot_loss} \n WITH VOLUME: {volume}")
 
             # Creating trade and linked position in db
-            deposit, risk = self.get_deposit_and_risk()
-            Trade.create_trade(pos_side.value, self.fresh_account, tool, risk, deposit * risk / 100, leverage,
+            deposit, _ = self.get_deposit_and_risk()
+            Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss, leverage,
                                trigger_p,
                                entry_p,
                                stop_p, take_profits, move_stop_after, volume)
