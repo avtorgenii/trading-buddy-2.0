@@ -86,7 +86,7 @@
 
 </script>
 
-<NavMenu />
+
 <div class="page-wrapper flex items-center flex-col">
 	<div
 		class="form-wrapper bg-zinc-900 px-4 md:px-12 pt-8 pb-12 rounded-2xl flex flex-col min-h-[520px] w-full max-w-2xl shadow-xl shadow-white/10">

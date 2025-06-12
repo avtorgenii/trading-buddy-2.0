@@ -1,7 +1,7 @@
 <script>
-	import NavMenu from '$lib/components/NavMenu.svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
+	import { goto } from '$app/navigation';
 
 	let isSubmitting = false;
 	let email = '';
@@ -9,14 +9,14 @@
 	let repeatedPassword = '';
 	let userID;
 
-
-	function handleRegister(event) {
+	async function handleRegister(event) {
 		event.preventDefault();
 		if (password !== repeatedPassword) {
 			showErrorToast('Passwords are not the same');
 			return;
 		}
 		isSubmitting = true;
+
 		const url = `${API_BASE_URL}/auth/register/`;
 		const payload = {
 			email: email,
@@ -24,42 +24,44 @@
 			password2: repeatedPassword
 		};
 
-		fetch(url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
 
-		}).then(response => {
 			if (!response.ok) {
-				return response.json().then(data => {
-					const detail = 'Register Failed :' + JSON.stringify(data);
-					throw new Error(detail);
-				});
+				const errorData = await response.json();
+				const errorKey = Object.keys(errorData)[0];
+				const errorMessage = errorData[errorKey][0] || 'An unknown registration error occurred.';
+				throw new Error(errorMessage);
 			}
-			return response.json();
-		}).then(data => {
+
+			const data = await response.json();
 			userID = data.user_id;
 			email = '';
 			password = '';
 			repeatedPassword = '';
-			showSuccessToast("Successfully registered!")
-			// window.location.href = 'REGISTER HERE'; // TODO
-		}).catch(error => {
-			showErrorToast(error.message)
-			}).finally(() => {isSubmitting = false});
 
+			showSuccessToast("Successfully registered!");
 
+			setTimeout(() => {
+				goto('/settings');
+			}, 1000);
 
+		} catch (error) {
+			showErrorToast(error.message);
+		} finally {
+			isSubmitting = false;
+		}
 	}
 
 	function handleGoogleRegistration(event) {
 		event.preventDefault();
 		alert('Google registartion');
 	}
-
 </script>
-
-<NavMenu />
 <div class="page-wrapper flex items-center flex-col ">
 	<div
 		class="form-wrapper bg-zinc-900 px-2 md:px-12 pt-8 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[520px] max-w-xs md:max-w-lg shadow-xl shadow-white/10">

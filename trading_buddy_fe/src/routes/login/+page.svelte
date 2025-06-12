@@ -1,7 +1,7 @@
 <script>
-	import NavMenu from '$lib/components/NavMenu.svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
+	import { goto } from '$app/navigation';
 
 	let isSubmitting = false;
 	let email = '';
@@ -17,21 +17,24 @@
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
+				credentials: 'same-origin',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
+				body: JSON.stringify({ email, password })
 			});
 
 			if (!response.ok) {
-				const data = await response.json();
-				const detail = JSON.stringify(data);
-				throw new Error('Login Failed: ' + detail);
+				const errorData = await response.json();
+				const errorMessage = errorData[0] || 'An unknown error occurred.';
+				throw new Error(errorMessage);
 			}
 
 			const data = await response.json();
 			email = '';
 			password = '';
 			showSuccessToast('Successfully logged in!');
-			// window.location.href = 'LOGIN REDIRECT HERE'; // TODO
+			setTimeout(() => {
+				goto('/trade');
+			}, 1000);
 		} catch (error) {
 			showErrorToast(error.message);
 		} finally {
@@ -45,7 +48,6 @@
 	}
 </script>
 
-<NavMenu />
 
 <div class="page-wrapper flex items-center flex-col ">
 	<div
