@@ -132,6 +132,22 @@ class RiskSerializer(serializers.Serializer):
         return data
 
 
+class PnLCalendarSerializer(serializers.Serializer):
+    pnl_by_day = serializers.DictField(
+        child=serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20),
+    )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        cleaned_data = {
+            day: clean_decimal_str(Decimal(amount))
+            for day, amount in data['pnl_by_day'].items()
+        }
+
+        return {'pnl_by_day': cleaned_data}
+
+
 ##### TRADING #####
 class PositionToOpenSerializer(serializers.Serializer):
     account_name = serializers.CharField()

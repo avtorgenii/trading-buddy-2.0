@@ -96,9 +96,10 @@ class Position(models.Model):
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
         self.trade.volume = sum(item[1] for item in self.fill_history)
-        self.trade.pnl_usd = self.pnl_usd
+        self.trade.pnl_usd = self.pnl_usd - self.commission_usd
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
+        self.trade.save()
         self.delete()
 
     def save(self, *args, **kwargs):
@@ -127,8 +128,8 @@ class Trade(models.Model):
 
     risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
     risk_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
-    pnl_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0, help_text="Net profit, after commissions")
-    commission_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
+    pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text="Net profit, after commissions")
+    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
     description = models.TextField(null=True)
     result = models.TextField(null=True)

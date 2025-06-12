@@ -1,4 +1,10 @@
+from calendar import monthrange
+from datetime import datetime
+from http.client import responses
+
 from django.db import IntegrityError
+from django.db.models import Sum
+from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -8,7 +14,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 
-from .models import Position, Account, Tool
+from .models import Position, Account, Tool, Trade
 from .serializers import *
 from .services.exchanges.exchanges import Exchange, BingXExc
 
@@ -43,10 +49,10 @@ from .services.exchanges.exchanges import Exchange, BingXExc
 {
     "account_name": "BingX",
     "tool": "WLD-USDT",
-    "trigger_p": "1.2",
+    "trigger_p": "0",
     "entry_p": "1.12",
     "stop_p": "1.06",
-    "take_profits": ["1.4", "1.6"],
+    "take_profits": ["1.14", "1.16"],
     "move_stop_after": "1",
     "leverage": "20",
     "volume": "2"
@@ -213,6 +219,52 @@ def update_risk_for_account(request, account_name):
         return Response({"message": "Risk updated successfully."}, status=status.HTTP_200_OK)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    responses=PnLCalendarSerializer
+)
+@api_view(['GET'])
+def pnl_calendar(request, year, month, account_name=None):
+    try:
+        year = int(year)
+        month = int(month)
+        start_date = datetime(year, month, 1)
+        end_day = monthrange(year, month)[1]
+        end_date = datetime(year, month, end_day, 23, 59, 59)
+    except ValueError:
+        return Response({"error": "Invalid year/month format. Use YYYY/MM"}, status=400)
+
+    # Trades with end_time in range
+    trades = Trade.objects.filter(
+        end_time__isnull=False,
+        end_time__range=(start_date, end_date)
+    )
+
+    # Filter by account
+    if account_name:
+        trades = trades.filter(account__name=account_name, account__user=request.user)
+    else:
+        user_accounts = Account.objects.filter(user=request.user)
+        trades = trades.filter(account__in=user_accounts)
+
+    # Aggregate PnL by day
+    trades = (
+        trades.annotate(day=TruncDate('end_time'))
+        .values('day')
+        .annotate(pnl=Sum('pnl_usd'))
+        .order_by('day')
+    )
+
+    pnl_by_day = {
+        trade['day'].strftime('%Y-%m-%d'): trade['pnl'] or 0
+        for trade in trades
+    }
+
+    print(pnl_by_day)
+
+    serializer = PnLCalendarSerializer({'pnl_by_day': pnl_by_day})
+    return Response(serializer.data)
 
 
 ##### TOOLS #####

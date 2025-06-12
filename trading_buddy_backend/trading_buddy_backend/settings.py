@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'trading_buddy',
     'corsheaders',
     'drf_spectacular',
+    'django_extensions',
 
     # SSO
     'allauth',
@@ -191,4 +192,4 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
-LOGIN_REDIRECT_URL = '/'  # SHOULD BE SOME ROUTE ON FRONTEND
+LOGIN_REDIRECT_URL = os.getenv("LOGIN_REDIRECT_URL", '/')  # SHOULD BE SOME ROUTE ON FRONTEND
