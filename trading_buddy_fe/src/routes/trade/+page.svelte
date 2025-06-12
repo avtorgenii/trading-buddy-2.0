@@ -17,15 +17,17 @@
 	let stopLoss = null;
 
 	let takeProfits = [
-		{ price: null, percent: null }
+		{ price: null }
 	];
-	let moveSLToBEAfterTP = false;
+
+	let moveSLToBEIndex = 0;
 
 	let positionSize = null;
 	let requiredMargin = null;
 	let potentialLoss = null;
 	let potentialProfit = null;
 	let riskRewardRatio = null;
+
 
 	function getCurrentPrice(tickerLabel) {
 		return 105000;
@@ -42,11 +44,15 @@
 
 
 	function addTakeProfit() {
-		takeProfits = [...takeProfits, { price: null, percent: null }];
+		takeProfits = [...takeProfits, { price: null }];
 	}
 
 	function removeTakeProfit(indexToRemove) {
 		takeProfits = takeProfits.filter((_, index) => index !== indexToRemove);
+
+		if (moveSLToBEIndex >= indexToRemove && moveSLToBEIndex > 0) {
+			moveSLToBEIndex = moveSLToBEIndex -1;
+		}
 	}
 
 	function getPossibleTickers() {
@@ -71,7 +77,6 @@
 	});
 
 </script>
-
 
 
 <div class="flex items-center flex-col">
@@ -125,13 +130,13 @@
 				/>
 				<span class="">x</span>
 
-					<div class="flex-1 flex justify-end">
-						<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
-							 class:border-r-green-600={isLong}
-							 class:border-r-red-600={!isLong}>
-							{isLong ? 'Long' : 'Short'}
-						</p>
-					</div>
+				<div class="flex-1 flex justify-end">
+					<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
+						 class:border-r-green-600={isLong}
+						 class:border-r-red-600={!isLong}>
+						{isLong ? 'Long' : 'Short'}
+					</p>
+				</div>
 			</div>
 			<div class="flex items-center space-x-2 mb-4">
 				<span class="text-zinc-400 w-24 text-start">Entry:</span>
@@ -163,7 +168,7 @@
 				/>
 			</div>
 			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Position Size:</span>
+				<span class="text-zinc-400 w-24 text-start">Size:</span>
 				<input
 					bind:value={positionSize}
 					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -172,27 +177,30 @@
 				/>
 			</div>
 
+			<p class="text-zinc-400 w-full text-left mb-2">Move SL to BE after:</p>
 
 			{#each takeProfits as tp, index (index)}
-				<div class="flex items-center gap-2 mb-4 flex-col md:flex-row align">
-					<span class="text-zinc-400 w-25 text-center md:text-start text-nowrap ">{index + 1}. TP:</span>
-					<div class="flex-1 flex gap-2">
+				<div class="flex items-center gap-2 mb-4 flex-wrap">
+
+					<input
+						type="radio"
+						id="tp-be-{index}"
+						name="sl_be_after_tp"
+						class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500"
+						bind:group={moveSLToBEIndex}
+						value={index}
+					/>
+					<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap">TP {index + 1}:</label>
+
+					<div class="flex-1 flex gap-2 min-w-[200px]">
 						<input
 							type="number"
 							bind:value={tp.price}
 							placeholder="Price"
 							class="bg-zinc-800 flex-1 min-w-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
 						/>
-						<input
-							type="number"
-							bind:value={tp.percent}
-							placeholder="%"
-							class="bg-zinc-800 w-14 rounded-xl px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
-						/>
-
-						<span class="text-zinc-400 text-sm my-auto">%</span>
-
 					</div>
+
 					<button
 						class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed "
 						on:click={() => removeTakeProfit(index)}
@@ -201,25 +209,22 @@
 						type="button">
 						Remove
 					</button>
-
 				</div>
 			{/each}
 			<button
 				class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-				on:click={addTakeProfit}
 				disabled={takeProfits.length >= 5}
+				on:click={addTakeProfit}
 				tabindex="0"
 				type="button">
 				Add Take Profit
 			</button>
 
-
-
 			<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
-<!--				<div class="flex justify-between">-->
-<!--					<span class="text-zinc-400">Pos. size:</span>-->
-<!--					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>-->
-<!--				</div>-->
+				<!--				<div class="flex justify-between">-->
+				<!--					<span class="text-zinc-400">Pos. size:</span>-->
+				<!--					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>-->
+				<!--				</div>-->
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Required margin:</span>
 					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
