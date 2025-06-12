@@ -51,10 +51,11 @@ urlpatterns = [
     path('stats/pnl-calendar/<str:account_name>/<str:year>/<str:month>/', views.pnl_calendar),  # GET
 
     # All accounts
-    path('stats/pnl-calendar/<str:year>/<str:month>/', views.pnl_calendar),  # GET
+    path('stats/pnl-calendar/all/<str:year>/<str:month>/', views.pnl_calendar),  # GET
 
     # Tools under specific account
     path('accounts/<str:account_name>/tools/', views.get_tools),  # GET
+    path('accounts/<str:account_name>/tools/trading-view/<str:exchange>', views.get_trading_view_tools),  # GET
     path('accounts/<str:account_name>/tools/', views.add_tool),  # POST
     path('accounts/<str:account_name>/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 

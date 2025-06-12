@@ -35,6 +35,32 @@ class Tool(models.Model):
     account = models.ForeignKey(Account, related_name='tools',
                                 on_delete=models.CASCADE)  # when account is deleted, all tools are deleted as well
 
+    def to_bybit_trading_view_convention(self):
+        name = self.name.upper()
+        exchange_name = 'BYBIT'
+
+        # If there's a hyphen (e.g., WLD-USDT), split and return the base
+        if '-' in name:
+            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
+
+        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
+
+    def to_binance_trading_view_convention(self):
+        name = self.name.upper()
+        exchange_name = 'BINANCE'
+
+        # If there's a hyphen (e.g., WLD-USDT), split and return the base
+        if '-' in name:
+            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
+
+        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
+
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
         unique_together = (('name', 'account'),)

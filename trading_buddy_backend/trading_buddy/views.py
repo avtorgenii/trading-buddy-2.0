@@ -328,6 +328,25 @@ def get_tools(request, account_name):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+# Get all tools under account, formatted for trading-view
+@extend_schema(
+    responses=ToolSerializer(many=True),
+)
+@api_view(['GET'])
+def get_trading_view_tools(request, account_name, exchange):
+    """Exchange name in lower case"""
+    user = request.user
+    account = user.accounts.filter(name=account_name).first()
+
+    if account is None:
+        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+    tools = Tool.objects.all()
+    serializer = ToolSerializer(tools, many=True, context={'preprocess_mode': exchange})
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 ##### TRADING #####
 # Get position data before opening
 @extend_schema(

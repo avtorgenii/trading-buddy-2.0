@@ -121,6 +121,19 @@ class ToolSerializer(serializers.ModelSerializer):
         model = Tool
         fields = ('name',)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        # Access the custom parameter from context
+        preprocess_mode = self.context.get('preprocess_mode')
+
+        if preprocess_mode == 'bybit':
+            data['name'] = instance.to_bybit_trading_view_convention()
+        elif preprocess_mode == 'binance':
+            data['name'] = instance.to_binance_trading_view_convention()
+
+        return data
+
 
 class RiskSerializer(serializers.Serializer):
     risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10, min_value=0)
