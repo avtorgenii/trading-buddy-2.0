@@ -2,6 +2,8 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
+	import { csrfToken } from '$lib/stores.js';
+	import  { getCookie } from '$lib/utils.js';
 
 	let isSubmitting = false;
 	let email = '';
@@ -31,10 +33,11 @@
 			const data = await response.json();
 			email = '';
 			password = '';
+			csrfToken.set(getCookie('csrftoken'));
 			showSuccessToast('Successfully logged in!');
 			setTimeout(() => {
 				goto('/trade');
-			}, 1000);
+			}, 100);
 		} catch (error) {
 			showErrorToast(error.message);
 		} finally {
@@ -44,7 +47,7 @@
 
 	function handleGoogleLogin(event) {
 		event.preventDefault();
-		alert('Google registartion');
+		window.location.href = `http://127.0.0.1:8000/accounts/google/login/`;
 	}
 </script>
 
