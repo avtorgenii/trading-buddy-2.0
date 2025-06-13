@@ -65,7 +65,7 @@ urlpatterns = [
     # Trading under specific account
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
-    # path('trading/positions/cancel/', views.cancel_position),  # POST
+    path('trading/positions/cancel/', views.cancel_position),  # POST
     path('trading/positions/pending/<str:account_name>/cancel-levels/<str:tool_name>', views.update_cancel_levels),
     # PUT
     path('trading/positions/pending/<str:account_name>', views.get_pending_positions),  # GET

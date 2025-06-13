@@ -367,7 +367,7 @@ def get_trading_view_tools(request, account_name, exchange):
 def process_position_data(request):
     serializer = PositionToOpenSerializer(data=request.data)
     if not serializer.is_valid():
-        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     data = serializer.validated_data
     account = request.user.accounts.filter(name=data['account_name']).first()
@@ -460,6 +460,33 @@ def update_cancel_levels(request, account_name, tool_name):
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# Cancel pending position
+@extend_schema(
+    request=CancelPendingPositionSerializer
+)
+@api_view(['POST'])
+def cancel_position(request):
+    serializer = CancelPendingPositionSerializer(data=request.data)
+    if serializer.is_valid():
+        data = serializer.validated_data
+
+        user = request.user
+        account = user.accounts.filter(name=data['account_name']).first()
+        tool_name = data['tool']
+
+        if account:
+            if not account.positions.filter(tool__name=tool_name).exists():
+                return Response({"error": "Position doesn't exist"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                exc = exc_map[account.exchange](account)
+                exc.cancel_primary_order_for_tool(tool_name)
+        else:
+            return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # Get pending positions
 @extend_schema(
     responses=PendingPositionSerializer(many=True)
@@ -502,7 +529,3 @@ def get_current_positions(request, account_name):
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
-
-# Calendar pnl
-# format
-# date: pnl, 2025-08-10: -729.0

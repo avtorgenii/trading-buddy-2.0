@@ -312,32 +312,37 @@ class BingXExc(Exchange):
         :param volume: Entered via modal from frontend if needed
         :return: Status message
         """
-        self._switch_margin_mode_to_cross(tool)
+        deposit, _ = self.get_deposit_and_risk()
+        if deposit > 0:
+            self._switch_margin_mode_to_cross(tool)
 
-        pos_side = PositionSide.LONG if entry_p > stop_p else PositionSide.SHORT
+            pos_side = PositionSide.LONG if entry_p > stop_p else PositionSide.SHORT
 
-        self.client.trade.change_leverage(tool, pos_side, leverage)
+            self.client.trade.change_leverage(tool, pos_side, leverage)
 
-        try:
-            self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
+            try:
+                self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
 
-            pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
-                                                                            volume)
+                pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
+                                                                                volume)
 
-            print(f"POTENTIAL LOSS OF A TRADE: {pot_loss} \n WITH VOLUME: {volume}")
+                print(f"POTENTIAL LOSS OF A TRADE: {pot_loss} \n WITH VOLUME: {volume}")
 
-            # Creating trade and linked position in db
-            deposit, _ = self.get_deposit_and_risk()
-            Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss, leverage,
-                               trigger_p,
-                               entry_p,
-                               stop_p, take_profits, move_stop_after, volume)
+                # Creating trade and linked position in db
+                Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss, leverage,
+                                   trigger_p,
+                                   entry_p,
+                                   stop_p, take_profits, move_stop_after, volume)
 
-            self.create_price_listener_in_thread(tool)
+                self.create_price_listener_in_thread(tool)
 
-            return "Primary order placed"
-        except ClientError as e:
-            return e.error_message
+                return "Primary order placed"
+
+            except ClientError as e:
+                return e.error_message
+
+        else:
+            return "Deposit must be positive"
 
     def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
         """

@@ -191,6 +191,24 @@ class PositionToOpenSerializer(serializers.Serializer):
             data['take_profits'] = [clean_decimal_str(Decimal(tp)) for tp in data['take_profits']]
         return data
 
+    def validate(self, data):
+        # Call parent validation first
+        data = super().validate(data)
+
+        take_profits = data.get('take_profits', [])
+        entry_p = data.get('entry_p')
+        stop_p = data.get('stop_p')
+
+        if take_profits:
+            if entry_p > stop_p:
+                if entry_p and any(tp <= entry_p for tp in take_profits):
+                    raise serializers.ValidationError("Take profits must be above entry price for long position")
+            elif entry_p < stop_p:
+                if entry_p and any(tp >= entry_p for tp in take_profits):
+                    raise serializers.ValidationError("Take profits must be below entry price for short position")
+
+        return data
+
 
 class ProcessedPositionToOpenSerializer(serializers.Serializer):
     volume = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
@@ -242,6 +260,9 @@ class CurrentPositionSerializer(serializers.Serializer):
                 data[field] = clean_decimal_str(Decimal(data[field]))
         return data
 
+class CancelPendingPositionSerializer(serializers.Serializer):
+    tool = serializers.CharField()
+    account_name = serializers.CharField()
 
 class CancelLevelsSerializer(serializers.Serializer):
     side = serializers.CharField(max_length=5)
