@@ -33,6 +33,7 @@ DEBUG = bool(os.environ.get("DEBUG", default=0))
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1").split(",")
 
+print(ALLOWED_HOSTS)
 # Application definition
 
 INSTALLED_APPS = [
@@ -58,6 +59,9 @@ INSTALLED_APPS = [
     'dj_rest_auth',
     'dj_rest_auth.registration',
 ]
+
+SITE_ID = 1
+
 
 AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
@@ -94,8 +98,14 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # your frontend dev server
+    "http://localhost:5173",  # your frontend dev server
     "https://yourdomain.com",  # production domain
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",  # your frontend dev server
+    "https://yourdomain.com",  # production domain
+
 ]
 
 ROOT_URLCONF = 'trading_buddy_backend.urls'
@@ -130,7 +140,8 @@ DATABASES = {
         'NAME': os.getenv("DB_NAME", 'postgres'),
         'USER': os.getenv("DB_USER"),
         'PASSWORD': os.getenv("DB_PASSWORD"),
-        'HOST': 'localhost' if os.getenv('DEBUG') else os.getenv("DB_HOST", 'localhost'),
+        # 'HOST': 'localhost' if os.getenv('DEBUG') else os.getenv("DB_HOST", 'localhost'),
+        'HOST': 'db',
         'PORT': '5432',
     }
 }
@@ -187,7 +198,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
         'METHOD': 'oauth2',
-        'VERIFIED_EMAIL': True,
+        # 'VERIFIED_EMAIL': True,
     }
 }
 
