@@ -90,6 +90,12 @@ class AccountSerializer(serializers.ModelSerializer):
         model = Account
         exclude = ['user']
 
+        # Remove API keys from response
+        extra_kwargs = {
+            'api_key': {'write_only': True},
+            'secret_key': {'write_only': True}
+        }
+
     def create(self, validated_data):
         user = self.context.get('user')
         if user is None:

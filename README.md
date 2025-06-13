@@ -8,20 +8,39 @@
    otherwise you may need to place stop-loss orders manually on exchange side 
 
 # General info
-1. Datetimes in DB are being saved to DB in UTC.
+1. Datetimes in db are being saved in UTC.
 
 # Running
-## Database
-
-Before running db, make sure you have created ```.env``` file in root directory, it should look like below:
-
+## .env
+Below is how your ```.env``` must look like:
 ```
+# Backend
+SECRET_KEY=<>
+DEBUG=False
+ALLOWED_HOSTS=localhost, 127.0.0.1
+BACKEND_PORT=8000
+
+# Frontend
+FRONTEND_PORT=3000
+
+# Database
+DB_NAME=potgres
+DB_HOST=db # name of db service in docker-compose.yml
 DB_USER=<>
 DB_PASSWORD=<>
+
+# SSO
+GOOGLE_OAUTH_CLIENT_ID=<>
+GOOGLE_OAUTH_SECRET=<>
+LOGIN_REDIRECT_URL=<>
 ```
+
+## Database
+
+Before running db, make sure you have created ```.env``` file in root directory and have migration files in ```trading_buddy_backend/trading_buddy/migrations```.
 
 Postgres is used, to run it simply execute command below in root directory:
 
 ```
-docker-compose up -d
+docker-compose up --build -d
 ```
