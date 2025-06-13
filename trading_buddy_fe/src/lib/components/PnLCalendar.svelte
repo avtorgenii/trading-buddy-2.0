@@ -1,4 +1,7 @@
 <script>
+	import { onMount } from 'svelte';
+	import { API_BASE_URL } from '$lib/config.js';
+
 	let monthlyData = {};
 	let isLoading = true;
 
@@ -12,30 +15,33 @@
 	const enDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-
 	async function fetchMonthlyData(year, month) {
 		isLoading = true;
-		console.log(`Pobieram dane dla ${year}-${month + 1}...`);
+		const apiMonth = month + 1;
+		const url = `${API_BASE_URL}/stats/pnl-calendar/all/${year}/${apiMonth}/`;
+
 
 		try {
-			// TODO: replace with real api
+			const response = await fetch(url, {
+				credentials: 'include'
+			});
 
-			const fakeApiData = {
-				'2025-06-05': -150.75, '2025-06-09': 25.10,
-				'2025-07-15': 100.00, '2025-07-16': -20.00,
-			};
-
-			const filteredData = {};
-			for (const [date, pnl] of Object.entries(fakeApiData)) {
-				if (new Date(date).getMonth() === month && new Date(date).getFullYear() === year) {
-					filteredData[date] = pnl;
-				}
+			if (!response.ok) {
+				throw new Error(`Response erorr: ${response.status}`);
 			}
 
-			monthlyData = filteredData;
+			const responseData = await response.json();
+			const parsedData = {};
+
+			if (responseData && responseData.pnl_by_day) {
+				for (const [date, pnl] of Object.entries(responseData.pnl_by_day)) {
+					parsedData[date] = parseFloat(pnl);
+				}
+			}
+			monthlyData = parsedData;
 
 		} catch (error) {
-			console.error("Error loading PnL", error);
+			console.error("Error Downloading data:", error);
 			monthlyData = {};
 		} finally {
 			isLoading = false;
@@ -76,9 +82,11 @@
 	function goToPreviousMonth() {
 		if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
 	}
+
 	function goToNextMonth() {
 		if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
 	}
+
 	function toISODateString(date) {
 		const year = date.getFullYear();
 		const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -86,7 +94,6 @@
 		return `${year}-${month}-${day}`;
 	}
 </script>
-
 <div class="bg-zinc-900 text-white p-2 md:p-6 rounded-2xl max-w-full md:max-w-lg mx-auto shadow-lg">
 
 	<header class="flex items-center justify-between mb-4 md:mb-6">

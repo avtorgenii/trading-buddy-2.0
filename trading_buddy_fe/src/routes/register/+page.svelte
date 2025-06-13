@@ -2,6 +2,8 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
+	import { csrfToken } from '$lib/stores.js';
+	import  { getCookie } from '$lib/utils.js';
 
 	let isSubmitting = false;
 	let email = '';
@@ -43,6 +45,8 @@
 			email = '';
 			password = '';
 			repeatedPassword = '';
+
+			csrfToken.set(getCookie('csrftoken'));
 
 			showSuccessToast("Successfully registered!");
 
