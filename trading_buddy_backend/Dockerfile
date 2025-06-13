@@ -16,7 +16,7 @@ ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 
 # Copy only Poetry files first (for caching)
-COPY pyproject.toml poetry.lock* /app/
+COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/poetry.lock* /app/
 
 # Configure Poetry to not create a virtualenv
 RUN poetry config virtualenvs.create false
@@ -24,11 +24,11 @@ RUN poetry config virtualenvs.create false
 # Install dependencies
 RUN poetry install --no-root
 
-# Copy the full project
-COPY . /app/
+# Copy the full project and bingX library
+COPY trading_buddy_backend/ /app/
+COPY bingX/ /app/bingX/
 
 # Expose Django's default port
 EXPOSE 8000
 
-# Run Django dev server
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]

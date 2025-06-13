@@ -31,7 +31,7 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "secret_key": "IPwqlPr6kSo1Ik96mpCvCjD4eXaZS1z07Xm1WlcX3AwH8TxMeZT7PkwXiP2nVATwDLzuHndmeyblV5IaOxg"
 }
 {
-    "name": "WLD"
+    "name": "WLD-USDT"
 }
 {
     "deposit": 200.05
@@ -282,28 +282,42 @@ def pnl_calendar(request, year, month, account_name=None):
 
 
 ##### TOOLS #####
-# Add new tool
+# Add new tool and get all tools under specific account
 # TODO IMPORTANT: ADD HINT FOR SUFFIX STYLE FOR ADD TOOL MODAL
 @extend_schema(
     request=ToolSerializer,
+    responses={
+        200: ToolSerializer(many=True),
+        201: {"description": "Tool added successfully"},
+        400: {"description": "Bad request - account doesn't exist or tool already exists"}
+    },
+    methods=['GET', 'POST']
 )
-@api_view(['POST'])
-def add_tool(request, account_name):
-    serializer = ToolSerializer(data=request.data)
-    if serializer.is_valid():
-        user = request.user
-        account = user.accounts.filter(name=account_name).first()
+@api_view(['GET', 'POST'])
+def manage_tools(request, account_name):
+    user = request.user
+    account = user.accounts.filter(name=account_name).first()
 
-        if account is None:
-            return Response({"error": "account does not exist"}, status=400)
+    if account is None:
+        return Response({"error": "Account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            Tool.objects.create(account=account, name=serializer.validated_data['name'])
-            return Response({"message": "Tool added successfully"}, status=201)
-        except IntegrityError:
-            return Response({"error": "tool already exists"}, status=400)
+    if request.method == 'GET':
+        # Get all tools for the account
+        tools = Tool.objects.filter(account=account)
+        serializer = ToolSerializer(tools, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'POST':
+        # Add a new tool to the account
+        serializer = ToolSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                Tool.objects.create(account=account, name=serializer.validated_data['name'])
+                return Response({"message": "Tool added successfully"}, status=status.HTTP_201_CREATED)
+            except IntegrityError:
+                return Response({"error": "Tool already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Remove tool
@@ -322,24 +336,6 @@ def remove_tool(request, account_name, tool_name):
 
     tool.delete()
     return Response({"message": "Tool removed successfully"}, status=204)
-
-
-# Get all tools under account
-@extend_schema(
-    responses=ToolSerializer(many=True),
-)
-@api_view(['GET'])
-def get_tools(request, account_name):
-    user = request.user
-    account = user.accounts.filter(name=account_name).first()
-
-    if account is None:
-        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
-
-    tools = Tool.objects.all()
-    serializer = ToolSerializer(tools, many=True)
-
-    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # Get all tools under account, formatted for trading-view

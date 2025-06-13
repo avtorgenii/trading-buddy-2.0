@@ -8,6 +8,8 @@ def initialize_exchanges():
     from .models import Account
     from .services.exchanges.exchanges import BingXExc
 
+
+
     map = {
         "BingX": BingXExc,
         # "ByBit": ByBitExc
@@ -16,6 +18,8 @@ def initialize_exchanges():
     accounts = Account.objects.all()
     for account in accounts:
         map[account.exchange](account)  # simply initialize class to restore all listeners
+
+    print("INITIALIZED EXCHANGES")
 
 
 # Comment out while doing migrations
@@ -54,9 +58,8 @@ urlpatterns = [
     path('stats/pnl-calendar/all/<str:year>/<str:month>/', views.pnl_calendar),  # GET
 
     # Tools under specific account
-    path('accounts/<str:account_name>/tools/', views.get_tools),  # GET
+    path('accounts/<str:account_name>/tools/', views.manage_tools),  # GET, POST
     path('accounts/<str:account_name>/tools/trading-view/<str:exchange>', views.get_trading_view_tools),  # GET
-    path('accounts/<str:account_name>/tools/', views.add_tool),  # POST
     path('accounts/<str:account_name>/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
     # Trading under specific account

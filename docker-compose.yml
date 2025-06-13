@@ -1,23 +1,37 @@
 services:
   backend:
-    build: ./trading_buddy_backend
+    build:
+      context: .
+      dockerfile: trading_buddy_backend/Dockerfile
     container_name: tb-backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
 
-  frontend:
-    build: ./trading_buddy_fe
-    container_name: tb-frontend
-    ports:
-      - "3000:3000"
+#  frontend:
+#    build:
+#      context: .
+#      dockerfile: trading_buddy_fe/Dockerfile
+#    container_name: tb-frontend
+#    ports:
+#      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
 
   db:
     image: postgres
     container_name: tb-postgres-db
     environment:
-      POSTGRES_DB: postgres
+      POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "avtorpetrovich"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:

@@ -8,7 +8,7 @@
    otherwise you may need to place stop-loss orders manually on exchange side 
 
 # General info
-1. Datetimes in DB are being saved to DB in UTC.
+1. Datetimes in db are being saved in UTC.
 
 # Running
 ## Database
