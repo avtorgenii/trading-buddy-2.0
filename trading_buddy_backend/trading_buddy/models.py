@@ -170,7 +170,10 @@ class Trade(models.Model):
         Creates trade and linked position.
         :return:
         """
-        tool_obj = Tool.objects.get(account=account, name=tool_name)
+        try:
+            tool_obj = Tool.objects.get(account=account, name=tool_name)
+        except Tool.DoesNotExist:
+            tool_obj = Tool.objects.create(account=account, name=tool_name)
 
         trade = cls.objects.create(side=side, tool=tool_obj, risk_percent=risk_percent, risk_usd=risk_usd,
                                    account=account)
