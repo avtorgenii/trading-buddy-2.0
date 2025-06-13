@@ -17,13 +17,14 @@ def initialize_exchanges():
 
     accounts = Account.objects.all()
     for account in accounts:
-        map[account.exchange](account)  # simply initialize class to restore all listeners
+        if account.exchange == "BingX":
+            map[account.exchange](account)  # simply initialize class to restore all listeners
 
     print("INITIALIZED EXCHANGES")
 
 
 # Comment out while doing migrations
-initialize_exchanges()
+# initialize_exchanges()
 
 from . import views
 from dj_rest_auth.registration.views import SocialLoginView

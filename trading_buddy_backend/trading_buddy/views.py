@@ -184,7 +184,7 @@ def user_accounts(request):
 def delete_account(request, account_name):
     account = get_object_or_404(Account, name=account_name, user=request.user)
     account.delete()
-    return Response({"message": "Account deleted successfully."}, status=204)
+    return Response({"message": "Account deleted successfully."}, status=200)
 
 
 # Get account details
