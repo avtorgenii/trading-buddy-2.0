@@ -474,13 +474,18 @@ def cancel_position(request):
         account = user.accounts.filter(name=data['account_name']).first()
         tool_name = data['tool']
 
+        pos = account.positions.filter(tool__name=tool_name).first()
+
         if account:
-            if not account.positions.filter(tool__name=tool_name).exists():
+            if not pos:
                 return Response({"error": "Position doesn't exist"},
                                 status=status.HTTP_400_BAD_REQUEST)
+            elif pos.last_status != "NEW":
+                return Response({"error": "Position is already opened"}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 exc = exc_map[account.exchange](account)
                 exc.cancel_primary_order_for_tool(tool_name)
+                return Response({"message": "Position cancelled successfully"}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -8,8 +8,6 @@ def initialize_exchanges():
     from .models import Account
     from .services.exchanges.exchanges import BingXExc
 
-
-
     map = {
         "BingX": BingXExc,
         # "ByBit": ByBitExc
@@ -17,7 +15,8 @@ def initialize_exchanges():
 
     accounts = Account.objects.all()
     for account in accounts:
-        map[account.exchange](account)  # simply initialize class to restore all listeners
+        if account.exchange == "BingX":
+            map[account.exchange](account)  # simply initialize class to restore all listeners
 
     print("INITIALIZED EXCHANGES")
 
