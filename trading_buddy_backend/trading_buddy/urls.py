@@ -8,8 +8,6 @@ def initialize_exchanges():
     from .models import Account
     from .services.exchanges.exchanges import BingXExc
 
-
-
     map = {
         "BingX": BingXExc,
         # "ByBit": ByBitExc
@@ -41,7 +39,8 @@ urlpatterns = [
     path('auth/login/', views.login),  # POST
     path('auth/logout/', views.logout),  # POST
     path('auth/status/', views.auth_status),  # GET
-    path('auth/social/google/', GoogleLogin.as_view(), name='google_login'),  # SSO
+    # path('auth/social/google/', GoogleLogin.as_view(), name='google_login'),  # SSO
+    path('accounts/', include('allauth.urls')),  # SSO
 
     path('deposit/', views.update_deposit),  # PUT
 
