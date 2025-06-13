@@ -151,18 +151,32 @@ def update_deposit(request):
 
 
 ##### ACCOUNT #####
-# Creating account
+# Creating account and retrieving accounts
 @extend_schema(
-    responses=AccountSerializer,
-    request=AccountSerializer
+    methods=['GET'],
+    responses=AccountSerializer(many=True),
 )
-@api_view(['POST'])
-def create_account(request):
-    serializer = AccountSerializer(data=request.data, context={'user': request.user})
-    if serializer.is_valid():
-        account = serializer.save()  # will use create() with user set
-        return Response({"message": "Account created successfully"}, status=201)
-    return Response({"error": "".join(serializer.errors)}, status=400)
+@extend_schema(
+    methods=['POST'],
+    request=AccountSerializer,
+)
+@api_view(['GET', 'POST'])
+def user_accounts(request):
+    user = request.user
+
+    if user:
+        if request.method == 'GET':
+            accounts = user.accounts.all()
+            serializer = AccountSerializer(accounts, many=True)
+            return Response(serializer.data, status=200)
+
+        elif request.method == 'POST':
+            serializer = AccountSerializer(data=request.data, context={'user': user})
+            if serializer.is_valid():
+                serializer.save()
+                return Response({"message": "Account created successfully"}, status=201)
+            return Response({"errors": serializer.errors}, status=400)
+    return Response({"error": "User doesn't exist"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Delete account
