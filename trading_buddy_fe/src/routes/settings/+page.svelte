@@ -1,5 +1,7 @@
 <script>
-	import NavMenu from '$lib/components/NavMenu.svelte';
+	import { API_BASE_URL } from '$lib/config.js';
+	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
+	import { csrfToken } from '$lib/stores.js';
 
 	let accounts = [
 		{
@@ -10,7 +12,7 @@
 			secretKey: '********',
 			risk: 1.5,
 			isMain: true
-		},
+		}
 	];
 
 	let settingsSaveStatus = 'idle';
@@ -33,41 +35,75 @@
 		view = 'form';
 	}
 
-	function showEditForm(account) {
-		currentlyEditingAccount = { ...account };
-		view = 'form';
-	}
 
 	function handleCancel() {
 		currentlyEditingAccount = null;
 		view = 'list';
 	}
 
-	function saveAccount() {
+	async function saveAccount() {
 		if (!currentlyEditingAccount) return;
 
-		if (currentlyEditingAccount.isMain) {
-			accounts.forEach(acc => {
-				if (acc.id !== currentlyEditingAccount.id) acc.isMain = false;
+		const payload = {
+			name: currentlyEditingAccount.name,
+			exchange: currentlyEditingAccount.exchange,
+			risk_percent: currentlyEditingAccount.risk,
+			api_key: currentlyEditingAccount.apiKey,
+			secret_key: currentlyEditingAccount.secretKey
+		};
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/accounts/`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json',
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: JSON.stringify(payload)
 			});
-		}
 
-		if (currentlyEditingAccount.id) {
-			const index = accounts.findIndex(acc => acc.id === currentlyEditingAccount.id);
-			if (index !== -1) {
-				accounts[index] = currentlyEditingAccount;
+			if (!response.ok) {
+				const errorData = await response.json();
+				const errorMessage = errorData.detail;
+				throw new Error(errorMessage);
 			}
-		} else {
-			accounts = [...accounts, { ...currentlyEditingAccount, id: crypto.randomUUID() }];
-		}
 
-		accounts = accounts;
-		handleCancel();
+			accounts = [...accounts, { ...currentlyEditingAccount, id: crypto.randomUUID() }];
+			showSuccessToast('Account created successfully!');
+			handleCancel();
+
+		} catch (error) {
+			showErrorToast(error.message);
+		}
 	}
 
+	async function deleteAccount(accountId) {
+		const accountToDelete = accounts.find(acc => acc.id === accountId);
+		if (!accountToDelete) return;
 
-	function deleteAccount(accountId) {
-		accounts = accounts.filter(acc => acc.id !== accountId);
+		const accountName = accountToDelete.name;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/accounts/${accountName}/`, {
+				method: 'DELETE',
+				credentials: 'include',
+				headers : {
+					'X-CSRFToken': $csrfToken
+
+				}
+
+			});
+
+			if (!response.ok && response.status !== 204) {
+				throw new Error('Failed to delete account.');
+			}
+
+			accounts = accounts.filter(acc => acc.id !== accountId);
+			showSuccessToast('Account deleted successfully.');
+
+		} catch (error) {
+			showErrorToast(error.message);
+		}
 	}
 
 	function setMainAccount(accountIdToSet) {
@@ -79,7 +115,8 @@
 
 	function handleSaveAllSettings(event) {
 		event.preventDefault();
-		console.log('Saving all settings:', { accounts });
+		console.log('Saving settings...');
+		showSuccessToast('Settings saved!');
 		settingsSaveStatus = 'success';
 		setTimeout(() => settingsSaveStatus = 'idle', 3000);
 	}
@@ -121,10 +158,6 @@
 										</button>
 									{/if}
 
-									<button type="button" on:click={() => showEditForm(account)}
-													class="py-1 px-3 text-sm cursor-pointer rounded-xl hover:bg-zinc-700 border-2 border-zinc-600 transition-colors">
-										Edit
-									</button>
 									<button type="button" on:click={() => deleteAccount(account.id)}
 													class="py-1 px-3 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
 										Delete
@@ -139,13 +172,12 @@
 
 				<button type="submit"
 								class="mt-8 py-3 rounded-xl w-full transition-colors duration-1000 {settingsSaveStatus === 'success' ? 'bg-green-600' : 'bg-blue-800 hover:bg-blue-700'}">
-					{settingsSaveStatus === 'success' ? 'Settings Saved!' : 'Save All Settings'}
+					Save Settings
 				</button>
 			</form>
 
 		{:else}
-			<h2
-				class="text-3xl font-bold mb-10 text-center">{currentlyEditingAccount.id ? 'Edit Account' : 'New Account'}</h2>
+			<h2 class="text-3xl font-bold mb-10 text-center">New Account</h2>
 			<form class="space-y-5" on:submit|preventDefault={saveAccount}>
 
 				<div>
@@ -187,10 +219,9 @@
 					<button type="button" on:click={handleCancel}
 									class="bg-zinc-700 hover:bg-zinc-600 py-3 rounded-xl w-full transition-colors">
 						Cancel
-
 					</button>
 					<button type="submit" class="bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full transition-colors">
-						{currentlyEditingAccount.id ? 'Save Changes' : 'Create Account'}
+						Create Account
 					</button>
 				</div>
 			</form>

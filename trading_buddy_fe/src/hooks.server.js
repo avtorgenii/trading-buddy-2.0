@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '$lib/config.js';
+import { NON_PROXY_API_BASE_URL } from '$lib/config.js';
 
 /** @type {import('@sveltejs/kit').Handle} */
 export const handle = async ({ event, resolve }) => {
@@ -11,9 +11,9 @@ export const handle = async ({ event, resolve }) => {
 
 	if (sessionId) {
 		try { //TODO; change the URL when fixed
-			const response = await event.fetch(`http://127.0.0.1:8000/api/v1/auth/status`, {
+			const response = await event.fetch(`${NON_PROXY_API_BASE_URL}/auth/status`, {
 				headers: {
-					'Cookie': `sessionid=${sessionId}`
+					Cookie: `sessionid=${sessionId}`
 				}
 			});
 
