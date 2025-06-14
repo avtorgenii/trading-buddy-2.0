@@ -21,8 +21,8 @@
 		async function loadInitialData() {
 			isLoading = true;
 			[positions, pendingPositions] = await Promise.all([
-				getCurrentPositions('BingX_MAIN'), // TODO: replace
-				getPendingPositions('BingX_MAIN')  // TODO: replace
+				getCurrentPositions(),
+				getPendingPositions()
 			]);
 			isLoading = false;
 		}
@@ -35,7 +35,7 @@
 		});
 
 		intervalId = setInterval(async () => {
-			positions = await getCurrentPositions('BingX_MAIN'); // TODO: replace
+			positions = await getCurrentPositions();
 		}, 5000);
 	}
 
@@ -46,8 +46,8 @@
 
 
 
-	async function getCurrentPositions(accountName) {
-		const url = `${API_BASE_URL}/trading/positions/current/${accountName}`;
+	async function getCurrentPositions() {
+		const url = `${API_BASE_URL}/trading/positions/current/`;
 		console.log(`Fetching current positions from: ${url}`);
 
 		try {
@@ -83,9 +83,8 @@
 		}
 	}
 
-	async function getPendingPositions(accountName) {
-		const url = `${API_BASE_URL}/trading/positions/pending/${accountName}`;
-		console.log(`Fetching pending positions from: ${url}`);
+	async function getPendingPositions() {
+		const url = `${API_BASE_URL}/trading/positions/pending/`;
 
 		try {
 			const response = await fetch(url, { credentials: 'include' });
