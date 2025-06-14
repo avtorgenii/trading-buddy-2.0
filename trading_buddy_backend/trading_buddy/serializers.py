@@ -122,21 +122,80 @@ class DepositAndAccountDataSerializer(serializers.Serializer):
         return data
 
 
-class ToolSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tool
-        fields = ('name',)
+class ToolSerializer(serializers.Serializer):
+    """
+    Serializes a Tool object, with the ability to dynamically format
+    the trading_view_format based on the exchange specified in the context.
+    """
+    label = serializers.CharField()
+    trading_view_format = serializers.CharField()
+    exchange_format = serializers.CharField()
+
+    def _get_trading_view_convention(self, name: str, exchange_name: str) -> str:
+        """
+        Private helper method to convert a tool's exchange format name
+        into the convention required by TradingView for perpetual contracts.
+
+        Example:
+            - ("WLD-USDT", "BYBIT") -> "BYBIT:WLDUSDT.P"
+            - ("BTCUSDT", "BINANCE") -> "BINANCE:BTCUSDT.P"
+        """
+        base_name = name
+        exchange_name = exchange_name.upper()
+
+        # If there's a hyphen (e.g., WLD-USDT), split and use the base
+        if '-' in name:
+            base_name = name.split('-')[0]
+        # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        else:
+            for quote in ['USDT', 'USD']:
+                if name.endswith(quote):
+                    base_name = name[:-len(quote)]
+                    break  # Exit loop once a match is found
+
+        return f'{exchange_name}:{base_name}USDT.P'
+
+    def _get_label(self, name: str) -> str:
+        """
+        Private helper method to convert a tool's exchange format name
+        into the convention required by TradingView for perpetual contracts.
+
+        Example:
+            - "WLD-USDT" -> "WLDUSDT"
+            - "BTCUSDT" -> "BTCUSDT"
+        """
+        base_name = name
+
+        # If there's a hyphen (e.g., WLD-USDT), split and use the base
+        if '-' in name:
+            base_name = name.split('-')[0]
+        # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
+        else:
+            for quote in ['USDT', 'USD']:
+                if name.endswith(quote):
+                    base_name = name[:-len(quote)]
+                    break  # Exit loop once a match is found
+
+        return f'{base_name}USDT'
 
     def to_representation(self, instance):
-        data = super().to_representation(instance)
+        """
+        Overrides the default representation to format the output based on context.
+        """
+        # Get the default serialized data for the instance
+        data = {}
 
-        # Access the custom parameter from context
+        # Access the 'preprocess_mode' from the serializer's context
         preprocess_mode = self.context.get('preprocess_mode')
 
-        if preprocess_mode == 'bybit':
-            data['name'] = instance.to_bybit_trading_view_convention()
-        elif preprocess_mode == 'binance':
-            data['name'] = instance.to_binance_trading_view_convention()
+        source_name = getattr(instance, 'name', '')
+
+        if not source_name:
+            return data  # Return default data if source name is not available
+
+        data['exchange_format'] = source_name
+        data['trading_view_format'] = self._get_trading_view_convention(source_name, preprocess_mode.upper())
+        data['label'] = self._get_label(source_name)
 
         return data
 
@@ -260,9 +319,11 @@ class CurrentPositionSerializer(serializers.Serializer):
                 data[field] = clean_decimal_str(Decimal(data[field]))
         return data
 
+
 class CancelPendingPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
     account_name = serializers.CharField()
+
 
 class CancelLevelsSerializer(serializers.Serializer):
     side = serializers.CharField(max_length=5)
