@@ -71,7 +71,20 @@ exc_map = {
 @permission_classes([AllowAny])
 def auth_status(request):
     if request.user.is_authenticated:
-        return Response({"logged_in": True}, status=status.HTTP_200_OK)
+
+        current_account_data = None
+
+        if request.user.current_account:
+            current_account_data = {
+                'name': request.user.current_account.name,
+                'exchange': request.user.current_account.exchange,
+            }
+
+        return Response({
+            "logged_in": True,
+            "email": request.user.email,
+            "current_account": current_account_data
+        }, status=status.HTTP_200_OK)
     else:
         return Response({"logged_in": False}, status=status.HTTP_401_UNAUTHORIZED)
 
