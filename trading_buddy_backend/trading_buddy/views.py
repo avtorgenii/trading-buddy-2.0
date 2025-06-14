@@ -334,7 +334,7 @@ def get_preset_tools(request):
 
     dummy_tools_for_serialization = [DummyTool(name) for name in tool_names_bingx_format]
 
-    preset_exchange_mode = 'binace'  # tools above are definitely available on binance
+    preset_exchange_mode = 'binance'  # tools above are definitely available on binance
 
     serializer = ToolSerializer(
         dummy_tools_for_serialization,
