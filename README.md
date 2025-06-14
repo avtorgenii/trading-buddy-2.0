@@ -8,7 +8,7 @@
    otherwise you may need to place stop-loss orders manually on exchange side 
 
 # General info
-1. Datetimes in db are being saved in UTC.
+1. All datetimes are in UTC
 
 # Running
 ## .env
@@ -36,7 +36,6 @@ LOGIN_REDIRECT_URL=<>
 ```
 
 ## Database
-
 Before running db, make sure you have created ```.env``` file in root directory and have migration files in ```trading_buddy_backend/trading_buddy/migrations```.
 
 Postgres is used, to run it simply execute command below in root directory:

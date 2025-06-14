@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -307,16 +308,21 @@ class CurrentPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
     avg_open = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)
     pos_side = serializers.CharField(max_length=5)
-    pnl = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    realized_pnl = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
+    open_date = serializers.DateTimeField()
+    current_pnl_risk_reward_ratio = serializers.DecimalField(decimal_places=4, default=0.00, max_digits=10)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        for field in ['avg_open', 'pnl', 'margin', 'volume']:
+        for field in ['avg_open', 'realized_pnl', 'margin', 'volume', 'current_pnl_risk_reward_ratio']:
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
+
+        data['open_date'] = datetime.fromisoformat(data['open_date'].replace("Z", "+00:00")).strftime("%B %d, %Y %H:%M")
+
         return data
 
 
@@ -335,3 +341,8 @@ class CancelLevelsSerializer(serializers.Serializer):
         if len(value) != 2:
             raise serializers.ValidationError("cancel_levels must contain exactly 2 items.")
         return value
+
+
+class MaxLeveragesSerializer(serializers.Serializer):
+    max_long_leverage = serializers.IntegerField()
+    max_short_leverage = serializers.IntegerField()

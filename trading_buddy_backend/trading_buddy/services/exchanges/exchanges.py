@@ -62,7 +62,7 @@ class Exchange:
     def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
         raise NotImplementedError("Method not implemented")
 
-    ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH APPROPRIATE FOR EXCHANGE SUFFIX #####
+    ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH APPROPRIATE EXCHANGE SUFFIX #####
 
     def get_max_leverage(self, tool: str) -> Tuple[int, int]:
         raise NotImplementedError("Method not implemented")
@@ -157,8 +157,10 @@ class BingXExc(Exchange):
         # Create new ones for each tool
         positions = self.fresh_account.positions.all()
 
+        # Recreate price listener only if position os still pending
         for pos in positions:
-            self.create_price_listener_in_thread(pos.tool.name)
+            if pos.last_status == "NEW":
+                self.create_price_listener_in_thread(pos.tool.name)
 
     def delete_price_listener(self, tool_name):
         try:
@@ -318,6 +320,17 @@ class BingXExc(Exchange):
 
             pos_side = PositionSide.LONG if entry_p > stop_p else PositionSide.SHORT
 
+            max_long_leverage, max_short_leverage = self.get_max_leverage(tool)
+
+            if leverage <= 0:
+                return "Invalid leverage selected"
+
+            if (
+                    (pos_side == PositionSide.LONG and leverage > max_long_leverage)
+                    or (pos_side == PositionSide.SHORT and leverage > max_short_leverage)
+            ):
+                return "Invalid leverage selected"
+
             self.client.trade.change_leverage(tool, pos_side, leverage)
 
             try:
@@ -368,13 +381,19 @@ class BingXExc(Exchange):
         :param tool: Tool name
         """
         orders = self.get_orders_for_tool(tool)
-
         print(f"Orders: {orders}")
 
-        stop_order_id = orders['stop']['orderId']
+        stop_order = orders.get('stop')
+        if not stop_order:
+            print("No stop order found.")
+            return
+
+        stop_order_id = stop_order.get('orderId')
+        if not stop_order_id:
+            print("No stop order ID found.")
+            return
 
         resp = self.client.trade.cancel_order(stop_order_id, tool)
-
         print(f"STOP ORDER CANCELLATION RESPONSE: {resp}")
 
     def cancel_take_profits_for_tool(self, tool: str) -> None:
@@ -383,16 +402,20 @@ class BingXExc(Exchange):
         :param tool: The trading pair.
         """
         orders = self.get_orders_for_tool(tool)
-
         print(orders)
 
-        take_orders = orders['takes']
+        take_orders = orders.get('takes')
+        if not take_orders:
+            print("No take profit orders found.")
+            return
 
         for take_order in take_orders:
-            take_order_id = take_order['orderId']
+            take_order_id = take_order.get('orderId')
+            if not take_order_id:
+                print(f"Take profit order missing 'orderId': {take_order}")
+                continue
 
             resp = self.client.trade.cancel_order(take_order_id, tool)
-
             print(f"TAKE ORDER CANCELLATION RESPONSE: {resp}")
 
     def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False,
@@ -485,16 +508,23 @@ class BingXExc(Exchange):
         dicts = []
 
         for position in positions:
+            tool_name = position['symbol']
+            db_pos = self.fresh_account.positions.get(tool__name=tool_name)
+            trade = db_pos.trade
+
             d = {
-                'tool': position['symbol'],
+                'tool': tool_name,
                 'pos_side': position['positionSide'],
                 'leverage': str(position['leverage']),
                 'volume': str(position['availableAmt']),
                 'margin': str(round(Decimal(position['margin']), 3)),
                 'avg_open': str(position['avgPrice']),
-                'pnl': str(
-                    mh.floor_to_digits(Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
-                                       4))
+                'current_pnl_risk_reward_ratio': str(
+                    mh.floor_to_digits(
+                        (Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit'])) / trade.risk_usd,
+                        4)),
+                'realized_pnl': str(mh.floor_to_digits(Decimal(position['unrealizedProfit']), 4)),
+                'open_date': str(db_pos.start_time)
             }
 
             dicts.append(d)

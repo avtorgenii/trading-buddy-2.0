@@ -22,7 +22,7 @@ def initialize_exchanges():
 
 
 # Comment out while doing migrations
-# initialize_exchanges()
+initialize_exchanges()
 
 from . import views
 from dj_rest_auth.registration.views import SocialLoginView
@@ -66,6 +66,7 @@ urlpatterns = [
     path('account/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
     # Trading under specific account
+    path('trading/tools/<str:tool_name>/leverages', views.get_max_leverages), # GET
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
     path('trading/positions/cancel/', views.cancel_position),  # POST
