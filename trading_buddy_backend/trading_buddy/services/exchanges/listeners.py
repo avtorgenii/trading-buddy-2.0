@@ -124,6 +124,9 @@ class BingXOrderListener(BingXListener):
         return tool, order_type, volume, avg_price, status, pnl, commission
 
     def place_takes_and_stops(self, tool, volume):
+        # Stopping price listener
+        self.exchange.delete_price_listener(tool)
+
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         pos_side, takes, stop, ls = pos.side, pos.take_profit_prices, pos.stop_price, pos.last_status
 
@@ -132,14 +135,17 @@ class BingXOrderListener(BingXListener):
         print(f"LAST                    STATUS OF           POSITION IS NOW: {ls}")
 
         # Placing stop-loss
-        self.exchange.place_stop_loss_order(tool, stop, volume, pos_side)
+        try:
+            self.exchange.place_stop_loss_order(tool, stop, volume, pos_side)
+        except Exception as e:
+            print(e)
 
         # Placing take-profits
         print(f"PLACING TAKE PROFITS: {takes}, {volume}")
-        self.exchange.place_take_profit_orders(tool, takes, volume, pos_side)
-
-        # Stopping price listener
-        self.exchange.delete_price_listener(tool)
+        try:
+            self.exchange.place_take_profit_orders(tool, takes, volume, pos_side)
+        except Exception as e:
+            print(e)
 
     def cancel_takes_and_stops(self, tool):
         self.exchange.cancel_stop_loss_for_tool(tool)

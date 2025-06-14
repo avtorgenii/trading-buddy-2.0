@@ -1,10 +1,4 @@
-from calendar import monthrange
-from datetime import datetime
-from http.client import responses
-
 from django.db import IntegrityError
-from django.db.models import Sum
-from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -14,8 +8,6 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
-
-from .models import Position, Account, Tool, Trade
 from .serializers import *
 from .services.exchanges.exchanges import Exchange, BingXExc
 
@@ -354,6 +346,28 @@ def get_preset_tools(request):
 
 
 ##### TRADING #####
+@extend_schema(
+    responses=MaxLeveragesSerializer
+)
+@api_view(['GET'])
+def get_max_leverages(request, tool_name):
+    """Tool name must be in appropriate exchange format"""
+    user = request.user
+    account = user.current_account
+    if not account:
+        return Response({"error": "No account is chosen as current "}, status=400)
+
+    exc = exc_map[account.exchange](account)
+    max_long, max_short = exc.get_max_leverage(tool_name)
+
+    serializer = MaxLeveragesSerializer(data={'max_long_leverage': max_long, 'max_short_leverage': max_short})
+
+    if serializer.is_valid():
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    else:
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # Get position data before opening
 @extend_schema(
     request=PositionToOpenSerializer,
