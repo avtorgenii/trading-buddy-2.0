@@ -13,7 +13,6 @@
 
 
 <div class="p-0">
-	<h1 class="text-2xl text-center font-bold mb-4">Trading Performance</h1>
 
 	<PnLCalendar data={myProfitLossData} />
 

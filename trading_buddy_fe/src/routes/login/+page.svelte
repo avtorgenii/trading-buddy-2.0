@@ -47,7 +47,7 @@
 
 	function handleGoogleLogin(event) {
 		event.preventDefault();
-		window.location.href = `http://127.0.0.1:8000/accounts/google/login/`;
+		window.location.href = `http://localhost:8000/accounts/google/login/`;
 	}
 </script>
 
