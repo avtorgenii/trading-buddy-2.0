@@ -1,171 +1,124 @@
 <script>
-	import NavMenu from '$lib/components/NavMenu.svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import PositionCard from '$lib/components/PositionCard.svelte';
 	import PendingCard from '$lib/components/PendingCard.svelte';
+	import { API_BASE_URL } from '$lib/config.js';
+	import { showErrorToast } from '$lib/toasts.js';
+	import { goto } from '$app/navigation';
 
-
+	let intervalId;
 	let positions = [];
 	let pendingPositions = [];
 	let isCurrentSelected = true;
 	let container;
 
+	let isLoading = true;
+
 	let screenWidth = 0;
 	$: isMobile = screenWidth < 768;
 
 	onMount(() => {
-			pendingPositions = getPendingPositions();
-
-			screenWidth = window.innerWidth;
-
-			window.addEventListener('resize', () => {
-				screenWidth = window.innerWidth;
-			});
-
-
-			positions = getCurrentPositions();
-			setInterval(() => {
-				positions = getCurrentPositions();
-			}, 5000);
+		async function loadInitialData() {
+			isLoading = true;
+			[positions, pendingPositions] = await Promise.all([
+				getCurrentPositions('BingX_MAIN'), // TODO: replace
+				getPendingPositions('BingX_MAIN')  // TODO: replace
+			]);
+			isLoading = false;
 		}
-	);
 
-	function getCurrentPositions() {
-		const generateRandomPnl = () => {
-			return parseFloat((Math.random() * 1000 - 700).toFixed(2));
-		};
+		loadInitialData();
 
-		return [
-			{
-				positionId: '12345',
-				margin: 123.45,
-				value: 123.45,
-				openDate: new Date('2024-05-01T10:00:00Z'),
-				realizedPnl: generateRandomPnl(),
-				currentPnl: generateRandomPnl(),
-				currentPnlPercent: 78.5,
-				ticker: 'BYBIT:BTCUSDT.P',
-				entryPrice: 170.25,
-				quantity: 10,
-				side: 'long',
-				stopLoss: 165.00,
-				takeProfit: 180.00
+		screenWidth = window.innerWidth;
+		window.addEventListener('resize', () => {
+			screenWidth = window.innerWidth;
+		});
 
-			},
-			{
-				positionId: '67890',
-				margin: 456.78,
-				value: 456.78,
-				openDate: new Date('2024-05-10T14:30:00Z'),
-				realizedPnl: generateRandomPnl(),
-				currentPnl: generateRandomPnl(),
-				currentPnlPercent: 30.2,
-				ticker: 'BYBIT:ETHUSDT.P',
-				entryPrice: 180.50,
-				quantity: 5,
-				side: 'short',
-				stopLoss: 185.00,
-				takeProfit: 170.00
-			},
-			{
-				positionId: '11223',
-				margin: 789.01,
-				value: 789.01,
-				openDate: new Date('2024-04-20T09:15:00Z'),
-				realizedPnl: generateRandomPnl(),
-				currentPnl: generateRandomPnl(),
-				currentPnlPercent: 45.0,
-				ticker: 'BYBIT:SOLUSDT.P',
-				entryPrice: 400.00,
-				quantity: 7,
-				side: 'long',
-				stopLoss: 390.00,
-				takeProfit: 420.00
-			}
-		];
+		intervalId = setInterval(async () => {
+			positions = await getCurrentPositions('BingX_MAIN'); // TODO: replace
+		}, 5000);
 	}
 
-	function getPendingPositions() {
-		return [
-			{
-				positionId: 'P-001',
-				ticker: 'BYBIT:BTCUSDT.P',
-				side: 'long',
-				leverage: 50,
-				quantity: 2.5,
-				cancelLevel: 105000.0,
-				takeProfit: 175000.0,
-				orderType: 'Limit',
-				margin: 172.0,
-				status: 'Open'
-			},
-			{
-				positionId: 'P-002',
-				ticker: 'BYBIT:ETHUSDT.P',
-				side: 'short',
-				leverage: 50,
-				quantity: 5,
-				cancelLevel: 2800.0,
-				takeProfit: 2700.0,
-				orderType: 'Limit',
-				margin: 180.0,
-				status: 'Open'
-			},
-			{
-				positionId: 'P-003',
-				ticker: 'BYBIT:SOLUSDT.P',
-				side: 'long',
-				leverage: 50,
-				quantity: 10,
-				cancelLevel: 210.0,
-				takeProfit: 410.0,
-				orderType: 'Limit',
-				margin: 410.0,
-				status: 'Open'
-			},
-			{
-				positionId: 'P-004',
-				ticker: 'BYBIT:XRPUSDT.P',
-				side: 'short',
-				leverage: 50,
-				quantity: 15,
-				cancelLevel: 0.55,
-				takeProfit: 0.50,
-				orderType: 'Stop',
-				margin: 0.50,
-				status: 'Open'
-			},
-			{
-				positionId: 'P-005',
-				ticker: 'BYBIT:ADAUSDT.P',
-				side: 'long',
-				leverage: 50,
-				quantity: 20,
-				cancelLevel: 1.25,
-				takeProfit: 1.30,
-				orderType: 'Stop',
-				margin: 1.20,
-				status: 'Open'
-			},
-			{
-				positionId: 'P-006',
-				ticker: 'BYBIT:DOGEUSDT.P',
-				side: 'short',
-				leverage: 50,
-				quantity: 30,
-				cancelLevel: 0.08,
-				takeProfit: 0.07,
-				orderType: 'Limit',
-				margin: 0.08,
-				status: 'Open'
+	)
+	onDestroy(() => {
+		clearInterval(intervalId);
+	});
+
+
+
+	async function getCurrentPositions(accountName) {
+		const url = `${API_BASE_URL}/trading/positions/current/${accountName}`;
+		console.log(`Fetching current positions from: ${url}`);
+
+		try {
+			const response = await fetch(url, { credentials: 'include' });
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch current positions');
 			}
-		];
+
+			const apiPositions = await response.json();
+
+			return apiPositions.map(pos => ({
+				positionId: pos.tool + pos.pos_side,
+				ticker: pos.tool,
+				side: pos.pos_side.toLowerCase(),
+				entryPrice: parseFloat(pos.avg_open),
+				quantity: parseFloat(pos.volume),
+				margin: parseFloat(pos.margin),
+				leverage: pos.leverage,
+				currentPnl: parseFloat(pos.pnl),
+				value: parseFloat(pos.volume) * parseFloat(pos.avg_open),
+				openDate: new Date(),
+				realizedPnl: 0,
+				currentPnlPercent: 0,
+				stopLoss: null,
+				takeProfit: null
+			}));
+
+		} catch (error) {
+			showErrorToast(error.message);
+			console.error(error);
+			return [];
+		}
+	}
+
+	async function getPendingPositions(accountName) {
+		const url = `${API_BASE_URL}/trading/positions/pending/${accountName}`;
+		console.log(`Fetching pending positions from: ${url}`);
+
+		try {
+			const response = await fetch(url, { credentials: 'include' });
+			if (!response.ok) {
+				throw new Error('Failed to fetch pending positions');
+			}
+			const apiPositions = await response.json();
+
+			return apiPositions.map(pos => ({
+				positionId: pos.tool + pos.pos_side + pos.entry_price,
+				ticker: pos.tool,
+				side: pos.pos_side.toLowerCase(),
+				leverage: parseInt(pos.leverage, 10),
+				quantity: parseFloat(pos.volume),
+				margin: parseFloat(pos.margin),
+				orderType: pos.trigger_price ? 'Stop' : 'Limit',
+				// API nie zwraca `status` i `takeProfit`, ustawiamy domyślne wartości
+				status: 'Open',
+				takeProfit: null,
+				cancelLevel: pos.cancel_levels && pos.cancel_levels.length > 0 ? parseFloat(pos.cancel_levels[0]) : null
+			}));
+
+		} catch (error) {
+			showErrorToast(error.message);
+			console.error(error);
+			return [];
+		}
 	}
 
 
 	function handleWheel(e) {
 		if (isMobile) return;
-		if (container.scrollWidth > container.clientWidth) {
+		if (container && container.scrollWidth > container.clientWidth) {
 			e.preventDefault();
 			container.scrollLeft += e.deltaY;
 		}
@@ -202,31 +155,41 @@
 				class="mt-4 flex {isMobile ? 'grid gap-24 grid-col-1' : 'flex-nowrap overflow-x-auto md:mx-2 scrollbar-win11'}"
 				on:wheel={handleWheel}
 			>
-				{#each positions as position (position.positionId)}
-					<PositionCard {position} />
-
+				{#if isLoading}
+					<div class="w-full flex items-center justify-center p-10">
+						<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
+					</div>
+				{:else if positions.length > 0}
+					{#each positions as position (position.positionId)}
+						<PositionCard {position} />
+					{/each}
 				{:else}
 					<div class="w-full px-2">
 						<p class="text-center text-zinc-400">No current positions.</p>
 					</div>
-				{/each}
+				{/if}
 			</div>
 		{:else}
-			<div class="flex flex-col max-h-1/5 mt-2 px-2 md:px-4 w-full md:w-3/5 mx-auto">
-				{#if pendingPositions.length === 0}
-					<p class="text-center text-zinc-400">No pending orders.</p>
+			<div class="flex flex-col mt-2 px-2 md:px-4 w-full md:w-full mx-auto">
+				{#if isLoading}
+					<div class="w-full flex items-center justify-center p-10">
+						<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
+					</div>
+				{:else if pendingPositions.length === 0}
+					<p class="text-center text-zinc-400 py-4">No pending orders.</p>
+				{:else}
+					<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
+						{#each pendingPositions as order (order.positionId)}
+							<PendingCard {order} on:cancel={1+1} />
+						{/each}
+					</div>
 				{/if}
-				<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
-					{#each pendingPositions as order (order.positionId)}
-						<PendingCard {order} on:cancel={1+1} />
-					{/each}
-				</div>
-
 			</div>
-
 		{/if}
 		<button
-			class=" mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg transition-colors duration-200 max-w-xs mx-auto">
+			class=" mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg transition-colors duration-200 max-w-xs mx-auto"
+			on:click={() => goto('/trade')}
+		>
 			Open a Trade
 		</button>
 

@@ -1,25 +1,51 @@
 <script>
+	import { onMount } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 
-	let accounts = [
-		{
-			id: crypto.randomUUID(),
-			exchange: 'BingX',
-			name: 'BingX_MAIN',
-			apiKey: 'abc-123-xyz',
-			secretKey: '********',
-			risk: 1.5,
-			isMain: true
-		}
-	];
+	let accounts = [];
+	let isLoading = true;
 
 	let settingsSaveStatus = 'idle';
-
-	let view = 'list'; // 'list' | 'form'
+	let view = 'list';
 	let currentlyEditingAccount = null;
-	const availableExchanges = ['ByBit', 'BingX'];
+	const availableExchanges = ['BingX', 'ByBit'];
+
+	async function loadAccounts() {
+		isLoading = true;
+		try {
+			const response = await fetch(`${API_BASE_URL}/accounts/`, {
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error('Could not fetch accounts.');
+			}
+
+			const apiAccounts = await response.json();
+
+			accounts = apiAccounts.map((acc, index) => ({
+				id: acc.id,
+				exchange: acc.exchange,
+				name: acc.name,
+				risk: parseFloat(acc.risk_percent),
+				isMain: index === 0, //TODO: add proper solution
+				apiKey: '********',
+				secretKey: '********'
+			}));
+
+		} catch (error) {
+			showErrorToast(error.message);
+		} finally {
+			isLoading = false;
+		}
+	}
+
+
+	onMount(() => {
+		loadAccounts();
+	});
 
 
 	function showAddForm() {
@@ -64,13 +90,13 @@
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				const errorMessage = errorData.detail;
+				const errorMessage = errorData.detail || Object.values(errorData)[0]?.[0];
 				throw new Error(errorMessage);
 			}
 
-			accounts = [...accounts, { ...currentlyEditingAccount, id: crypto.randomUUID() }];
 			showSuccessToast('Account created successfully!');
 			handleCancel();
+			await loadAccounts();
 
 		} catch (error) {
 			showErrorToast(error.message);
@@ -89,17 +115,15 @@
 				credentials: 'include',
 				headers : {
 					'X-CSRFToken': $csrfToken
-
 				}
-
 			});
 
 			if (!response.ok && response.status !== 204) {
 				throw new Error('Failed to delete account.');
 			}
 
-			accounts = accounts.filter(acc => acc.id !== accountId);
 			showSuccessToast('Account deleted successfully.');
+			await loadAccounts();
 
 		} catch (error) {
 			showErrorToast(error.message);
@@ -107,10 +131,12 @@
 	}
 
 	function setMainAccount(accountIdToSet) {
+		// TODO: add api
 		accounts = accounts.map(acc => ({
 			...acc,
 			isMain: acc.id === accountIdToSet
 		}));
+		showSuccessToast('Main account updated!');
 	}
 
 	function handleSaveAllSettings(event) {
@@ -140,33 +166,40 @@
 						</button>
 					</div>
 
-					<div class="space-y-3 mb-8">
-						{#each accounts as account (account.id)}
-							<div
-								class="bg-zinc-800 p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-								<div class="flex-1 text-center sm:text-left">
-									<p class="font-bold">{account.name}</p>
-									<p class="text-sm text-zinc-400">{account.exchange} &bull; Risk: {account.risk}%</p>
-								</div>
-								<div class="flex items-center justify-center gap-2">
-									{#if account.isMain}
-										<span class="px-3 py-1 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
-									{:else}
-										<button type="button" on:click={() => setMainAccount(account.id)}
-														class="text-xs px-3 py-1 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
-											as Main
-										</button>
-									{/if}
-
-									<button type="button" on:click={() => deleteAccount(account.id)}
-													class="py-1 px-3 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
-										Delete
-									</button>
-								</div>
+					<div class="space-y-3 mb-8 min-h-[10rem] relative">
+						<!-- ZMIANA: Dodano wskaźnik ładowania -->
+						{#if isLoading}
+							<div class="absolute inset-0 flex items-center justify-center">
+								<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
 							</div>
+						{:else if accounts.length > 0}
+							{#each accounts as account (account.id)}
+								<div
+									class="bg-zinc-800 p-4 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+									<div class="flex-1 text-center sm:text-left">
+										<p class="font-bold">{account.name}</p>
+										<p class="text-sm text-zinc-400">{account.exchange} &bull; Risk: {account.risk}%</p>
+									</div>
+									<div class="flex items-center justify-center gap-2">
+										{#if account.isMain}
+											<span class="px-3 py-1 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
+										{:else}
+											<button type="button" on:click={() => setMainAccount(account.id)}
+															class="text-xs px-3 py-1 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
+												as Main
+											</button>
+										{/if}
+
+										<button type="button" on:click={() => deleteAccount(account.id)}
+														class="py-1 px-3 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
+											Delete
+										</button>
+									</div>
+								</div>
+							{/each}
 						{:else}
 							<p class="text-zinc-500 text-center py-4">No accounts added yet.</p>
-						{/each}
+						{/if}
 					</div>
 				</div>
 
