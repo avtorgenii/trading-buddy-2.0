@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
+from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
 
 from .models import Position, Account, Tool, Trade
 from .serializers import *
@@ -164,18 +165,18 @@ def update_deposit(request):
 def user_accounts(request):
     user = request.user
 
-    if user:
-        if request.method == 'GET':
-            accounts = user.accounts.all()
-            serializer = AccountSerializer(accounts, many=True)
-            return Response(serializer.data, status=200)
+    if request.method == 'GET':
+        accounts = user.accounts.all()
+        serializer = AccountSerializer(accounts, many=True)
+        return Response(serializer.data, status=200)
 
-        elif request.method == 'POST':
-            serializer = AccountSerializer(data=request.data, context={'user': user})
-            if serializer.is_valid():
-                serializer.save()
-                return Response({"message": "Account created successfully"}, status=201)
-            return Response({"errors": serializer.errors}, status=400)
+    elif request.method == 'POST':
+        serializer = AccountSerializer(data=request.data, context={'user': user})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Account created successfully"}, status=201)
+        return Response({"errors": serializer.errors}, status=400)
+
     return Response({"error": "User doesn't exist"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -187,20 +188,26 @@ def delete_account(request, account_name):
     return Response({"message": "Account deleted successfully."}, status=200)
 
 
+@api_view(['POST'])
+def set_current_account(request, account_name):
+    user = request.user
+    account = get_object_or_404(Account, name=account_name, user=user)
+
+    user.current_account = account
+    user.save()
+    return Response({"message": "Account set as current successfully."}, status=200)
+
+
 # Get account details
 @extend_schema(
     responses=DepositAndAccountDataSerializer
 )
 @api_view(['GET'])
-def get_deposit_and_account_details(request, account_name):
-    if not account_name:
-        return Response({"error": "account_name is required"}, status=400)
-
+def get_deposit_and_account_details(request):
     user = request.user
-    account = user.accounts.filter(name=account_name).first()
-
-    if account is None:
-        return Response({"error": "account does not exist"}, status=400)
+    account = user.current_account
+    if not account:
+        return Response({"error": "No account is chosen as current "}, status=400)
 
     exc = exc_map[account.exchange](account)
 
@@ -223,59 +230,38 @@ def get_deposit_and_account_details(request, account_name):
     request=RiskSerializer,
 )
 @api_view(['PUT'])
-def update_risk_for_account(request, account_name):
+def update_risk_for_account(request):
     serializer = RiskSerializer(data=request.data)
 
     if serializer.is_valid():
         user = request.user
+        account = user.current_account
+        if not account:
+            return Response({"error": "No account is chosen as current."}, status=400)
 
-        user.accounts.filter(name=account_name).update(risk_percent=serializer.validated_data['risk_percent'])
+        account.update(risk_percent=serializer.validated_data['risk_percent'])
         return Response({"message": "Risk updated successfully."}, status=status.HTTP_200_OK)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(
-    responses=PnLCalendarSerializer
-)
 @api_view(['GET'])
-def pnl_calendar(request, year, month, account_name=None):
-    try:
-        year = int(year)
-        month = int(month)
-        start_date = datetime(year, month, 1)
-        end_day = monthrange(year, month)[1]
-        end_date = datetime(year, month, end_day, 23, 59, 59)
-    except ValueError:
-        return Response({"error": "Invalid year/month format. Use YYYY/MM"}, status=400)
+def pnl_calendar(request, year, month):
+    pnl_by_day, error = request.user.get_pnl_calendar_data(year, month, all_accounts=False)
+    if error:
+        return Response({"error": error}, status=400)
 
-    # Trades with end_time in range
-    trades = Trade.objects.filter(
-        end_time__isnull=False,
-        end_time__range=(start_date, end_date)
-    )
+    serializer = PnLCalendarSerializer({'pnl_by_day': pnl_by_day})
+    return Response(serializer.data)
 
-    # Filter by account
-    if account_name:
-        trades = trades.filter(account__name=account_name, account__user=request.user)
-    else:
-        user_accounts = Account.objects.filter(user=request.user)
-        trades = trades.filter(account__in=user_accounts)
 
-    # Aggregate PnL by day
-    trades = (
-        trades.annotate(day=TruncDate('end_time'))
-        .values('day')
-        .annotate(pnl=Sum('pnl_usd'))
-        .order_by('day')
-    )
+@extend_schema(responses=PnLCalendarSerializer)
+@api_view(['GET'])
+def pnl_calendar_all(request, year, month):
+    pnl_by_day, error = request.user.get_pnl_calendar_data(year, month, all_accounts=True)
 
-    pnl_by_day = {
-        trade['day'].strftime('%Y-%m-%d'): trade['pnl'] or 0
-        for trade in trades
-    }
-
-    print(pnl_by_day)
+    if error:
+        return Response({"error": error}, status=400)
 
     serializer = PnLCalendarSerializer({'pnl_by_day': pnl_by_day})
     return Response(serializer.data)
@@ -294,17 +280,17 @@ def pnl_calendar(request, year, month, account_name=None):
     methods=['GET', 'POST']
 )
 @api_view(['GET', 'POST'])
-def manage_tools(request, account_name):
+def manage_tools(request):
     user = request.user
-    account = user.accounts.filter(name=account_name).first()
+    account = user.current_account
 
     if account is None:
-        return Response({"error": "Account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     if request.method == 'GET':
         # Get all tools for the account
         tools = Tool.objects.filter(account=account)
-        serializer = ToolSerializer(tools, many=True)
+        serializer = ToolSerializer(tools, many=True, context={'preprocess_mode': account.exchange.lower()})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     elif request.method == 'POST':
@@ -324,10 +310,10 @@ def manage_tools(request, account_name):
 @api_view(['DELETE'])
 def remove_tool(request, account_name, tool_name):
     user = request.user
-    account = user.accounts.filter(name=account_name).first()
+    account = user.current_account
 
     if account is None:
-        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     tool = Tool.objects.filter(account=account, name=tool_name).first()
 
@@ -338,21 +324,31 @@ def remove_tool(request, account_name, tool_name):
     return Response({"message": "Tool removed successfully"}, status=204)
 
 
-# Get all tools under account, formatted for trading-view
 @extend_schema(
     responses=ToolSerializer(many=True),
 )
 @api_view(['GET'])
-def get_trading_view_tools(request, account_name, exchange):
-    """Exchange name in lower case"""
-    user = request.user
-    account = user.accounts.filter(name=account_name).first()
+def get_preset_tools(request):
+    suffix = '-USDT'
+    tool_names_bingx_format = ['BTC', 'XLM', 'GMT', 'ADA', 'TRU', 'LTC', 'POL', 'NEAR', 'TWT', 'FIL', 'LINK', 'APT',
+                               'ATOM', 'UNI', 'TAO', 'ONDO', 'RENDER', 'DOGE', 'TIA', 'OP', 'DOT', 'BNB', 'DUCK', 'WLD',
+                               'AVAX', 'VET', 'IOTA', 'KAS', 'ENA']
 
-    if account is None:
-        return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+    tool_names_bingx_format = [tool + suffix for tool in tool_names_bingx_format]
 
-    tools = Tool.objects.all()
-    serializer = ToolSerializer(tools, many=True, context={'preprocess_mode': exchange})
+    class DummyTool:
+        def __init__(self, name):
+            self.name = name
+
+    dummy_tools_for_serialization = [DummyTool(name) for name in tool_names_bingx_format]
+
+    preset_exchange_mode = 'binace'  # tools above are definitely available on binance
+
+    serializer = ToolSerializer(
+        dummy_tools_for_serialization,
+        many=True,
+        context={'preprocess_mode': preset_exchange_mode}
+    )
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -370,9 +366,9 @@ def process_position_data(request):
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     data = serializer.validated_data
-    account = request.user.accounts.filter(name=data['account_name']).first()
-    if not account:
-        return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+    account = request.user.current_account
+    if account is None:
+        return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     exc = exc_map[account.exchange](account)
 
@@ -415,7 +411,7 @@ def place_position(request):
     data = serializer.validated_data
 
     user = request.user
-    account = user.accounts.filter(name=data['account_name']).first()
+    account = user.current_account
     tool_name = data['tool']
 
     if account:
@@ -423,7 +419,7 @@ def place_position(request):
             return Response({"error": "Cannot open multiple positions with the same tool within one account"},
                             status=status.HTTP_400_BAD_REQUEST)
     else:
-        return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     if data.get('volume'):
         exc = exc_map[account.exchange](account)
@@ -449,10 +445,10 @@ def update_cancel_levels(request, account_name, tool_name):
     serializer = CancelLevelsSerializer(data=request.data)
     if serializer.is_valid():
         user = request.user
-        account = user.accounts.filter(name=account_name).first()
+        account = user.current_account
 
         if account is None:
-            return Response({"error": "account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
         account.positions.filter(tool__name=tool_name).update(cancel_levels=serializer.validated_data['cancel_levels'])
         return Response({"message": "cancel levels updated successfully"}, status=status.HTTP_200_OK)
@@ -471,7 +467,7 @@ def cancel_position(request):
         data = serializer.validated_data
 
         user = request.user
-        account = user.accounts.filter(name=data['account_name']).first()
+        account = user.current_account
         tool_name = data['tool']
 
         pos = account.positions.filter(tool__name=tool_name).first()
@@ -487,7 +483,7 @@ def cancel_position(request):
                 exc.cancel_primary_order_for_tool(tool_name)
                 return Response({"message": "Position cancelled successfully"}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -497,9 +493,9 @@ def cancel_position(request):
     responses=PendingPositionSerializer(many=True)
 )
 @api_view(['GET'])
-def get_pending_positions(request, account_name):
+def get_pending_positions(request):
     user = request.user
-    account = user.accounts.filter(name=account_name).first()
+    account = user.current_account
 
     if account:
         exc = exc_map[account.exchange](account)
@@ -511,7 +507,7 @@ def get_pending_positions(request, account_name):
 
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
 
 # Get current positions
@@ -519,9 +515,9 @@ def get_pending_positions(request, account_name):
     responses=CurrentPositionSerializer(many=True)
 )
 @api_view(['GET'])
-def get_current_positions(request, account_name):
+def get_current_positions(request):
     user = request.user
-    account = user.accounts.filter(name=account_name).first()
+    account = user.current_account
 
     if account:
         exc = exc_map[account.exchange](account)
@@ -533,4 +529,4 @@ def get_current_positions(request, account_name):
 
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({"error": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)

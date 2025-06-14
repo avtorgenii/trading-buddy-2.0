@@ -1,8 +1,11 @@
+from calendar import monthrange
+from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import ForeignKey
+from django.db.models import ForeignKey, Sum
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.contrib.postgres.fields import ArrayField
 
@@ -10,6 +13,44 @@ from django.contrib.postgres.fields import ArrayField
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     deposit = models.DecimalField(decimal_places=2, default=0.00, max_digits=20)
+    current_account = models.OneToOneField('Account', related_name='+', on_delete=models.SET_NULL, null=True,
+                                           blank=True)
+
+    def get_pnl_calendar_data(self, year, month, all_accounts=False):
+        try:
+            year = int(year)
+            month = int(month)
+            start_date = datetime(year, month, 1)
+            end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        except ValueError:
+            return None, "Invalid year/month format. Use YYYY/MM"
+
+        trades = Trade.objects.filter(
+            end_time__isnull=False,
+            end_time__range=(start_date, end_date)
+        )
+
+        if all_accounts:
+            user_accounts = self.accounts.all()
+            trades = trades.filter(account__in=user_accounts)
+        else:
+            if not self.current_account:
+                return None, "No account is chosen as current"
+            trades = trades.filter(account=self.current_account)
+
+        aggregated = (
+            trades.annotate(day=TruncDate('end_time'))
+            .values('day')
+            .annotate(pnl=Sum('pnl_usd'))
+            .order_by('day')
+        )
+
+        pnl_by_day = {
+            entry['day'].strftime('%Y-%m-%d'): entry['pnl'] or 0
+            for entry in aggregated
+        }
+
+        return pnl_by_day, None
 
 
 # Exchange account
@@ -34,32 +75,6 @@ class Tool(models.Model):
                             help_text="Tool name WITH exchange-appropriate suffix, e.g: BTC-USDT, not just BTC")
     account = models.ForeignKey(Account, related_name='tools',
                                 on_delete=models.CASCADE)  # when account is deleted, all tools are deleted as well
-
-    def to_bybit_trading_view_convention(self):
-        name = self.name.upper()
-        exchange_name = 'BYBIT'
-
-        # If there's a hyphen (e.g., WLD-USDT), split and return the base
-        if '-' in name:
-            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
-
-        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
-        for quote in ['USDT', 'USD']:
-            if name.endswith(quote):
-                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
-
-    def to_binance_trading_view_convention(self):
-        name = self.name.upper()
-        exchange_name = 'BINANCE'
-
-        # If there's a hyphen (e.g., WLD-USDT), split and return the base
-        if '-' in name:
-            return f'{exchange_name}:' + name.split('-')[0] + 'USDT.P'
-
-        # If it's concatenated (e.g., BTCUSDT), strip common quote currencies
-        for quote in ['USDT', 'USD']:
-            if name.endswith(quote):
-                return f'{exchange_name}:' + name[:-len(quote)] + 'USDT.P'
 
     class Meta:
         # Enforce that the combination of 'name' and 'user' must be unique
