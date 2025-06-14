@@ -12,6 +12,8 @@
 	let currentlyEditingAccount = null;
 	const availableExchanges = ['BingX', 'ByBit'];
 
+
+
 	async function loadAccounts() {
 		isLoading = true;
 		try {
@@ -25,12 +27,27 @@
 
 			const apiAccounts = await response.json();
 
+			const response2 = await fetch(`${API_BASE_URL}/auth/status/`, {
+				credentials: 'include'
+			});
+
+			if (!response2.ok) {
+				throw new Error('Could not fetch main account.');
+			}
+
+			const data = await response2.json();
+
+			let mainAccName;
+			if (data.current_account !== null)  mainAccName = data.current_account.name;
+			else mainAccName = '';
+
+
 			accounts = apiAccounts.map((acc, index) => ({
 				id: acc.id,
 				exchange: acc.exchange,
 				name: acc.name,
 				risk: parseFloat(acc.risk_percent),
-				isMain: index === 0, //TODO: add proper solution
+				isMain: acc.name === mainAccName,
 				apiKey: '********',
 				secretKey: '********'
 			}));
@@ -130,15 +147,37 @@
 		}
 	}
 
-	function setMainAccount(accountIdToSet) {
-		// TODO: add api
-		accounts = accounts.map(acc => ({
-			...acc,
-			isMain: acc.id === accountIdToSet
-		}));
-		showSuccessToast('Main account updated!');
-	}
+	async function setMainAccount(accountIdToSet) {
+		const accountToSet = accounts.find(acc => acc.id === accountIdToSet);
+		if (!accountToSet) return;
 
+		const accountName = accountToSet.name;
+		const url = `${API_BASE_URL}/accounts/${accountName}`;
+
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to set main account.');
+			}
+
+			accounts = accounts.map(acc => ({
+				...acc,
+				isMain: acc.id === accountIdToSet
+			}));
+
+			showSuccessToast(`'${accountName}' is now the main account!`);
+
+		} catch (error) {
+			showErrorToast(error.message);
+		}
+	}
 	function handleSaveAllSettings(event) {
 		event.preventDefault();
 		console.log('Saving settings...');
