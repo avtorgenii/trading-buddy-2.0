@@ -306,15 +306,13 @@
 </div>
 
 <style>
-    /* Ten styl celuje specyficznie w nasze pole input i nadpisuje domyślne style focusa */
     .deposit-input:focus {
         outline: none;
         border: none;
         box-shadow: none;
-        -webkit-box-shadow: none; /* Dla kompatybilności ze starszymi przeglądarkami */
+        -webkit-box-shadow: none;
     }
 
-    /* Ten styl usuwa strzałki (spinners) z pól numerycznych */
     .deposit-input::-webkit-inner-spin-button,
     .deposit-input::-webkit-outer-spin-button {
         -webkit-appearance: none;
@@ -322,7 +320,6 @@
     }
 
     .deposit-input[type='number'] {
-        /* Dla Firefoxa */
-        -moz-appearance: textfield;
+]        -moz-appearance: textfield;
     }
 </style>

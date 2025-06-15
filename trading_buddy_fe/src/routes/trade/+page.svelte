@@ -2,9 +2,11 @@
 	import { onMount } from 'svelte';
 	import Select from 'svelte-select';
 	import TradingViewWidget from '$lib/components/TradingViewWidget.svelte';
-	import { showErrorToast } from '$lib/toasts.js';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { csrfToken } from '$lib/stores.js';
+	import { goto } from '$app/navigation';
+	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
+
 
 	let items = [];
 
@@ -17,7 +19,7 @@
 
 	let leverage = 1;
 	let entryPrice = null;
-	let cancelLevel = null;
+	let triggerLevel = null;
 	let stopLoss = null;
 	let leverageLimits = { max_long_leverage: 100, max_short_leverage: 100 };
 
@@ -34,6 +36,7 @@
 	let riskRewardRatio = null;
 
 	let debounceTimeout;
+	let isSubmitting = false;
 
 	let mainAcc = null;
 
@@ -123,6 +126,8 @@
 
 			leverageLimits = await response.json();
 
+			leverage = leverageLimits.max_long_leverage;
+
 			console.log('Updated leverage limits:', leverageLimits);
 		} catch (error) {
 			showErrorToast(error.message);
@@ -135,18 +140,9 @@
 	}
 
 
-	function getCurrentPrice(tickerLabel) {
-		return 105000;
-	}
 
 	$: isLong = entryPrice && stopLoss ? entryPrice > stopLoss : null;
 
-	$: {
-		const riskAmount = accountBalance * (riskPercent / 100);
-		const currentPrice = getCurrentPrice(selectedTicker.label);
-
-
-	}
 
 
 	function addTakeProfit() {
@@ -170,11 +166,11 @@
 		const payload = {
 			account_name: mainAcc,
 			tool: selectedTicker.exchangeFormat,
-			trigger_p: 0,
+			trigger_p: triggerLevel,
 			entry_p: entryPrice,
 			stop_p: stopLoss,
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
-			move_stop_after: moveSLToBEIndex || 0,
+			move_stop_after: moveSLToBEIndex +1 || 0,
 			leverage: leverage,
 			volume: positionSize
 		};
@@ -209,6 +205,52 @@
 
 		} catch (error) {
 			console.error('Failed to process position data:', error);
+		}
+	}
+
+	async function handleOpenTrade() {
+		isSubmitting = true;
+
+		if (!mainAcc || !selectedTicker || !entryPrice || !stopLoss || !leverage || !takeProfits[0]?.price) {
+			showErrorToast('Please fill all required fields.');
+			isSubmitting = false;
+			return;
+		}
+
+		const payload = {
+			account_name: mainAcc,
+			tool: selectedTicker.exchangeFormat,
+			trigger_p: triggerLevel,
+			entry_p: entryPrice,
+			stop_p: stopLoss,
+			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
+			move_stop_after: moveSLToBEIndex +1,
+			leverage: leverage,
+			volume: positionSize
+		};
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/trading/positions/place/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to place position.');
+			}
+
+			showSuccessToast('Position placed successfully!');
+			await goto("/positions")
+		} catch (error) {
+			showErrorToast(error.message);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -303,11 +345,11 @@
 			</div>
 
 			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Cancel:</span>
+				<span class="text-zinc-400 w-24 text-start">Trigger:</span>
 				<input
-					bind:value={cancelLevel}
+					bind:value={triggerLevel}
 					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Cancel Level"
+					placeholder="Trigger Level (Optional)"
 					type="number"
 				/>
 			</div>
@@ -393,13 +435,15 @@
 				</div>
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Risk reward ratio:</span>
-					<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(2)}` : '-'}</span>
+					<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(0)}` : '-'}</span>
 				</div>
 			</div>
 
 			<button
 				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
             transition-colors duration-200 max-w-xs mx-auto"
+				disabled={isSubmitting}
+				on:click={handleOpenTrade()}
 			>
 				Open {isLong ? 'Long' : "Short"}
 			</button>

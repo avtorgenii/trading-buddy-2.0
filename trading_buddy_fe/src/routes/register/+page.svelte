@@ -63,7 +63,7 @@
 
 	function handleGoogleRegistration(event) {
 		event.preventDefault();
-		alert('Google registartion');
+		window.location.href = `http://localhost:8000/accounts/google/login/`;
 	}
 </script>
 <div class="page-wrapper flex items-center flex-col ">

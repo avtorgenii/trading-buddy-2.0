@@ -36,7 +36,7 @@
 		<!-- Chart -->
 		<div class="bg-zinc-800 rounded-t-2xl flex items-center justify-center p-1">
 			<div class="w-full h-64 md:h-90 lg:h-96 xl:h-106">
-				<TradingViewWidget class="w-full h-full" symbol={position.ticker} />
+				<TradingViewWidget class="w-full h-full" symbol={position.tradingViewFormat} />
 			</div>
 		</div>
 		<!-- Data -->
@@ -70,7 +70,7 @@
 						class:!text-green-600={position.currentPnl >= 0}
 						class:!text-red-500={position.currentPnl < 0}
 					>
-						P&L: {$animatedPnl.toFixed(2)}$ ({$animatedPnlPercent.toFixed(1)}%)
+						P&L: {$animatedPnl.toFixed(2)}$
 					</p>
 
 					<p
@@ -92,8 +92,8 @@
 					Close
 				</button>
 				<div class="mt-5">
-					<p class="text-sm text-zinc-400">TP: {position.takeProfit.toFixed(2)}$</p>
-					<p class="text-sm text-zinc-400">SL: {position.takeProfit.toFixed(2)}$</p>
+<!--					<p class="text-sm text-zinc-400">TP: {position.takeProfit.toFixed(2)}$</p>-->
+<!--					<p class="text-sm text-zinc-400">SL: {position.takeProfit.toFixed(2)}$</p>-->
 
 				</div>
 
