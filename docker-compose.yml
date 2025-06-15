@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
     container_name: tb-frontend
     ports:
-      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+      - "${FRONTEND_PORT}:3000"
     env_file:
       - .env
 
