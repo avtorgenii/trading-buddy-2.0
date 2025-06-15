@@ -6,7 +6,7 @@
 3. For now, manual cancellation of any order on the exchange side, breaks logic flow.
 4. Exchange restricts placing Stop-loss order above current price, so unless your take-profits are meticulously near your entry price, or are take-losses actually, you should be fine,
    otherwise you may need to place stop-loss orders manually on exchange side 
-5. If you have opened position on exchange side, but it is not in database, it won't show up in your current positions
+5. If you have opened position on exchange side, but it is not in database, it won't show up in your current and pending positions
 
 # General info
 1. All datetimes are in UTC

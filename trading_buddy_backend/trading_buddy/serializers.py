@@ -307,6 +307,18 @@ class PendingPositionSerializer(serializers.Serializer):
         for field in ['entry_price', 'trigger_price', 'margin', 'volume']:
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
+
+        if data['trigger_price'] == 0:
+            data['trigger_price'] = None
+
+        if 'cancel_levels' in data and data['cancel_levels'] is not None:
+            cleaned_levels = []
+            for val in data['cancel_levels']:
+                if val is None:
+                    cleaned_levels.append(None)
+                else:
+                    cleaned_levels.append(clean_decimal_str(Decimal(val)))
+            data['cancel_levels'] = cleaned_levels
         return data
 
 
@@ -335,7 +347,7 @@ class CurrentPositionSerializer(serializers.Serializer):
         return data
 
 
-class CancelPendingPositionSerializer(serializers.Serializer):
+class ToolExchangeFormatSerializer(serializers.Serializer):
     tool = serializers.CharField()
 
 

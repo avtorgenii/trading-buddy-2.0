@@ -32,7 +32,6 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "deposit": 200.05
 }
 {
-    "account_name": "BingX",
     "tool": "WLD-USDT",
     "trigger_p": "1.0600",
     "entry_p": "1.0500",
@@ -42,7 +41,6 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "leverage": "20"
 }
 {
-    "account_name": "BingX",
     "tool": "WLD-USDT",
     "trigger_p": "0",
     "entry_p": "1.12",
@@ -51,6 +49,16 @@ from .services.exchanges.exchanges import Exchange, BingXExc
     "move_stop_after": "1",
     "leverage": "20",
     "volume": "2"
+}
+{
+    "tool": "TRU-USDT",
+    "trigger_p": null,
+    "entry_p": "0.033",
+    "stop_p": "0.035",
+    "take_profits": ["0.03", "0.02"],
+    "move_stop_after": "1",
+    "leverage": "20",
+    "volume": "100"
 }
 {
   "side": "LONG",
@@ -487,11 +495,11 @@ def update_cancel_levels(request, account_name, tool_name):
 
 # Cancel pending position
 @extend_schema(
-    request=CancelPendingPositionSerializer
+    request=ToolExchangeFormatSerializer
 )
 @api_view(['POST'])
 def cancel_position(request):
-    serializer = CancelPendingPositionSerializer(data=request.data)
+    serializer = ToolExchangeFormatSerializer(data=request.data)
     if serializer.is_valid():
         data = serializer.validated_data
 
@@ -515,6 +523,31 @@ def cancel_position(request):
             return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=ToolExchangeFormatSerializer
+)
+@api_view(['POST'])
+def close_position_by_market(request):
+    serializer = ToolExchangeFormatSerializer(data=request.data)
+    if serializer.is_valid():
+        data = serializer.validated_data
+
+        user = request.user
+        account = user.current_account
+
+        tool_name = data['tool']
+        exc = exc_map[account.exchange](account)
+
+        result = exc.close_by_market(tool_name)
+
+        if result == "Closing market order placed successfully":
+            return Response({"message": result}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Get pending positions

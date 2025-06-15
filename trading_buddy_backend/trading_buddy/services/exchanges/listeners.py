@@ -228,7 +228,7 @@ class BingXOrderListener(BingXListener):
 
         pos.close_position()
 
-    def on_take_profit(self, tool, volume, new_pnl, new_commission, status):
+    def on_take_profit(self, tool, volume, new_pnl, new_commission):
         print(f"{self.__class__.__name__}: FILLING TAKE_PROFIT")
 
         # Cancel previous stop-loss and place new if stop-loss wasn't moved yet
@@ -237,8 +237,8 @@ class BingXOrderListener(BingXListener):
 
         pos.pnl_usd = pnl + new_pnl
         pos.commission_usd = commission + new_commission
-        pos.last_status = "TAKE-PROFIT"
 
+        # If last status of entry order was partially_filled, and we already reached take-profit, cancel primary order
         if last_status == "PARTIALLY_FILLED":
             self.exchange.cancel_primary_order_for_tool(tool, only_cancel=True)
 
@@ -267,6 +267,16 @@ class BingXOrderListener(BingXListener):
         else:
             pos.save()
 
+    def on_close_by_market(self, tool, volume, new_pnl, new_commission, status):
+        pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
+
+        pos.pnl_usd += new_pnl
+        pos.commission_usd += new_commission
+
+        pos.save()
+        pos.close_position()
+
+
     def on_message(self, ws, message):
         utf8_data = super().on_message(ws, message)
 
@@ -281,20 +291,25 @@ class BingXOrderListener(BingXListener):
 
                 print(f"DATA FOR NEW ORDER: {utf8_data}")
 
-                if order_type == "TRIGGER_LIMIT" or order_type == "LIMIT":
+                if order_type == "TRIGGER_LIMIT" or order_type == "LIMIT":  # entry
                     if status == "FILLED":
                         self.on_fill_primary_order(tool, avg_price, volume, commission)
 
                     elif status == "PARTIALLY_FILLED":
                         self.on_partial_fill_primary_order(tool, avg_price, volume, commission)
 
-                elif order_type == "STOP_MARKET":  # CHECK IF THIS WORKS IN FUTURE
+                # CHECK IF THIS WORKS IN FUTURE
+                elif order_type == "STOP_MARKET":  # stop-loss
                     if status == "PARTIALLY_FILLED" or status == "FILLED":
                         self.on_stop(tool, pnl, commission)
 
-                elif order_type == "TAKE_PROFIT_MARKET":
+                elif order_type == "TAKE_PROFIT_MARKET":  # take-profit
                     if status == "PARTIALLY_FILLED" or status == "FILLED":
-                        self.on_take_profit(tool, volume, pnl, commission, status)
+                        self.on_take_profit(tool, volume, pnl, commission)
+
+                elif order_type == "MARKET":  # closing position by market
+                    if status == "PARTIALLY_FILLED" or status == "FILLED":
+                        self.on_close_by_market(tool, volume, pnl, commission, status)
 
     def on_close(self, ws, close_status_code, close_msg):
         super().on_close(ws, close_status_code, close_msg)
