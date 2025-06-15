@@ -45,8 +45,8 @@ urlpatterns = [
     path('deposit/', views.update_deposit),  # PUT
 
     # Account(s)
-    path('accounts/', views.user_accounts),  # GET, POST
     path('accounts/<str:account_name>', views.set_current_account),  # POST
+    path('accounts/', views.user_accounts),  # GET, POST
     path('account/', views.delete_account),  # DELETE
     path('account/details/', views.get_deposit_and_account_details),  # GET
     path('account/risk-percent/', views.update_risk_for_account),  # PUT
