@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_email
 from rest_framework import serializers
-from .models import Position, Account, Tool
+from .models import Account
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 """
@@ -128,8 +128,8 @@ class ToolSerializer(serializers.Serializer):
     Serializes a Tool object, with the ability to dynamically format
     the trading_view_format based on the exchange specified in the context.
     """
-    label = serializers.CharField()
-    trading_view_format = serializers.CharField()
+    label = serializers.CharField(write_only=True)
+    trading_view_format = serializers.CharField(write_only=True)
     exchange_format = serializers.CharField()
 
     def _get_trading_view_convention(self, name: str, exchange_name: str) -> str:
@@ -231,7 +231,7 @@ class PnLCalendarSerializer(serializers.Serializer):
 class PositionToOpenSerializer(serializers.Serializer):
     account_name = serializers.CharField()
     tool = serializers.CharField()
-    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0)
+    trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0, allow_null=True)
     entry_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     stop_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
     take_profits = serializers.ListField(

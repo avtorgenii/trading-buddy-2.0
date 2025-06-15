@@ -8,6 +8,8 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
+
+from .models import Tool
 from .serializers import *
 from .services.exchanges.exchanges import Exchange, BingXExc
 
