@@ -1,8 +1,9 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
+	import { API_BASE_URL } from '$lib/config.js';
+	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 
 	export let order;
-
 	const dispatch = createEventDispatcher();
 
 	let showLevelsModal = false;
@@ -36,14 +37,31 @@
 
 	function getStringAfterColon(inputString) {
 		const parts = inputString.split(':');
-		if (parts.length > 1) {
-			return parts.slice(1).join(':');
-		}
-		return inputString;
+		return parts.length > 1 ? parts.slice(1).join(':') : inputString;
 	}
 
-	function handleCancel() {
-		dispatch('cancel', { positionId: order.positionId });
+	async function handleCancel() {
+		try {
+			const res = await fetch(
+				`${API_BASE_URL}/api/v1/trading/positions/cancel/`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({ tool: order.positionId })
+				}
+			);
+
+			if (!res.ok) {
+				const errText = await res.text();
+				throw new Error(errText || 'Failed to cancel position.');
+			}
+
+			showSuccessToast('Position cancelled.');
+			dispatch('cancel', { positionId: order.positionId });
+		} catch (err) {
+			showErrorToast(err.message);
+		}
 	}
 </script>
 
@@ -57,7 +75,9 @@
 
 		<div class="p-4 flex-grow flex flex-row">
 			<div class="w-1/5 text-start">
-				<p class="uppercase border-l-4 px-2.5 mb-1 {order.side === 'long' ? 'border-l-green-600' : 'border-l-red-600'}">
+				<p
+					class="uppercase border-l-4 px-2.5 mb-1
+                 {order.side === 'long' ? 'border-l-green-600' : 'border-l-red-600'}">
 					{order.side}
 				</p>
 				<p class="text-sm text-zinc-400">Qty: {order.quantity}</p>
@@ -78,16 +98,14 @@
 				<button
 					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2 border-zinc-600 w-20 transition-colors"
 					on:click={handleCancel}
-					tabindex="0"
 					type="button">
 					Cancel
 				</button>
 				<button
-					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2  w-20 transition-colors"
-					class:border-red-600={!order.cancelLevel || !order.takeProfit }
-					class:border-green-600={order.cancelLevel && order.takeProfit }
+					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2 w-20 transition-colors"
+					class:border-green-600={order.cancelLevel && order.takeProfit}
+					class:border-red-600={!order.cancelLevel || !order.takeProfit}
 					on:click={openModal}
-					tabindex="0"
 					type="button">
 					Levels
 				</button>
@@ -97,28 +115,21 @@
 </div>
 
 {#if showLevelsModal}
-	<div
-		class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
-	>
+	<div class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
 		<div class="bg-zinc-900 rounded-2xl shadow-xl shadow-white/10 p-6 w-full max-w-sm">
 			<h3 class="text-2xl font-bold mb-6 text-center">Cancel levels</h3>
 
 			<div class="space-y-4">
 				<div>
 					<label class="block mb-2 text-sm text-zinc-400" for="cancel-level">
-						{#if order.side === 'long'}
-							Overlow
-						{:else}
-							Overhigh
-						{/if}
+						{#if order.side === 'long'} Overlow{:else} Overhigh{/if}
 					</label>
 					<input
 						id="cancel-level"
 						bind:value={editableLevels.cancelLevel}
 						type="number"
 						class="bg-zinc-800 rounded-xl px-4 py-3 w-full"
-						placeholder="Price"
-					/>
+						placeholder="Price" />
 				</div>
 
 				<div>
@@ -128,22 +139,19 @@
 						bind:value={editableLevels.takeProfit}
 						type="number"
 						class="bg-zinc-800 rounded-xl px-4 py-3 w-full"
-						placeholder="Price"
-					/>
+						placeholder="Price" />
 				</div>
 			</div>
 
 			<div class="flex space-x-4 pt-8">
 				<button
 					class="py-2 px-4 w-full rounded-xl hover:bg-zinc-700 border-2 border-zinc-600 transition-colors"
-					on:click={closeModal}
-				>
+					on:click={closeModal}>
 					Cancel
 				</button>
 				<button
 					class="py-2 px-4 w-full rounded-xl bg-blue-800 hover:bg-blue-700 transition-colors"
-					on:click={handleSaveLevels}
-				>
+					on:click={handleSaveLevels}>
 					Save
 				</button>
 			</div>

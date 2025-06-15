@@ -11,19 +11,24 @@
 	let currentlyEditingAccount = null;
 	const availableExchanges = ['BingX', 'ByBit'];
 
-	let mainAccountDeposit = null;
+	let deposit = null;
 	let depositDebounceTimer;
 
 	async function loadData() {
 		isLoading = true;
 		try {
-			const [accResponse, statusResponse] = await Promise.all([
+			const [accResponse, statusResponse, depositResponse] = await Promise.all([
 				fetch(`${API_BASE_URL}/accounts/`, { credentials: 'include' }),
-				fetch(`${API_BASE_URL}/auth/status/`, { credentials: 'include' })
+				fetch(`${API_BASE_URL}/auth/status/`, { credentials: 'include' }),
+				fetch(`${API_BASE_URL}/account/details/`, { credentials: 'include' })
 			]);
 
 			if (!accResponse.ok) throw new Error('Could not fetch accounts.');
 			if (!statusResponse.ok) throw new Error('Could not fetch main account status.');
+			if (!depositResponse.ok) throw new Error('Could not fetch deposit.');
+			const depositData = await depositResponse.json();
+			deposit = parseFloat(depositData.deposit);
+
 
 			const apiAccounts = await accResponse.json();
 			const statusData = await statusResponse.json();
@@ -37,9 +42,6 @@
 				isMain: acc.name === mainAccName
 			}));
 
-			if (mainAccName) {
-				await loadMainAccountDetails();
-			}
 
 		} catch (error) {
 			showErrorToast(error.message);
@@ -48,19 +50,9 @@
 		}
 	}
 
-	async function loadMainAccountDetails() {
-		try {
-			const response = await fetch(`${API_BASE_URL}/account/details/`, { credentials: 'include' });
-			if (!response.ok) throw new Error('Failed to fetch main account deposit.');
-			const data = await response.json();
-			mainAccountDeposit = parseFloat(data.deposit);
-		} catch (error) {
-			showErrorToast(error.message);
-		}
-	}
 
 	async function updateDeposit() {
-		if (mainAccountDeposit === null || mainAccountDeposit < 0) return;
+		if (deposit === null || deposit < 0) return;
 
 		try {
 			const response = await fetch(`${API_BASE_URL}/deposit/`, {
@@ -70,7 +62,7 @@
 					'X-CSRFToken': $csrfToken
 				},
 				credentials: 'include',
-				body: JSON.stringify({ deposit: mainAccountDeposit })
+				body: JSON.stringify({ deposit: deposit })
 			});
 
 			if (!response.ok) throw new Error('Failed to update deposit.');
@@ -189,6 +181,18 @@
 
 		{#if view === 'list'}
 			<h2 class="text-3xl font-bold mb-6 text-center">Settings</h2>
+
+			<div class="mb-4">
+				<label class="block mb-2 text-left" for="deposit-field">Deposit</label>
+				<input
+					id="deposit-field"
+					type="number"
+					placeholder="0.00"
+					bind:value={deposit}
+					on:input={handleDepositInput}
+					class="bg-zinc-800 deposit-input rounded-xl px-4 py-3 w-full text-left"
+				/>
+			</div>
 			<form class="flex flex-col h-full" on:submit={handleSaveAllSettings}>
 				<div class="flex-grow">
 					<div class="flex justify-between items-center mb-4">
@@ -215,23 +219,8 @@
 									<div class="flex items-center justify-center gap-2 flex-wrap">
 										{#if account.isMain}
 											<span class="px-3 py-2 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
-											<div class="flex items-center bg-zinc-700 rounded-full px-3 py-1">
-												<span class="text-zinc-400 text-sm">$</span>
-												<input
-													type="number"
-													placeholder="Deposit"
-													class="deposit-input bg-transparent text-white font-mono w-10 pl-1 text-left border-0 focus:outline-none focus:ring-0 text-xs"
-													bind:value={mainAccountDeposit}
-													on:input={handleDepositInput}
-													on:keydown={(e) => {
-														if (e.key === 'Enter') {
-															e.preventDefault();
-															e.stopPropagation();
-														}
-													}}
-
-												/>
-											</div>
+<!--											<div class="flex items-center bg-zinc-700 rounded-full px-3 py-1">-->
+<!--											</div>-->
 										{:else}
 											<button type="button" on:click={() => setMainAccount(account.id)}
 															class="text-xs px-3 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
@@ -257,6 +246,7 @@
 					Save Settings
 				</button>
 			</form>
+
 
 		{:else}
 			<h2 class="text-3xl font-bold mb-10 text-center">New Account</h2>
@@ -306,12 +296,6 @@
 </div>
 
 <style>
-    .deposit-input:focus {
-        outline: none;
-        border: none;
-        box-shadow: none;
-        -webkit-box-shadow: none;
-    }
 
     .deposit-input::-webkit-inner-spin-button,
     .deposit-input::-webkit-outer-spin-button {
@@ -320,6 +304,6 @@
     }
 
     .deposit-input[type='number'] {
-]        -moz-appearance: textfield;
+    ] -moz-appearance: textfield;
     }
 </style>

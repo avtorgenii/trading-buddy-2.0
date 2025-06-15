@@ -37,7 +37,7 @@
 <svelte:window bind:innerWidth={screenWidth} />
 
 {#if isMobile}
-	<div class="flex justify-between mb-10 border-b border-b-zinc-800 pb-4 ">
+	<div class="flex justify-between mb-8 border-b border-b-zinc-800 pb-4 ">
 		<h1 class="text-3xl font-bold">Trading buddy</h1>
 		<button
 			class="border rounded px-2 py-1"
