@@ -123,6 +123,31 @@ class DepositAndAccountDataSerializer(serializers.Serializer):
         return data
 
 
+def get_trading_view_convention(name: str, exchange_name: str) -> str:
+    """
+    Private helper method to convert a tool's exchange format name
+    into the convention required by TradingView for perpetual contracts.
+
+    Example:
+        - ("WLD-USDT", "BYBIT") -> "BYBIT:WLDUSDT.P"
+        - ("BTCUSDT", "BINANCE") -> "BINANCE:BTCUSDT.P"
+    """
+    base_name = name
+    exchange_name = exchange_name.upper()
+
+    # If there's a hyphen (e.g., WLD-USDT), split and use the base
+    if '-' in name:
+        base_name = name.split('-')[0]
+    # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
+    else:
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                base_name = name[:-len(quote)]
+                break  # Exit loop once a match is found
+
+    return f'{exchange_name}:{base_name}USDT.P'
+
+
 class ToolSerializer(serializers.Serializer):
     """
     Serializes a Tool object, with the ability to dynamically format
@@ -131,30 +156,6 @@ class ToolSerializer(serializers.Serializer):
     label = serializers.CharField(write_only=True)
     trading_view_format = serializers.CharField(write_only=True)
     exchange_format = serializers.CharField()
-
-    def _get_trading_view_convention(self, name: str, exchange_name: str) -> str:
-        """
-        Private helper method to convert a tool's exchange format name
-        into the convention required by TradingView for perpetual contracts.
-
-        Example:
-            - ("WLD-USDT", "BYBIT") -> "BYBIT:WLDUSDT.P"
-            - ("BTCUSDT", "BINANCE") -> "BINANCE:BTCUSDT.P"
-        """
-        base_name = name
-        exchange_name = exchange_name.upper()
-
-        # If there's a hyphen (e.g., WLD-USDT), split and use the base
-        if '-' in name:
-            base_name = name.split('-')[0]
-        # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
-        else:
-            for quote in ['USDT', 'USD']:
-                if name.endswith(quote):
-                    base_name = name[:-len(quote)]
-                    break  # Exit loop once a match is found
-
-        return f'{exchange_name}:{base_name}USDT.P'
 
     def _get_label(self, name: str) -> str:
         """
@@ -195,7 +196,7 @@ class ToolSerializer(serializers.Serializer):
             return data  # Return default data if source name is not available
 
         data['exchange_format'] = source_name
-        data['trading_view_format'] = self._get_trading_view_convention(source_name, preprocess_mode.upper())
+        data['trading_view_format'] = get_trading_view_convention(source_name, preprocess_mode.upper())
         data['label'] = self._get_label(source_name)
 
         return data
@@ -229,7 +230,6 @@ class PnLCalendarSerializer(serializers.Serializer):
 
 ##### TRADING #####
 class PositionToOpenSerializer(serializers.Serializer):
-    account_name = serializers.CharField()
     tool = serializers.CharField()
     trigger_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20, min_value=0, allow_null=True)
     entry_p = serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20)
@@ -291,7 +291,8 @@ class ProcessedPositionToOpenSerializer(serializers.Serializer):
 
 class PendingPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
-    trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0, allow_null=True)
+    trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0,
+                                             allow_null=True)
     pos_side = serializers.CharField(max_length=5)
     entry_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
@@ -311,9 +312,11 @@ class PendingPositionSerializer(serializers.Serializer):
 
 class CurrentPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
+    trading_view_format = serializers.CharField(read_only=True)
     avg_open = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)
     pos_side = serializers.CharField(max_length=5)
     realized_pnl = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    current_pnl = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
@@ -322,18 +325,18 @@ class CurrentPositionSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        for field in ['avg_open', 'realized_pnl', 'margin', 'volume', 'current_pnl_risk_reward_ratio']:
+        for field in ['avg_open', 'realized_pnl', 'margin', 'volume', 'current_pnl_risk_reward_ratio', 'current_pnl']:
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
 
         data['open_date'] = datetime.fromisoformat(data['open_date'].replace("Z", "+00:00")).strftime("%B %d, %Y %H:%M")
+        data['trading_view_format'] = get_trading_view_convention(data['tool'], self.context.get('exchange'))
 
         return data
 
 
 class CancelPendingPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
-    account_name = serializers.CharField()
 
 
 class CancelLevelsSerializer(serializers.Serializer):
