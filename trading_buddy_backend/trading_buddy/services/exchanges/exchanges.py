@@ -92,6 +92,9 @@ class Exchange:
                                  pos_side: PositionSide) -> None:
         raise NotImplementedError("Method not implemented")
 
+    def close_by_market(self, tool: str) -> str:
+        raise NotImplementedError("Method not implemented")
+
     def get_orders_for_tool(self, tool: str) -> Dict[str, Any]:
         raise NotImplementedError("Method not implemented")
 
@@ -439,7 +442,7 @@ class BingXExc(Exchange):
         print(f"PRIMARY ORDER CANCELLATION RESPONSE: {resp}")
 
         if not only_cancel:
-            # LAST IS CRUCIAL, as we only fetch trades by name of tool, and some unique ID within whole account
+            # last() IS CRUCIAL, as we only fetch trades by name of tool, and not some unique ID within whole account
             trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
             if save_to_db:
                 # For positions closing, cancellation via overhigh/overlow and automatic cancellation of orders when reached take-profit level, their data is being saved into database
@@ -475,6 +478,20 @@ class BingXExc(Exchange):
             self.client.trade.create_order(order)
 
             print(f"PLACED TP: {take_profit}, volume: {volume}")
+
+    def close_by_market(self, tool: str) -> str:
+        trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
+
+        pos = Position.objects.filter(pk=trade.position.pk).first()
+
+        order_side = Side.SELL if pos.side == "LONG" else Side.BUY
+        order = Order(symbol=tool, side=order_side, positionSide=pos.side, quantity=pos.current_volume)
+
+        try:
+            self.client.trade.close_order(order)
+            return "Closing market order placed successfully"
+        except Exception as e:
+            return f"Position wasn't closed: {e}"
 
     def get_orders_for_tool(self, tool: str) -> Dict[str, Any]:
         """
