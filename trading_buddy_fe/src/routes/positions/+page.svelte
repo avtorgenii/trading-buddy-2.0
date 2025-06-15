@@ -69,9 +69,9 @@
 				leverage: pos.leverage,
 				currentPnl: parseFloat(pos.pnl),
 				value: parseFloat(pos.volume) * parseFloat(pos.avg_open),
-				openDate: new Date(),
-				realizedPnl: 0,
-				currentPnlPercent: 0,
+				openDate: new Date(pos.open_date),
+				realizedPnl: pos.realized_pnl,
+				currentPnlPercent: pos.current_pnl_risk_reward_ratio,
 				stopLoss: null,
 				takeProfit: null
 			}));
@@ -102,7 +102,6 @@
 				margin: parseFloat(pos.margin),
 				orderType: pos.trigger_price ? 'Stop' : 'Limit',
 				// API nie zwraca `status` i `takeProfit`, ustawiamy domyślne wartości
-				status: 'Open',
 				takeProfit: null,
 				cancelLevel: pos.cancel_levels && pos.cancel_levels.length > 0 ? parseFloat(pos.cancel_levels[0]) : null
 			}));
