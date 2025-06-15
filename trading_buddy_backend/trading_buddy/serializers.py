@@ -258,6 +258,11 @@ class PositionToOpenSerializer(serializers.Serializer):
         take_profits = data.get('take_profits', [])
         entry_p = data.get('entry_p')
         stop_p = data.get('stop_p')
+        trigger_p = data.get('trigger_p')
+
+        # If frontend sends trigger_p as null, convert it to 0, which basically means that we are trying to open limit order
+        if trigger_p is None:
+            data['trigger_p'] = 0
 
         if take_profits:
             if entry_p > stop_p:
