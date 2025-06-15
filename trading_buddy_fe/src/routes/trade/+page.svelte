@@ -2,19 +2,24 @@
 	import { onMount } from 'svelte';
 	import Select from 'svelte-select';
 	import TradingViewWidget from '$lib/components/TradingViewWidget.svelte';
+	import { showErrorToast } from '$lib/toasts.js';
+	import { API_BASE_URL } from '$lib/config.js';
+	import { csrfToken } from '$lib/stores.js';
 
 	let items = [];
 
-	let selectedTicker = { value: 'BYBIT:BTCUSDT', label: 'BTCUSD' };
+	let selectedTicker = { value: null, label: null, exchangeFormat: null };
 	let screenWidth = 0;
 	$: isMobile = screenWidth < 768;
 
-	let accountBalance = 1000;
-	let riskPercent = 1;
+	let accountBalance = 0;
+	let riskPercent = 0;
+
 	let leverage = 1;
 	let entryPrice = null;
 	let cancelLevel = null;
 	let stopLoss = null;
+	let leverageLimits = { max_long_leverage: 100, max_short_leverage: 100 };
 
 	let takeProfits = [
 		{ price: null }
@@ -27,6 +32,107 @@
 	let potentialLoss = null;
 	let potentialProfit = null;
 	let riskRewardRatio = null;
+
+	let debounceTimeout;
+
+	let mainAcc = null;
+
+	async function getMainAccount() {
+		try {
+			const response = await fetch(`${API_BASE_URL}/auth/status/`, {
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error('Could not fetch main account.');
+			}
+
+			const data = await response.json();
+
+			let mainAccName;
+			if (data.current_account !== null) {
+				mainAccName = data.current_account.name;
+			} else {
+				mainAccName = '';
+				throw new Error('Main account is not set');
+			}
+			return mainAccName
+
+
+		} catch (error) {
+			showErrorToast('Failed to get main account');
+
+			console.log('Failed to get main account', error);
+		}
+	}
+	async function loadAccountDetails() {
+		try {
+			const response = await fetch(`${API_BASE_URL}/account/details/`, {
+				credentials: 'include'
+			});
+			if (!response.ok) {
+				throw new Error('Could not fetch account details.');
+			}
+			const data = await response.json();
+
+			accountBalance = parseFloat(data.available_margin).toFixed(2);
+			riskPercent = parseFloat(data.risk_percent);
+
+		} catch (error) {
+			showErrorToast(error.message);
+			console.error('Failed to get account details', error);
+		}
+	}
+
+
+	async function loadTradableTickers() {
+		try {
+			const response = await fetch(`${API_BASE_URL}/trading/tools/`, {
+				credentials: 'include'
+			});
+
+
+			if (!response.ok) {
+				throw new Error('Could not fetch tradable tickers.');
+			}
+
+			const apiTools = await response.json();
+
+			console.log(apiTools);
+
+			return apiTools.map(tool => ({
+				label: tool.label,
+				value: tool.trading_view_format,
+				exchangeFormat: tool.exchange_format
+
+			}));
+
+		} catch (error) {
+			showErrorToast(error.message);
+			console.error(error);
+			return [];
+		}
+	}
+
+	async function fetchLeverageLimits(ticker) {
+		if (!ticker || !ticker.exchangeFormat) return;
+		try {
+			const url = `${API_BASE_URL}/trading/tools/${ticker.exchangeFormat}/leverages`;
+			const response = await fetch(url, { credentials: 'include' });
+			if (!response.ok) throw new Error('Could not fetch leverage limits.');
+
+			leverageLimits = await response.json();
+
+			console.log('Updated leverage limits:', leverageLimits);
+		} catch (error) {
+			showErrorToast(error.message);
+			leverageLimits = { max_long_leverage: 100, max_short_leverage: 100 };
+		}
+	}
+
+	$: if (selectedTicker) {
+		fetchLeverageLimits(selectedTicker);
+	}
 
 
 	function getCurrentPrice(tickerLabel) {
@@ -51,25 +157,73 @@
 		takeProfits = takeProfits.filter((_, index) => index !== indexToRemove);
 
 		if (moveSLToBEIndex >= indexToRemove && moveSLToBEIndex > 0) {
-			moveSLToBEIndex = moveSLToBEIndex -1;
+			moveSLToBEIndex = moveSLToBEIndex - 1;
 		}
 	}
 
-	function getPossibleTickers() {
-		return [
-			{ value: 'BYBIT:BTCUSDT', label: 'BTCUSD' },
-			{ value: 'BYBIT:ETHUSDT', label: 'ETHUSD' },
-			{ value: 'BYBIT:SOLUSDT', label: 'SOLUSD' },
-			{ value: 'BYBIT:ADAUSDT', label: 'ADAUSD' },
-			{ value: 'BYBIT:XRPUSDT', label: 'XRPUSD' },
-			{ value: 'BYBIT:DOGEUSDT', label: 'DOGEUSD' },
-			{ value: 'BYBIT:BNBUSDT', label: 'BNBUSD' }
-		];
+	async function processPositionData() {
+		if (!mainAcc || !selectedTicker || !entryPrice || !stopLoss || !leverage) {
+			return;
+		}
+
+
+		const payload = {
+			account_name: mainAcc,
+			tool: selectedTicker.exchangeFormat,
+			trigger_p: 0,
+			entry_p: entryPrice,
+			stop_p: stopLoss,
+			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
+			move_stop_after: moveSLToBEIndex || 0,
+			leverage: leverage,
+			volume: positionSize
+		};
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/trading/positions/process/`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				console.error('API processing error:', await response.json());
+				return;
+			}
+
+			const results = await response.json();
+
+			requiredMargin = parseFloat(results.margin);
+			potentialLoss = parseFloat(results.potential_loss);
+			potentialProfit = parseFloat(results.potential_profit);
+
+			if (potentialProfit > 0 && potentialLoss > 0) {
+				riskRewardRatio = potentialProfit / potentialLoss;
+			} else {
+				riskRewardRatio = null;
+			}
+
+		} catch (error) {
+			console.error('Failed to process position data:', error);
+		}
 	}
 
-	onMount(() => {
-		items = getPossibleTickers();
+	$: if (entryPrice, stopLoss, leverage, positionSize, takeProfits, selectedTicker, mainAcc) {
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(processPositionData, 500);
+	}
+
+
+
+	onMount(async () => {
+		items = await loadTradableTickers();
 		selectedTicker = items.at(0);
+		mainAcc = await getMainAccount();
+		if (mainAcc) await loadAccountDetails();
 		screenWidth = window.innerWidth;
 		window.addEventListener('resize', () => {
 			screenWidth = window.innerWidth;
@@ -225,10 +379,6 @@
 				<!--					<span class="text-zinc-400">Pos. size:</span>-->
 				<!--					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>-->
 				<!--				</div>-->
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Required margin:</span>
-					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
-				</div>
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Required margin:</span>
 					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
