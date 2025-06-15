@@ -286,7 +286,7 @@ class ProcessedPositionToOpenSerializer(serializers.Serializer):
 
 class PendingPositionSerializer(serializers.Serializer):
     tool = serializers.CharField()
-    trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)
+    trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0, allow_null=True)
     pos_side = serializers.CharField(max_length=5)
     entry_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)

@@ -550,7 +550,7 @@ class BingXExc(Exchange):
                     'volume': str(pos.primary_volume),
                     'margin': str(round(Decimal(pos.entry_price * pos.primary_volume / pos.leverage), 3)),
                     'trigger_price': str(pos.trigger_price),
-                    'cancel_levels': [str(level) for level in pos.cancel_levels],
+                    'cancel_levels': [str(level) if level is not None else level for level in pos.cancel_levels],
                 }
 
                 dicts.append(d)
