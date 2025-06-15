@@ -124,7 +124,7 @@ class Position(models.Model):
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not
 
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
-    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
+    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text='Trading fees, is always negative')
 
     account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
@@ -137,7 +137,7 @@ class Position(models.Model):
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
         self.trade.volume = sum(item[1] for item in self.fill_history)
-        self.trade.pnl_usd = self.pnl_usd - self.commission_usd
+        self.trade.pnl_usd = self.pnl_usd + self.commission_usd # commission is always with '-' sign
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
         self.trade.save()

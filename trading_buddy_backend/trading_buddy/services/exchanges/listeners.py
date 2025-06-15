@@ -160,7 +160,7 @@ class BingXOrderListener(BingXListener):
         time.sleep(3)
 
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        left_volume_to_fill, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
+        left_volume_to_fill, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.last_status, pos.fill_history
 
         if last_status == "PARTIALLY_FILLED":
             # If order was previously partially filled - call partial fill func once again
@@ -174,7 +174,8 @@ class BingXOrderListener(BingXListener):
             pos.entry_price = avg_price  # ABSOLUTELY CRUCIAL FOR MOVING STOP-LOSS TO BREAK-EVEN
             pos.last_status = "FILLED"
             pos.current_volume = volume
-            pos.commission_usd = commission + new_commission
+            pos.commission_usd += new_commission
+            print(f"Fill primary order commission: {new_commission}")
             pos.start_time = timezone.now()
             pos.fill_history = fill_history
             pos.save()
@@ -219,10 +220,9 @@ class BingXOrderListener(BingXListener):
 
     def on_stop(self, tool, new_pnl, new_commission):
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        commission, pnl = pos.commission_usd, pos.pnl_usd
 
-        pos.pnl_usd = pnl + new_pnl
-        pos.commission_usd = commission + new_commission
+        pos.pnl_usd += new_pnl
+        pos.commission_usd += new_commission
         pos.last_status = "STOP"
         pos.save()
 
@@ -233,10 +233,10 @@ class BingXOrderListener(BingXListener):
 
         # Cancel previous stop-loss and place new if stop-loss wasn't moved yet
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        breakeven, pnl, commission, last_status = pos.breakeven, pos.pnl_usd, pos.commission_usd, pos.last_status
+        breakeven, last_status = pos.breakeven, pos.last_status
 
-        pos.pnl_usd = pnl + new_pnl
-        pos.commission_usd = commission + new_commission
+        pos.pnl_usd += new_pnl
+        pos.commission_usd += new_commission
 
         # If last status of entry order was partially_filled, and we already reached take-profit, cancel primary order
         if last_status == "PARTIALLY_FILLED":
@@ -272,6 +272,7 @@ class BingXOrderListener(BingXListener):
 
         pos.pnl_usd += new_pnl
         pos.commission_usd += new_commission
+        print(f"Close by market: {new_commission}")
 
         pos.save()
         pos.close_position()

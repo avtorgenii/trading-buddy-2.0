@@ -12,13 +12,15 @@ services:
       db:
         condition: service_healthy
 
-#  frontend:
-#    build:
-#      context: .
-#      dockerfile: trading_buddy_fe/Dockerfile
-#    container_name: tb-frontend
-#    ports:
-#      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+  frontend:
+    build:
+      context: trading_buddy_fe/
+      dockerfile: Dockerfile
+    container_name: tb-frontend
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    env_file:
+      - .env
 
   db:
     image: postgres
