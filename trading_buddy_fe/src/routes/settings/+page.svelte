@@ -6,51 +6,40 @@
 
 	let accounts = [];
 	let isLoading = true;
-
 	let settingsSaveStatus = 'idle';
 	let view = 'list';
 	let currentlyEditingAccount = null;
 	const availableExchanges = ['BingX', 'ByBit'];
 
+	let mainAccountDeposit = null;
+	let depositDebounceTimer;
 
-
-	async function loadAccounts() {
+	async function loadData() {
 		isLoading = true;
 		try {
-			const response = await fetch(`${API_BASE_URL}/accounts/`, {
-				credentials: 'include'
-			});
+			const [accResponse, statusResponse] = await Promise.all([
+				fetch(`${API_BASE_URL}/accounts/`, { credentials: 'include' }),
+				fetch(`${API_BASE_URL}/auth/status/`, { credentials: 'include' })
+			]);
 
-			if (!response.ok) {
-				throw new Error('Could not fetch accounts.');
-			}
+			if (!accResponse.ok) throw new Error('Could not fetch accounts.');
+			if (!statusResponse.ok) throw new Error('Could not fetch main account status.');
 
-			const apiAccounts = await response.json();
+			const apiAccounts = await accResponse.json();
+			const statusData = await statusResponse.json();
+			const mainAccName = statusData.current_account?.name;
 
-			const response2 = await fetch(`${API_BASE_URL}/auth/status/`, {
-				credentials: 'include'
-			});
-
-			if (!response2.ok) {
-				throw new Error('Could not fetch main account.');
-			}
-
-			const data = await response2.json();
-
-			let mainAccName;
-			if (data.current_account !== null)  mainAccName = data.current_account.name;
-			else mainAccName = '';
-
-
-			accounts = apiAccounts.map((acc, index) => ({
+			accounts = apiAccounts.map(acc => ({
 				id: acc.id,
 				exchange: acc.exchange,
 				name: acc.name,
 				risk: parseFloat(acc.risk_percent),
-				isMain: acc.name === mainAccName,
-				apiKey: '********',
-				secretKey: '********'
+				isMain: acc.name === mainAccName
 			}));
+
+			if (mainAccName) {
+				await loadMainAccountDetails();
+			}
 
 		} catch (error) {
 			showErrorToast(error.message);
@@ -59,21 +48,53 @@
 		}
 	}
 
+	async function loadMainAccountDetails() {
+		try {
+			const response = await fetch(`${API_BASE_URL}/account/details/`, { credentials: 'include' });
+			if (!response.ok) throw new Error('Failed to fetch main account deposit.');
+			const data = await response.json();
+			mainAccountDeposit = parseFloat(data.deposit);
+		} catch (error) {
+			showErrorToast(error.message);
+		}
+	}
+
+	async function updateDeposit() {
+		if (mainAccountDeposit === null || mainAccountDeposit < 0) return;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/deposit/`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: JSON.stringify({ deposit: mainAccountDeposit })
+			});
+
+			if (!response.ok) throw new Error('Failed to update deposit.');
+
+			showSuccessToast('Deposit updated!');
+		} catch (error) {
+			showErrorToast(error.message);
+		}
+	}
+
+	function handleDepositInput() {
+		clearTimeout(depositDebounceTimer);
+		depositDebounceTimer = setTimeout(updateDeposit, 750);
+	}
 
 	onMount(() => {
-		loadAccounts();
+		loadData();
 	});
 
 
 	function showAddForm() {
 		currentlyEditingAccount = {
-			id: null,
-			exchange: availableExchanges[0],
-			name: '',
-			apiKey: '',
-			secretKey: '',
-			risk: 1,
-			isMain: accounts.length === 0
+			id: null, exchange: availableExchanges[0], name: '', apiKey: '',
+			secretKey: '', risk: 1, isMain: accounts.length === 0
 		};
 		view = 'form';
 	}
@@ -86,35 +107,26 @@
 
 	async function saveAccount() {
 		if (!currentlyEditingAccount) return;
-
 		const payload = {
-			name: currentlyEditingAccount.name,
-			exchange: currentlyEditingAccount.exchange,
-			risk_percent: currentlyEditingAccount.risk,
-			api_key: currentlyEditingAccount.apiKey,
+			name: currentlyEditingAccount.name, exchange: currentlyEditingAccount.exchange,
+			risk_percent: currentlyEditingAccount.risk, api_key: currentlyEditingAccount.apiKey,
 			secret_key: currentlyEditingAccount.secretKey
 		};
-
 		try {
 			const response = await fetch(`${API_BASE_URL}/accounts/`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json',
-					'X-CSRFToken': $csrfToken
-				},
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $csrfToken },
 				credentials: 'include',
 				body: JSON.stringify(payload)
 			});
-
 			if (!response.ok) {
 				const errorData = await response.json();
 				const errorMessage = errorData.detail || Object.values(errorData)[0]?.[0];
 				throw new Error(errorMessage);
 			}
-
 			showSuccessToast('Account created successfully!');
 			handleCancel();
-			await loadAccounts();
-
+			await loadData();
 		} catch (error) {
 			showErrorToast(error.message);
 		}
@@ -123,25 +135,18 @@
 	async function deleteAccount(accountId) {
 		const accountToDelete = accounts.find(acc => acc.id === accountId);
 		if (!accountToDelete) return;
-
 		const accountName = accountToDelete.name;
-
 		try {
 			const response = await fetch(`${API_BASE_URL}/accounts/${accountName}/`, {
 				method: 'DELETE',
 				credentials: 'include',
-				headers : {
-					'X-CSRFToken': $csrfToken
-				}
+				headers: { 'X-CSRFToken': $csrfToken }
 			});
-
 			if (!response.ok && response.status !== 204) {
 				throw new Error('Failed to delete account.');
 			}
-
 			showSuccessToast('Account deleted successfully.');
-			await loadAccounts();
-
+			await loadData();
 		} catch (error) {
 			showErrorToast(error.message);
 		}
@@ -150,34 +155,23 @@
 	async function setMainAccount(accountIdToSet) {
 		const accountToSet = accounts.find(acc => acc.id === accountIdToSet);
 		if (!accountToSet) return;
-
 		const accountName = accountToSet.name;
 		const url = `${API_BASE_URL}/accounts/${accountName}`;
-
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
-				headers: {
-					'X-CSRFToken': $csrfToken
-				},
+				headers: { 'X-CSRFToken': $csrfToken },
 				credentials: 'include'
 			});
-
-			if (!response.ok) {
-				throw new Error('Failed to set main account.');
-			}
-
-			accounts = accounts.map(acc => ({
-				...acc,
-				isMain: acc.id === accountIdToSet
-			}));
+			if (!response.ok) throw new Error('Failed to set main account.');
 
 			showSuccessToast(`'${accountName}' is now the main account!`);
-
+			await loadData();
 		} catch (error) {
 			showErrorToast(error.message);
 		}
 	}
+
 	function handleSaveAllSettings(event) {
 		event.preventDefault();
 		console.log('Saving settings...');
@@ -206,7 +200,6 @@
 					</div>
 
 					<div class="space-y-3 mb-8 min-h-[10rem] relative">
-						<!-- ZMIANA: Dodano wskaźnik ładowania -->
 						{#if isLoading}
 							<div class="absolute inset-0 flex items-center justify-center">
 								<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
@@ -219,18 +212,35 @@
 										<p class="font-bold">{account.name}</p>
 										<p class="text-sm text-zinc-400">{account.exchange} &bull; Risk: {account.risk}%</p>
 									</div>
-									<div class="flex items-center justify-center gap-2">
+									<div class="flex items-center justify-center gap-2 flex-wrap">
 										{#if account.isMain}
-											<span class="px-3 py-1 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
+											<span class="px-3 py-2 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
+											<div class="flex items-center bg-zinc-700 rounded-full px-3 py-1">
+												<span class="text-zinc-400 text-sm">$</span>
+												<input
+													type="number"
+													placeholder="Deposit"
+													class="deposit-input bg-transparent text-white font-mono w-10 pl-1 text-left border-0 focus:outline-none focus:ring-0 text-xs"
+													bind:value={mainAccountDeposit}
+													on:input={handleDepositInput}
+													on:keydown={(e) => {
+														if (e.key === 'Enter') {
+															e.preventDefault();
+															e.stopPropagation();
+														}
+													}}
+
+												/>
+											</div>
 										{:else}
 											<button type="button" on:click={() => setMainAccount(account.id)}
-															class="text-xs px-3 py-1 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
+															class="text-xs px-3 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
 												as Main
 											</button>
 										{/if}
 
 										<button type="button" on:click={() => deleteAccount(account.id)}
-														class="py-1 px-3 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
+														class="py-2 px-4 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
 											Delete
 										</button>
 									</div>
@@ -251,7 +261,6 @@
 		{:else}
 			<h2 class="text-3xl font-bold mb-10 text-center">New Account</h2>
 			<form class="space-y-5" on:submit|preventDefault={saveAccount}>
-
 				<div>
 					<label class="block mb-2 text-left" for="exchange-select">Exchange</label>
 					<select id="exchange-select" bind:value={currentlyEditingAccount.exchange}
@@ -261,32 +270,27 @@
 						{/each}
 					</select>
 				</div>
-
 				<div>
 					<label class="block mb-2 text-left" for="account-name">Name</label>
 					<input id="account-name" bind:value={currentlyEditingAccount.name}
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="e.g. My Main Account" required />
 				</div>
-
 				<div>
 					<label class="block mb-2 text-left" for="account-risk">Risk per trade (%)</label>
 					<input id="account-risk" bind:value={currentlyEditingAccount.risk}
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" type="number" min="0.1" max="100" step="0.1"
 								 required />
 				</div>
-
 				<div>
 					<label class="block mb-2 text-left" for="api-key">API Key</label>
 					<input id="api-key" bind:value={currentlyEditingAccount.apiKey}
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="API key" required />
 				</div>
-
 				<div>
 					<label class="block mb-2 text-left" for="secret-key">Secret Key</label>
 					<input id="secret-key" bind:value={currentlyEditingAccount.secretKey}
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="Secret Key" required type="password" />
 				</div>
-
 				<div class="flex space-x-4 pt-6">
 					<button type="button" on:click={handleCancel}
 									class="bg-zinc-700 hover:bg-zinc-600 py-3 rounded-xl w-full transition-colors">
@@ -298,6 +302,27 @@
 				</div>
 			</form>
 		{/if}
-
 	</div>
 </div>
+
+<style>
+    /* Ten styl celuje specyficznie w nasze pole input i nadpisuje domyślne style focusa */
+    .deposit-input:focus {
+        outline: none;
+        border: none;
+        box-shadow: none;
+        -webkit-box-shadow: none; /* Dla kompatybilności ze starszymi przeglądarkami */
+    }
+
+    /* Ten styl usuwa strzałki (spinners) z pól numerycznych */
+    .deposit-input::-webkit-inner-spin-button,
+    .deposit-input::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .deposit-input[type='number'] {
+        /* Dla Firefoxa */
+        -moz-appearance: textfield;
+    }
+</style>
