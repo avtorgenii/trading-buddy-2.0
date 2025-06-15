@@ -62,12 +62,13 @@
 			return apiPositions.map(pos => ({
 				positionId: pos.tool + pos.pos_side,
 				ticker: pos.tool,
+				tradingViewFormat: pos.trading_view_format,
 				side: pos.pos_side.toLowerCase(),
 				entryPrice: parseFloat(pos.avg_open),
 				quantity: parseFloat(pos.volume),
 				margin: parseFloat(pos.margin),
 				leverage: pos.leverage,
-				currentPnl: parseFloat(pos.pnl),
+				currentPnl: parseFloat(pos.current_pnl),
 				value: parseFloat(pos.volume) * parseFloat(pos.avg_open),
 				openDate: new Date(pos.open_date),
 				realizedPnl: pos.realized_pnl,
@@ -100,8 +101,7 @@
 				leverage: parseInt(pos.leverage, 10),
 				quantity: parseFloat(pos.volume),
 				margin: parseFloat(pos.margin),
-				orderType: pos.trigger_price ? 'Stop' : 'Limit',
-				// API nie zwraca `status` i `takeProfit`, ustawiamy domyślne wartości
+				orderType: 'Limit',
 				takeProfit: null,
 				cancelLevel: pos.cancel_levels && pos.cancel_levels.length > 0 ? parseFloat(pos.cancel_levels[0]) : null
 			}));
