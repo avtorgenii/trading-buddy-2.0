@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { Motion } from 'svelte-motion';
-	export let user = null;
+	import { API_BASE_URL } from '$lib/config';
+	import { csrfToken } from '$lib/stores';
+	import { showErrorToast, showSuccessToast } from '$lib/toasts';
 
+	export let user = null;
 
 	let screenWidth = 0;
 	let mobileOpen = false;
@@ -21,6 +24,31 @@
 		? [...baseNavs, { name: 'Log out', link: '/logout' }]
 		: [...baseNavs, { name: 'Log in', link: '/login' }];
 
+	async function handleLogout(event: MouseEvent) {
+		event.preventDefault();
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error('Logout failed. Please try again.');
+			}
+
+			showSuccessToast('Successfully logged out!');
+
+			window.location.href = '/login';
+
+		} catch (error) {
+			showErrorToast(error.message);
+		}
+	}
+
 	let positionMotion = (node: HTMLElement) => {
 		let refNode = () => {
 			let mint = node.getBoundingClientRect();
@@ -29,8 +57,7 @@
 			opacity = 1;
 		};
 		node.addEventListener('mouseenter', refNode);
-		return {
-		};
+		return {};
 	};
 </script>
 
@@ -47,8 +74,16 @@
 		</button>
 	</div>
 
+	{#if mobileOpen}
+		<div
+			class="fixed inset-0 bg-black/50 z-40"
+			on:click={() => mobileOpen = false}
+			aria-hidden="true"
+		></div>
+	{/if}
+
 	<div
-		class="fixed top-0 right-0 h-full w-3/4 bg-zinc-900 transform transition-transform duration-300 z-50 {mobileOpen ? 'translate-x-0' : 'translate-x-full'}"
+		class="fixed top-0 right-0 h-full w-3/4 max-w-sm bg-zinc-900 transform transition-transform duration-300 z-50 {mobileOpen ? 'translate-x-0' : 'translate-x-full'}"
 	>
 		<div class="flex justify-end p-4">
 			<button class="text-2xl" on:click={() => (mobileOpen = false)}>
@@ -58,13 +93,11 @@
 		<ul class="flex flex-col space-y-2 px-4">
 			{#each navs as item}
 				<li class="px-4 py-3 border border-zinc-700 rounded-2xl bg-zinc-900 hover:bg-blue-700">
-					<a
-						href={item.link}
-						on:click={() => (mobileOpen = false)}
-						class="block"
-					>
-						{item.name}
-					</a>
+					{#if item.name === 'Log out'}
+						<a href="#" on:click|preventDefault={handleLogout} class="block w-full">{item.name}</a>
+					{:else}
+						<a href={item.link} on:click={() => (mobileOpen = false)} class="block w-full">{item.name}</a>
+					{/if}
 				</li>
 			{/each}
 		</ul>
@@ -74,31 +107,25 @@
 	<div class="py-10 w-full">
 		<ul
 			on:mouseleave={() => {
-        width = width;
-        left = left;
         opacity = 0;
       }}
-			class="relative mx-auto flex w-fit rounded-full border-2 border-zinc-700 bg-zinc-900 p-1">
+			class="relative mx-auto flex w-fit rounded-full border-2 border-zinc-700 bg-zinc-900 p-1"
+		>
 			{#each navs as item, i}
 				<li
 					use:positionMotion
-					class="relative z-10 block cursor-pointer px-3 py-2    text-white  md:px-5 md:py-3 md:text-base"
+					class="relative z-10 block cursor-pointer px-3 py-2 text-white md:px-5 md:py-3 md:text-base"
 				>
-					<a class="text-lg" href={item.link}>{item.name}</a>
+					{#if item.name === 'Log out'}
+						<a href="#" class="text-lg" on:click|preventDefault={handleLogout}>{item.name}</a>
+					{:else}
+						<a class="text-lg" href={item.link}>{item.name}</a>
+					{/if}
 				</li>
 			{/each}
 			<Motion
-				animate={{
-          left: left,
-          width: width,
-          opacity: opacity,
-        }}
-				transition={{
-          type: "spring",
-          stiffness: 400,
-          damping: 30,
-
-        }}
+				animate={{ left, width, opacity }}
+				transition={{ type: "spring", stiffness: 400, damping: 30 }}
 				let:motion
 			>
 				<li
