@@ -552,7 +552,7 @@ def get_current_positions(request):
         exc = exc_map[account.exchange](account)
         pending_data = exc.get_current_positions_info()  # list of dicts
 
-        serializer = CurrentPositionSerializer(data=pending_data, many=True)
+        serializer = CurrentPositionSerializer(data=pending_data, many=True, context={'exchange': account.exchange})
         if serializer.is_valid():
             return Response(serializer.data, status=status.HTTP_200_OK)
 

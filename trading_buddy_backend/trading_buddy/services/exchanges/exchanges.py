@@ -509,7 +509,12 @@ class BingXExc(Exchange):
 
         for position in positions:
             tool_name = position['symbol']
-            db_pos = self.fresh_account.positions.get(tool__name=tool_name)
+            try:
+                db_pos = self.fresh_account.positions.get(tool__name=tool_name)
+            except Position.DoesNotExist as e:
+                print(str(e) + f" for {tool_name}: there are open positions on server, but they aren't in database.")
+                continue
+
             trade = db_pos.trade
 
             d = {
@@ -519,11 +524,15 @@ class BingXExc(Exchange):
                 'volume': str(position['availableAmt']),
                 'margin': str(round(Decimal(position['margin']), 3)),
                 'avg_open': str(position['avgPrice']),
-                'current_pnl_risk_reward_ratio': str(
-                    mh.floor_to_digits(
+                'current_pnl_risk_reward_ratio':
+                    str(mh.floor_to_digits(
                         (Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit'])) / trade.risk_usd,
                         4)),
-                'realized_pnl': str(mh.floor_to_digits(Decimal(position['unrealizedProfit']), 4)),
+                'realized_pnl': str(mh.floor_to_digits(Decimal(position['realisedProfit']), 4)),
+                'current_pnl':
+                    str(mh.floor_to_digits(
+                        Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
+                        4)),
                 'open_date': str(db_pos.start_time)
             }
 
