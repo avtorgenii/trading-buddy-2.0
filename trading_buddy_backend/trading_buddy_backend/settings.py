@@ -29,11 +29,8 @@ sys.path.insert(0, PROJECT_ROOT_DIR)
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.environ.get("DEBUG", default=0))
+DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1").split(",")
-
-print(ALLOWED_HOSTS)
 # Application definition
 
 INSTALLED_APPS = [
@@ -61,7 +58,6 @@ INSTALLED_APPS = [
 ]
 
 SITE_ID = 1
-
 
 AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
@@ -97,16 +93,9 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # your frontend dev server
-    "https://yourdomain.com",  # production domain
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",  # your frontend dev server
-    "https://yourdomain.com",  # production domain
-
-]
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1").split(",")
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
+CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
 
 ROOT_URLCONF = 'trading_buddy_backend.urls'
 
