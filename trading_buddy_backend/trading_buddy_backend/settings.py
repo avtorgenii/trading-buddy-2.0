@@ -93,6 +93,7 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
+CORS_ALLOW_CREDENTIALS = True
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1").split(",")
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
 CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
