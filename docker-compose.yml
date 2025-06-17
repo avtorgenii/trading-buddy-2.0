@@ -48,7 +48,7 @@ networks:
   dev:
 
 services:
-  nginx-proxy:
+  nginx:
     image: nginx:stable-alpine
     container_name: nginx-proxy
     ports:
@@ -102,6 +102,6 @@ services:
     networks:
       - dev
 
-# Still be created by docker, but better to be declared here
+# Still will be created by docker, but better to be declared here
 volumes:
   postgres_data:
