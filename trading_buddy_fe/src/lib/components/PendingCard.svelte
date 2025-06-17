@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
+	import { csrfToken } from '$lib/stores.js';
 
 	export let order;
 	const dispatch = createEventDispatcher();
@@ -42,13 +43,14 @@
 
 	async function handleCancel() {
 		try {
+			console.log(order);
 			const res = await fetch(
-				`${API_BASE_URL}/api/v1/trading/positions/cancel/`,
+				`${API_BASE_URL}/trading/positions/cancel/`,
 				{
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $csrfToken },
 					credentials: 'include',
-					body: JSON.stringify({ tool: order.positionId })
+					body: JSON.stringify({ tool: order.ticker })
 				}
 			);
 

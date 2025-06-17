@@ -246,7 +246,10 @@
 			}
 
 			showSuccessToast('Position placed successfully!');
-			await goto("/positions")
+
+			setTimeout(async () => {
+				await goto("/positions");
+			}, 1000);
 		} catch (error) {
 			showErrorToast(error.message);
 		} finally {

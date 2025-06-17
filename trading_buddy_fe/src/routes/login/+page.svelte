@@ -19,7 +19,7 @@
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
-				credentials: 'include',
+				credentials: 'same-origin',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ email, password })
 			});
