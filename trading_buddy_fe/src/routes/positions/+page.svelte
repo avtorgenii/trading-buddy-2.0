@@ -82,7 +82,11 @@
 			console.error(error);
 			return [];
 		}
+
+	async function handlePendingCancel() {
+		pendingPositions = await getPendingPositions();
 	}
+
 
 	async function getPendingPositions() {
 		const url = `${API_BASE_URL}/trading/positions/pending/`;
@@ -178,7 +182,8 @@
 				{:else}
 					<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
 						{#each pendingPositions as order (order.positionId)}
-							<PendingCard {order} on:cancel={1+1} />
+
+							<PendingCard {order} on:cancel={handlePendingCancel()} />
 						{/each}
 					</div>
 				{/if}

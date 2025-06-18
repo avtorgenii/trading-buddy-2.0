@@ -1,5 +1,5 @@
 <script>
-	import { API_BASE_URL } from '$lib/config.js';
+	import { API_BASE_URL, API_BE_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
 	import { csrfToken } from '$lib/stores.js';
@@ -47,7 +47,8 @@
 
 	function handleGoogleLogin(event) {
 		event.preventDefault();
-		window.location.href = `http://localhost:8000/accounts/google/login/`;
+
+		window.location.href = `${API_BE_BASE_URL}/accounts/google/login/`;
 	}
 </script>
 
