@@ -47,6 +47,7 @@
 
 	function handleGoogleLogin(event) {
 		event.preventDefault();
+
 		window.location.href = `${API_BE_BASE_URL}/accounts/google/login/`;
 	}
 </script>
