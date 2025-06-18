@@ -25,9 +25,8 @@ warnings.filterwarnings(
     message=r".*app_settings\.EMAIL_REQUIRED is deprecated.*"
 )
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
+DEBUG = os.environ.get("DEBUG", "1").lower() in ("1", "true", "yes")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,8 +41,6 @@ sys.path.insert(0, PROJECT_ROOT_DIR)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
-
-
 
 # Application definition
 
@@ -147,7 +144,6 @@ DATABASES = {
         'USER': os.getenv("DB_USER"),
         'PASSWORD': os.getenv("DB_PASSWORD"),
         'HOST': ('localhost' if os.getenv('DEBUG', 'False') == 'True' else os.getenv("DB_HOST", 'localhost')),
-        # 'HOST': 'localhost',
         'PORT': '5432',
     }
 }

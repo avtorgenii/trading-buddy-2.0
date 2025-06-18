@@ -1,2 +1,2 @@
 docker-compose down            -- Stops and removes containers defined in docker-compose.yml
-docker-compose up --build      -- Forces rebuild of all images before starting containers
+docker-compose --env-file .env.prod up --build  -- Forces rebuild of all images before starting containers

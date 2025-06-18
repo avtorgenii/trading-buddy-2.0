@@ -550,7 +550,7 @@ class BingXExc(Exchange):
                     str(mh.floor_to_digits(
                         Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
                         4)),
-                'open_date': str(db_pos.start_time)
+                'open_date': db_pos.start_time
             }
 
             dicts.append(d)
