@@ -13,10 +13,25 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*app_settings\.USERNAME_REQUIRED is deprecated.*"
+)
+
+warnings.filterwarnings(
+    "ignore",
+    message=r".*app_settings\.EMAIL_REQUIRED is deprecated.*"
+)
+
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(dotenv_path=BASE_DIR.parent / '.env')
+load_dotenv(dotenv_path=BASE_DIR.parent / ('.env.dev' if DEBUG else '.env.prod'))
 
 PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 
@@ -28,8 +43,7 @@ sys.path.insert(0, PROJECT_ROOT_DIR)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "0").lower() in ("1", "true", "yes")
+
 
 # Application definition
 
@@ -69,6 +83,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',

@@ -81,13 +81,15 @@
 					<p class="text-sm flex flex-col space-y-1 md:inline">
 						<span>Value: {position.value.toFixed(2)}$</span>
 						<span class="mx-1 text-zinc-500 hidden md:inline">|</span>
-						<span>Margin: {position.margin.toFixed(2)}$</span>
+						<span>Margin: {Math.abs(position.margin.toFixed(2))}$</span>
 					</p>
 					<p
 						class="text-lg font-semibold"
 						class:!text-green-600={position.currentPnl >= 0}
 						class:!text-red-500={position.currentPnl < 0}>
-						P&L: {$animatedPnl.toFixed(2)}$
+
+						P&L: {position.currentPnl.toFixed(4)}$
+
 					</p>
 					<p
 						class="text-sm"
