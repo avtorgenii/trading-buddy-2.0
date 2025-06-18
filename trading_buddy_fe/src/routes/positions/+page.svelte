@@ -82,7 +82,7 @@
 			console.error(error);
 			return [];
 		}
-	}
+
 	async function handlePendingCancel() {
 		pendingPositions = await getPendingPositions();
 	}
@@ -182,6 +182,7 @@
 				{:else}
 					<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
 						{#each pendingPositions as order (order.positionId)}
+
 							<PendingCard {order} on:cancel={handlePendingCancel()} />
 						{/each}
 					</div>

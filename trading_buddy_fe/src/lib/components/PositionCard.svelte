@@ -14,8 +14,6 @@
 	const animatedPnl = tweened(0, { duration: 300, easing: cubicOut });
 	$: animatedPnl.set(position.currentPnl);
 
-	console.log(position);
-
 	const animatedPnlPercent = tweened(0, { duration: 300, easing: cubicOut });
 	$: animatedPnlPercent.set(position.currentPnlPercent);
 
@@ -89,7 +87,9 @@
 						class="text-lg font-semibold"
 						class:!text-green-600={position.currentPnl >= 0}
 						class:!text-red-500={position.currentPnl < 0}>
+
 						P&L: {position.currentPnl.toFixed(4)}$
+
 					</p>
 					<p
 						class="text-sm"

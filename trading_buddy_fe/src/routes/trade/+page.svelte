@@ -247,6 +247,7 @@
 
 			showSuccessToast('Position placed successfully!');
 
+
 			setTimeout(async () => {
 				await goto("/positions");
 			}, 1000);

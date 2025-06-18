@@ -63,7 +63,9 @@
 
 	function handleGoogleRegistration(event) {
 		event.preventDefault();
+
 		window.location.href = `${API_BE_BASE_URL}/accounts/google/login/`;
+
 	}
 </script>
 <div class="page-wrapper flex items-center flex-col ">

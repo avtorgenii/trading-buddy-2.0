@@ -1,4 +1,5 @@
-from django.urls import path, include
+from django.urls import path
+
 
 
 def initialize_exchanges():
@@ -23,6 +24,8 @@ def initialize_exchanges():
 
 # Comment out while doing migrations
 initialize_exchanges()
+
+
 
 from . import views
 from dj_rest_auth.registration.views import SocialLoginView
