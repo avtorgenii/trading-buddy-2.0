@@ -48,7 +48,7 @@ from .services.exchanges.exchanges import BingXExc
     "take_profits": ["1.14", "1.16"],
     "move_stop_after": "1",
     "leverage": "20",
-    "volume": "2"
+    "volume": "3"
 }
 {
     "tool": "TRU-USDT",
@@ -443,7 +443,7 @@ def process_position_data(request):
 def place_position(request):
     serializer = PositionToOpenSerializer(data=request.data)
     if not serializer.is_valid():
-        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     data = serializer.validated_data
 

@@ -1,49 +1,4 @@
-#services:
-#  backend:
-#    build:
-#      context: .
-#      dockerfile: trading_buddy_backend/Dockerfile
-#    container_name: tb-backend
-#    ports:
-#      - "${BACKEND_PORT}:${BACKEND_PORT}"
-#    env_file:
-#      - .env
-#    depends_on:
-#      db:
-#        condition: service_healthy
-#
-#  frontend:
-#    build:
-#      context: trading_buddy_fe/
-#      dockerfile: Dockerfile
-#    container_name: tb-frontend
-#    ports:
-#      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
-#    env_file:
-#      - .env
-#
-#  db:
-#    image: postgres
-#    container_name: tb-postgres-db
-#    environment:
-#      POSTGRES_DB: ${DB_NAME}
-#      POSTGRES_USER: ${DB_USER}
-#      POSTGRES_PASSWORD: ${DB_PASSWORD}
-#    healthcheck:
-#      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "avtorpetrovich"]
-#      interval: 5s
-#      timeout: 5s
-#      retries: 5
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#
-#volumes:
-#  postgres_data:
-
-
-
+# Allows communication via container name, but with db host is still service name
 networks:
   dev:
 
@@ -79,7 +34,15 @@ services:
     build:
       context: trading_buddy_fe/
       dockerfile: Dockerfile
+      args:
+        # This syntax reads the variable from the .env file
+        # and passes it AS A BUILD ARGUMENT to the Dockerfile, because dumb vite doesn't read them at runtime
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        - VITE_API_SUFFIX=${VITE_API_SUFFIX}
+        - VITE_API_BE_BASE_URL=${VITE_API_BE_BASE_URL}
     container_name: tb-frontend
+    env_file:
+      - .env.prod
     depends_on:
       - backend
     networks:

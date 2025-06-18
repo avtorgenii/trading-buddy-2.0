@@ -10,6 +10,7 @@
 
 # General info
 1. All datetimes are in UTC
+2. Default mode of all trades is **Cross Margin**
 
 # Running
 ## .env
