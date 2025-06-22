@@ -2,20 +2,21 @@
 	import TradingViewWidget from '$lib/components/TradingViewWidget.svelte';
 	import { tweened } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
-	import { createEventDispatcher } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 
-
-	export let position;
-	const dispatch = createEventDispatcher();
+	let { position, onClose } = $props();
 
 	const animatedPnl = tweened(0, { duration: 300, easing: cubicOut });
-	$: animatedPnl.set(position.currentPnl);
+	$effect(() => {
+		animatedPnl.set(position.currentPnl);
+	});
 
 	const animatedPnlPercent = tweened(0, { duration: 300, easing: cubicOut });
-	$: animatedPnlPercent.set(position.currentPnlPercent);
+	$effect(() => {
+		animatedPnlPercent.set(position.currentPnlPercent);
+	});
 
 	function getStringAfterColon(inputString) {
 		const parts = inputString.split(':');
@@ -42,7 +43,7 @@
 				throw new Error(text || 'Failed to close position.');
 			}
 			showSuccessToast('Position closed.');
-			dispatch('close', { positionId: position.positionId });
+			onClose?.({ positionId: position.positionId });
 		} catch (err) {
 			showErrorToast(err.message);
 		}
@@ -103,7 +104,7 @@
 			<div class="w-1/5 flex flex-col items-end">
 				<button
 					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600"
-					on:click={handleClose}
+					onclick={handleClose}
 					type="button">
 					Close
 				</button>

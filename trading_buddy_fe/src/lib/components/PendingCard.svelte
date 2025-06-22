@@ -1,16 +1,17 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
-
 	import { csrfToken } from '$lib/stores.js';
 
+	// Replace createEventDispatcher with callback props
+	let {
+		order,
+		onSaveLevels = () => {},
+		onCancel = () => {}
+	} = $props();
 
-	export let order;
-	const dispatch = createEventDispatcher();
-
-	let showLevelsModal = false;
-	let editableLevels = {};
+	let showLevelsModal = $state(false);
+	let editableLevels = $state({});
 
 	function openModal() {
 		editableLevels = {
@@ -25,7 +26,7 @@
 	}
 
 	function handleSaveLevels() {
-		dispatch('saveLevels', {
+		onSaveLevels({
 			positionId: order.positionId,
 			levels: editableLevels
 		});
@@ -62,14 +63,14 @@
 			}
 
 			showSuccessToast('Position cancelled.');
-			dispatch('cancel', { positionId: order.positionId });
+			onCancel({ positionId: order.positionId });
 		} catch (err) {
 			showErrorToast(err.message);
 		}
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="flex-none w-full md:px-2 bg-zinc-800 rounded-2xl p-0.5 md:bg-transparent md:rounded-none md:p-0">
 	<div class="bg-zinc-900 rounded-2xl shadow-xl shadow-white/10 h-full flex flex-col">
@@ -101,7 +102,7 @@
 			<div class="w-1/5 flex flex-col items-end justify-between">
 				<button
 					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2 border-zinc-600 w-20 transition-colors"
-					on:click={handleCancel}
+					onclick={handleCancel}
 					type="button">
 					Cancel
 				</button>
@@ -109,7 +110,7 @@
 					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2 w-20 transition-colors"
 					class:border-green-600={order.cancelLevel && order.takeProfit}
 					class:border-red-600={!order.cancelLevel || !order.takeProfit}
-					on:click={openModal}
+					onclick={openModal}
 					type="button">
 					Levels
 				</button>
@@ -150,12 +151,12 @@
 			<div class="flex space-x-4 pt-8">
 				<button
 					class="py-2 px-4 w-full rounded-xl hover:bg-zinc-700 border-2 border-zinc-600 transition-colors"
-					on:click={closeModal}>
+					onclick={closeModal}>
 					Cancel
 				</button>
 				<button
 					class="py-2 px-4 w-full rounded-xl bg-blue-800 hover:bg-blue-700 transition-colors"
-					on:click={handleSaveLevels}>
+					onclick={handleSaveLevels}>
 					Save
 				</button>
 			</div>

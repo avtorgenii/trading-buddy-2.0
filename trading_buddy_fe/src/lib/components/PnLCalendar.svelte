@@ -2,15 +2,15 @@
 	import { onMount } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 
-	let monthlyData = {};
-	let isLoading = true;
+	let monthlyData = $state({});
+	let isLoading = $state(true);
 
 	let currentDate = new Date();
-	let currentYear = currentDate.getFullYear();
-	let currentMonth = currentDate.getMonth();
+	let currentYear = $state(currentDate.getFullYear());
+	let currentMonth = $state(currentDate.getMonth());
 
-	let avgDailyPnl = 0;
-	let winningDaysPercent = 0;
+	let avgDailyPnl = $state(0);
+	let winningDaysPercent = $state(0);
 
 	const enDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 	const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -27,7 +27,7 @@
 			});
 
 			if (!response.ok) {
-				throw new Error(`Response erorr: ${response.status}`);
+				throw new Error(`Response error: ${response.status}`);
 			}
 
 			const responseData = await response.json();
@@ -48,11 +48,13 @@
 		}
 	}
 
-	$: if (currentYear !== undefined && currentMonth !== undefined) {
-		fetchMonthlyData(currentYear, currentMonth);
-	}
+	$effect(() => {
+		if (currentYear !== undefined && currentMonth !== undefined) {
+			fetchMonthlyData(currentYear, currentMonth);
+		}
+	});
 
-	$: {
+	$effect(() => {
 		const monthEntries = Object.entries(monthlyData);
 		const tradeCount = monthEntries.length;
 
@@ -66,9 +68,9 @@
 			avgDailyPnl = 0;
 			winningDaysPercent = 0;
 		}
-	}
+	});
 
-	$: calendarGrid = (() => {
+	let calendarGrid = $derived.by(() => {
 		const grid = [];
 		const dayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 		const paddingDays = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
@@ -77,7 +79,7 @@
 		for (let i = 0; i < paddingDays; i++) { grid.push(null); }
 		for (let i = 1; i <= daysInMonth; i++) { grid.push(new Date(currentYear, currentMonth, i)); }
 		return grid;
-	})();
+	});
 
 	function goToPreviousMonth() {
 		if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
