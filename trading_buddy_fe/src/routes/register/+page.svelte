@@ -5,11 +5,11 @@
 	import { csrfToken } from '$lib/stores.js';
 	import  { getCookie } from '$lib/utils.js';
 
-	let isSubmitting = false;
-	let email = '';
-	let password = '';
-	let repeatedPassword = '';
-	let userID;
+	let isSubmitting = $state(false);
+	let email = $state('');
+	let password = $state('');
+	let repeatedPassword = $state('');
+	let userID = $state();
 
 	async function handleRegister(event) {
 		event.preventDefault();
@@ -73,7 +73,7 @@
 		class="form-wrapper bg-zinc-900 px-2 md:px-12 pt-8 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[520px] max-w-xs md:max-w-lg shadow-xl shadow-white/10">
 		<h2 class="text-3xl font-bold mb-10">Sign Up</h2>
 		<div>
-			<form class="space-y-5 w-auto md:w-96" on:submit={handleRegister}>
+			<form class="space-y-5 w-auto md:w-96" onsubmit={handleRegister}>
 
 				<input
 					bind:value={email}
@@ -105,7 +105,7 @@
 				</button>
 			</form>
 			<button class="bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full mt-4 transition-colors duration-200"
-							on:click={handleGoogleRegistration}
+							onclick={handleGoogleRegistration}
 							disabled={isSubmitting}
 			>Continue with Google
 			</button>

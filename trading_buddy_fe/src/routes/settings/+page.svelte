@@ -4,14 +4,14 @@
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 
-	let accounts = [];
-	let isLoading = true;
-	let settingsSaveStatus = 'idle';
-	let view = 'list';
-	let currentlyEditingAccount = null;
+	let accounts = $state([]);
+	let isLoading = $state(true);
+	let settingsSaveStatus = $state('idle');
+	let view = $state('list');
+	let currentlyEditingAccount = $state(null);
 	const availableExchanges = ['BingX', 'ByBit'];
 
-	let deposit = null;
+	let deposit = $state(null);
 	let depositDebounceTimer;
 
 	async function loadData() {
@@ -29,7 +29,6 @@
 			const depositData = await depositResponse.json();
 			deposit = parseFloat(depositData.deposit);
 
-
 			const apiAccounts = await accResponse.json();
 			const statusData = await statusResponse.json();
 			const mainAccName = statusData.current_account?.name;
@@ -42,14 +41,12 @@
 				isMain: acc.name === mainAccName
 			}));
 
-
 		} catch (error) {
 			showErrorToast(error.message);
 		} finally {
 			isLoading = false;
 		}
 	}
-
 
 	async function updateDeposit() {
 		if (deposit === null || deposit < 0) return;
@@ -82,7 +79,6 @@
 		loadData();
 	});
 
-
 	function showAddForm() {
 		currentlyEditingAccount = {
 			id: null, exchange: availableExchanges[0], name: '', apiKey: '',
@@ -90,7 +86,6 @@
 		};
 		view = 'form';
 	}
-
 
 	function handleCancel() {
 		currentlyEditingAccount = null;
@@ -171,9 +166,7 @@
 		settingsSaveStatus = 'success';
 		setTimeout(() => settingsSaveStatus = 'idle', 3000);
 	}
-
 </script>
-
 
 <div class="page-wrapper flex items-center flex-col">
 	<div
@@ -189,15 +182,15 @@
 					type="number"
 					placeholder="0.00"
 					bind:value={deposit}
-					on:input={handleDepositInput}
+					oninput={handleDepositInput}
 					class="bg-zinc-800 deposit-input rounded-xl px-4 py-3 w-full text-left"
 				/>
 			</div>
-			<form class="flex flex-col h-full" on:submit={handleSaveAllSettings}>
+			<form class="flex flex-col h-full" onsubmit={handleSaveAllSettings}>
 				<div class="flex-grow">
 					<div class="flex justify-between items-center mb-4">
 						<h3 class="text-2xl font-semibold">Accounts</h3>
-						<button type="button" on:click={showAddForm}
+						<button type="button" onclick={showAddForm}
 										class="bg-blue-800 hover:bg-blue-700 text-sm px-4 py-2 rounded-xl transition-colors">
 							Add new account
 						</button>
@@ -219,16 +212,14 @@
 									<div class="flex items-center justify-center gap-2 flex-wrap">
 										{#if account.isMain}
 											<span class="px-3 py-2 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
-<!--											<div class="flex items-center bg-zinc-700 rounded-full px-3 py-1">-->
-<!--											</div>-->
 										{:else}
-											<button type="button" on:click={() => setMainAccount(account.id)}
+											<button type="button" onclick={() => setMainAccount(account.id)}
 															class="text-xs px-3 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
 												as Main
 											</button>
 										{/if}
 
-										<button type="button" on:click={() => deleteAccount(account.id)}
+										<button type="button" onclick={() => deleteAccount(account.id)}
 														class="py-2 px-4 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
 											Delete
 										</button>
@@ -247,10 +238,9 @@
 				</button>
 			</form>
 
-
 		{:else}
 			<h2 class="text-3xl font-bold mb-10 text-center">New Account</h2>
-			<form class="space-y-5" on:submit|preventDefault={saveAccount}>
+			<form class="space-y-5" onsubmit={saveAccount}>
 				<div>
 					<label class="block mb-2 text-left" for="exchange-select">Exchange</label>
 					<select id="exchange-select" bind:value={currentlyEditingAccount.exchange}
@@ -282,7 +272,7 @@
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="Secret Key" required type="password" />
 				</div>
 				<div class="flex space-x-4 pt-6">
-					<button type="button" on:click={handleCancel}
+					<button type="button" onclick={handleCancel}
 									class="bg-zinc-700 hover:bg-zinc-600 py-3 rounded-xl w-full transition-colors">
 						Cancel
 					</button>
@@ -296,7 +286,6 @@
 </div>
 
 <style>
-
     .deposit-input::-webkit-inner-spin-button,
     .deposit-input::-webkit-outer-spin-button {
         -webkit-appearance: none;
@@ -304,6 +293,6 @@
     }
 
     .deposit-input[type='number'] {
-    ] -moz-appearance: textfield;
+        -moz-appearance: textfield;
     }
 </style>

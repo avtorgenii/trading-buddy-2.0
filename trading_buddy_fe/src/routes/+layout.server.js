@@ -6,7 +6,6 @@ export const load = async ({ locals, url }) => {
 
 	const publicRoutes = ['/login', '/register'];
 
-
 	if (!user && !publicRoutes.includes(url.pathname)) {
 		throw redirect(303, '/login');
 	}

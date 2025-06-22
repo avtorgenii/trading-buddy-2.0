@@ -3,19 +3,17 @@
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
 	import { csrfToken } from '$lib/stores.js';
-	import  { getCookie } from '$lib/utils.js';
+	import { getCookie } from '$lib/utils.js';
 
-	let isSubmitting = false;
-	let email = '';
-	let password = '';
+	let isSubmitting = $state(false);
+	let email = $state('');
+	let password = $state('');
 
 	async function handleLogin(event) {
 		event.preventDefault();
 		isSubmitting = true;
 
 		const url = `${API_BASE_URL}/auth/login/`;
-
-		const payload = { email, password };
 
 		try {
 			const response = await fetch(url, {
@@ -49,17 +47,16 @@
 	function handleGoogleLogin(event) {
 		event.preventDefault();
 
-		window.location.href = `/accounts/google/login/`;
+		window.location.href = `${API_BE_BASE_URL}/accounts/google/login/`;
 	}
 </script>
-
 
 <div class="page-wrapper flex items-center flex-col ">
 	<div
 		class="form-wrapper bg-zinc-900 px-2 md:px-12 pt-8 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[520px] max-w-xs md:max-w-lg shadow-xl shadow-white/10">
 		<h2 class="text-3xl font-bold mb-10">Sign In</h2>
 		<div>
-			<form class="space-y-5 w-auto md:w-96" on:submit={handleLogin}>
+			<form class="space-y-5 w-auto md:w-96" onsubmit={handleLogin}>
 				<input
 					bind:value={email}
 					class="bg-zinc-800 rounded-xl px-4 py-3 w-full"
@@ -85,7 +82,7 @@
 			<button
 				class="bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full mt-4 transition-colors duration-200"
 				disabled={isSubmitting}
-				on:click={handleGoogleLogin}
+				onclick={handleGoogleLogin}
 			>
 				Continue with Google
 			</button>

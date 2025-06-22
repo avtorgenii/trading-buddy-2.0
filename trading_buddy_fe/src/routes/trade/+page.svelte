@@ -7,38 +7,39 @@
 	import { goto } from '$app/navigation';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 
+	let items = $state([]);
 
-	let items = [];
+	let selectedTicker = $state({ value: null, label: null, exchangeFormat: null });
+	let screenWidth = $state(0);
+	let isMobile = $derived(screenWidth < 768);
 
-	let selectedTicker = { value: null, label: null, exchangeFormat: null };
-	let screenWidth = 0;
-	$: isMobile = screenWidth < 768;
+	let accountBalance = $state(0);
+	let riskPercent = $state(0);
 
-	let accountBalance = 0;
-	let riskPercent = 0;
+	let leverage = $state(1);
+	let entryPrice = $state(null);
+	let triggerLevel = $state(null);
+	let stopLoss = $state(null);
+	let leverageLimits = $state({ max_long_leverage: 100, max_short_leverage: 100 });
 
-	let leverage = 1;
-	let entryPrice = null;
-	let triggerLevel = null;
-	let stopLoss = null;
-	let leverageLimits = { max_long_leverage: 100, max_short_leverage: 100 };
-
-	let takeProfits = [
+	let takeProfits = $state([
 		{ price: null }
-	];
+	]);
 
-	let moveSLToBEIndex = 0;
+	let moveSLToBEIndex = $state(0);
 
-	let positionSize = null;
-	let requiredMargin = null;
-	let potentialLoss = null;
-	let potentialProfit = null;
-	let riskRewardRatio = null;
+	let positionSize = $state(null);
+	let requiredMargin = $state(null);
+	let potentialLoss = $state(null);
+	let potentialProfit = $state(null);
+	let riskRewardRatio = $state(null);
 
 	let debounceTimeout;
-	let isSubmitting = false;
+	let isSubmitting = $state(false);
 
-	let mainAcc = null;
+	let mainAcc = $state(null);
+
+	let isLong = $derived(entryPrice && stopLoss ? entryPrice > stopLoss : null);
 
 	async function getMainAccount() {
 		try {
@@ -59,15 +60,14 @@
 				mainAccName = '';
 				throw new Error('Main account is not set');
 			}
-			return mainAccName
-
+			return mainAccName;
 
 		} catch (error) {
 			showErrorToast('Failed to get main account');
-
 			console.log('Failed to get main account', error);
 		}
 	}
+
 	async function loadAccountDetails() {
 		try {
 			const response = await fetch(`${API_BASE_URL}/account/details/`, {
@@ -87,13 +87,11 @@
 		}
 	}
 
-
 	async function loadTradableTickers() {
 		try {
 			const response = await fetch(`${API_BASE_URL}/trading/tools/`, {
 				credentials: 'include'
 			});
-
 
 			if (!response.ok) {
 				throw new Error('Could not fetch tradable tickers.');
@@ -107,7 +105,6 @@
 				label: tool.label,
 				value: tool.trading_view_format,
 				exchangeFormat: tool.exchange_format
-
 			}));
 
 		} catch (error) {
@@ -125,7 +122,6 @@
 			if (!response.ok) throw new Error('Could not fetch leverage limits.');
 
 			leverageLimits = await response.json();
-
 			leverage = leverageLimits.max_long_leverage;
 
 			console.log('Updated leverage limits:', leverageLimits);
@@ -135,15 +131,12 @@
 		}
 	}
 
-	$: if (selectedTicker) {
-		fetchLeverageLimits(selectedTicker);
-	}
-
-
-
-	$: isLong = entryPrice && stopLoss ? entryPrice > stopLoss : null;
-
-
+	// Effect to watch selectedTicker changes
+	$effect(() => {
+		if (selectedTicker) {
+			fetchLeverageLimits(selectedTicker);
+		}
+	});
 
 	function addTakeProfit() {
 		takeProfits = [...takeProfits, { price: null }];
@@ -162,7 +155,6 @@
 			return;
 		}
 
-
 		const payload = {
 			account_name: mainAcc,
 			tool: selectedTicker.exchangeFormat,
@@ -170,7 +162,7 @@
 			entry_p: entryPrice,
 			stop_p: stopLoss,
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
-			move_stop_after: moveSLToBEIndex +1 || 0,
+			move_stop_after: moveSLToBEIndex + 1 || 0,
 			leverage: leverage,
 			volume: positionSize
 		};
@@ -224,7 +216,7 @@
 			entry_p: entryPrice,
 			stop_p: stopLoss,
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
-			move_stop_after: moveSLToBEIndex +1,
+			move_stop_after: moveSLToBEIndex + 1,
 			leverage: leverage,
 			volume: positionSize
 		};
@@ -247,9 +239,8 @@
 
 			showSuccessToast('Position placed successfully!');
 
-
 			setTimeout(async () => {
-				await goto("/positions");
+				await goto('/positions');
 			}, 1000);
 		} catch (error) {
 			showErrorToast(error.message);
@@ -258,12 +249,16 @@
 		}
 	}
 
-	$: if (entryPrice, stopLoss, leverage, positionSize, takeProfits, selectedTicker, mainAcc) {
-		clearTimeout(debounceTimeout);
-		debounceTimeout = setTimeout(processPositionData, 500);
-	}
+	// Effect to watch for changes and trigger processPositionData
+	$effect(() => {
+		const deepTakeProfits = JSON.stringify(takeProfits);
 
+		const deps = [entryPrice, stopLoss, leverage, positionSize, selectedTicker, mainAcc, deepTakeProfits];
 
+		const debounceTimeout = setTimeout(processPositionData, 500);
+
+		return () => clearTimeout(debounceTimeout);
+	});
 
 	onMount(async () => {
 		items = await loadTradableTickers();
@@ -275,9 +270,7 @@
 			screenWidth = window.innerWidth;
 		});
 	});
-
 </script>
-
 
 <div class="flex items-center flex-col">
 	<div
@@ -286,7 +279,7 @@
         background-color: #27272a;
         border: 1px solid #374151;
         border-radius: 0.5rem;
-        color: #ffffff;a
+        color: #ffffff;
         width: 100%;
         max-width: 20rem;
         margin: 0 auto;
@@ -294,7 +287,6 @@
 						{items}
 						placeholder="Select Ticker"
 		/>
-
 
 		<div class="bg-zinc-800 rounded-t-2xl flex items-center justify-center p-1 mt-3">
 			<div class="w-full h-64 md:h-90 lg:h-96 xl:h-106 ">
@@ -317,12 +309,11 @@
 				</div>
 			</div>
 
-
 			<div class="flex items-center space-x-2 mb-4">
 				<span class="text-zinc-400 w-24 text-start">Leverage:</span>
 				<input
 					bind:value={leverage}
-					class="bg-zinc-800   text-center w-24 rounded-xl px-4 py-2  focus:outline-none focus:ring-2 focus:ring-blue-600"
+					class="bg-zinc-800 text-center w-24 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
 					max="100"
 					min="1"
 					step="1"
@@ -342,7 +333,7 @@
 				<span class="text-zinc-400 w-24 text-start">Entry:</span>
 				<input
 					bind:value={entryPrice}
-					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
 					placeholder="Limit Entry Price"
 					type="number"
 				/>
@@ -352,7 +343,7 @@
 				<span class="text-zinc-400 w-24 text-start">Trigger:</span>
 				<input
 					bind:value={triggerLevel}
-					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
 					placeholder="Trigger Level (Optional)"
 					type="number"
 				/>
@@ -362,7 +353,7 @@
 				<span class="text-zinc-400 w-24 text-start">Stop Loss:</span>
 				<input
 					bind:value={stopLoss}
-					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
 					placeholder="Stop Loss"
 					type="number"
 				/>
@@ -371,7 +362,7 @@
 				<span class="text-zinc-400 w-24 text-start">Size:</span>
 				<input
 					bind:value={positionSize}
-					class="bg-zinc-800  w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
 					placeholder="Position Size (Optional)"
 					type="number"
 				/>
@@ -402,8 +393,8 @@
 					</div>
 
 					<button
-						class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed "
-						on:click={() => removeTakeProfit(index)}
+						class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+						onclick={() => removeTakeProfit(index)}
 						disabled={takeProfits.length <= 1}
 						tabindex="0"
 						type="button">
@@ -412,19 +403,15 @@
 				</div>
 			{/each}
 			<button
-				class="py-1 px-3  cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+				class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
 				disabled={takeProfits.length >= 5}
-				on:click={addTakeProfit}
+				onclick={addTakeProfit}
 				tabindex="0"
 				type="button">
 				Add Take Profit
 			</button>
 
 			<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
-				<!--				<div class="flex justify-between">-->
-				<!--					<span class="text-zinc-400">Pos. size:</span>-->
-				<!--					<span class="text-white">{positionSize ? `$${positionSize.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</span>-->
-				<!--				</div>-->
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Required margin:</span>
 					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
@@ -447,7 +434,7 @@
 				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
             transition-colors duration-200 max-w-xs mx-auto"
 				disabled={isSubmitting}
-				on:click={handleOpenTrade()}
+				onclick={handleOpenTrade}
 			>
 				Open {isLong ? 'Long' : "Short"}
 			</button>

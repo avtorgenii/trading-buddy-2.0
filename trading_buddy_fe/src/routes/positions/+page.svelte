@@ -6,16 +6,16 @@
 	import { showErrorToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
 
-	let intervalId;
-	let positions = [];
-	let pendingPositions = [];
-	let isCurrentSelected = true;
-	let container;
+	let intervalId = $state();
+	let positions = $state([]);
+	let pendingPositions = $state([]);
+	let isCurrentSelected = $state(true);
+	let container = $state();
 
-	let isLoading = true;
+	let isLoading = $state(true);
 
-	let screenWidth = 0;
-	$: isMobile = screenWidth < 768;
+	let screenWidth = $state(0);
+	let isMobile = $derived(screenWidth < 768);
 
 	onMount(() => {
 		async function loadInitialData() {
@@ -37,14 +37,11 @@
 		intervalId = setInterval(async () => {
 			positions = await getCurrentPositions();
 		}, 5000);
-	}
+	});
 
-	)
 	onDestroy(() => {
 		clearInterval(intervalId);
 	});
-
-
 
 	async function getCurrentPositions() {
 		const url = `${API_BASE_URL}/trading/positions/current/`;
@@ -88,7 +85,6 @@
 		pendingPositions = await getPendingPositions();
 	}
 
-
 	async function getPendingPositions() {
 		const url = `${API_BASE_URL}/trading/positions/pending/`;
 
@@ -118,7 +114,6 @@
 		}
 	}
 
-
 	function handleWheel(e) {
 		if (isMobile) return;
 		if (container && container.scrollWidth > container.clientWidth) {
@@ -126,9 +121,7 @@
 			container.scrollLeft += e.deltaY;
 		}
 	}
-
 </script>
-
 
 <div class="flex items-center flex-col">
 	<div
@@ -137,26 +130,25 @@
 			<div class="flex w-100 max-w-md rounded-full border-2 border-zinc-700 bg-zinc-900 mx-5 md:mx-1">
 				<button class="flex-1 flex items-center justify-center py-2 text-white cursor-pointer rounded-l-full"
 								class:bg-zinc-800={isCurrentSelected}
-								on:click={() => isCurrentSelected = true}
+								onclick={() => isCurrentSelected = true}
 								tabindex="0"
 								type="button">
 					Current
 				</button>
 				<button class="flex-1 flex items-center justify-center py-2 text-white cursor-pointer rounded-r-full"
 								class:bg-zinc-800={!isCurrentSelected}
-								on:click={() => isCurrentSelected = false}
+								onclick={() => isCurrentSelected = false}
 								tabindex="0"
 								type="button">
 					Pending
 				</button>
-
 			</div>
 		</div>
 		{#if isCurrentSelected}
 			<div
 				bind:this={container}
 				class="mt-4 flex {isMobile ? 'grid gap-24 grid-col-1' : 'flex-nowrap overflow-x-auto md:mx-2 scrollbar-win11'}"
-				on:wheel={handleWheel}
+				onwheel={handleWheel}
 			>
 				{#if isLoading}
 					<div class="w-full flex items-center justify-center p-10">
@@ -183,8 +175,7 @@
 				{:else}
 					<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
 						{#each pendingPositions as order (order.positionId)}
-
-							<PendingCard {order} on:cancel={handlePendingCancel} />
+							<PendingCard {order} onCancel={handlePendingCancel} />
 						{/each}
 					</div>
 				{/if}
@@ -192,16 +183,14 @@
 		{/if}
 		<button
 			class=" mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg transition-colors duration-200 max-w-xs mx-auto"
-			on:click={() => goto('/trade')}
+			onclick={() => goto('/trade')}
 		>
 			Open a Trade
 		</button>
-
 	</div>
 </div>
 
 <style>
-
     .scrollbar-win11::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -229,5 +218,4 @@
     .scrollbar-win11:active {
         scrollbar-color: rgba(255, 255, 255, 0.4) transparent;
     }
-
 </style>

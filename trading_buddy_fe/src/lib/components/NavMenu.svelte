@@ -4,14 +4,17 @@
 	import { csrfToken } from '$lib/stores';
 	import { showErrorToast, showSuccessToast } from '$lib/toasts';
 
-	export let user = null;
+	// export let user = null;
 
-	let screenWidth = 0;
-	let mobileOpen = false;
-	$: isMobile = screenWidth < 768;
-	let left = 0;
-	let width = 0;
-	let opacity = 0;
+	let user = $props();
+
+	let screenWidth = $state(0);
+	let mobileOpen = $state(false);
+	// $: isMobile = screenWidth < 768;
+	let isMobile = $derived(screenWidth < 768);
+	let left = $state(0);
+	let width = $state(0);
+	let opacity = $state(0);
 
 	const baseNavs = [
 		{ name: 'Trade', link: '/trade' },
@@ -20,12 +23,12 @@
 		{ name: 'Settings', link: '/settings' }
 	];
 
-	$: navs = user
+	let navs = $derived(user
 		? [...baseNavs, { name: 'Log out', link: '/logout' }]
-		: [...baseNavs, { name: 'Log in', link: '/login' }];
+		: [...baseNavs, { name: 'Log in', link: '/login' }]);
 
 	async function handleLogout(event: MouseEvent) {
-		event.preventDefault();
+		event.preventDefault(); // prevents scrolling
 
 		try {
 			const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
@@ -68,7 +71,7 @@
 		<h1 class="text-3xl font-bold">Trading buddy</h1>
 		<button
 			class="border rounded px-2 py-1"
-			on:click={() => (mobileOpen = !mobileOpen)}
+			onclick={() => (mobileOpen = !mobileOpen)}
 		>
 			&#9776;
 		</button>
@@ -77,7 +80,7 @@
 	{#if mobileOpen}
 		<div
 			class="fixed inset-0 bg-black/50 z-40"
-			on:click={() => mobileOpen = false}
+			onclick={() => mobileOpen = false}
 			aria-hidden="true"
 		></div>
 	{/if}
@@ -86,7 +89,7 @@
 		class="fixed top-0 right-0 h-full w-3/4 max-w-sm bg-zinc-900 transform transition-transform duration-300 z-50 {mobileOpen ? 'translate-x-0' : 'translate-x-full'}"
 	>
 		<div class="flex justify-end p-4">
-			<button class="text-2xl" on:click={() => (mobileOpen = false)}>
+			<button class="text-2xl" onclick={() => (mobileOpen = false)}>
 				&times;
 			</button>
 		</div>
@@ -94,9 +97,9 @@
 			{#each navs as item}
 				<li class="px-4 py-3 border border-zinc-700 rounded-2xl bg-zinc-900 hover:bg-blue-700">
 					{#if item.name === 'Log out'}
-						<a href="#" on:click|preventDefault={handleLogout} class="block w-full">{item.name}</a>
+						<button onclick={handleLogout} class="block w-full text-left">{item.name}</button>
 					{:else}
-						<a href={item.link} on:click={() => (mobileOpen = false)} class="block w-full">{item.name}</a>
+						<a href={item.link} onclick={() => (mobileOpen = false)} class="block w-full">{item.name}</a>
 					{/if}
 				</li>
 			{/each}
@@ -106,7 +109,7 @@
 	<h1 class="text-4xl font-bold mb-3 text-center">Trading buddy</h1>
 	<div class="py-10 w-full">
 		<ul
-			on:mouseleave={() => {
+			onmouseleave={() => {
         opacity = 0;
       }}
 			class="relative mx-auto flex w-fit rounded-full border-2 border-zinc-700 bg-zinc-900 p-1"
@@ -117,7 +120,7 @@
 					class="relative z-10 block cursor-pointer px-3 py-2 text-white md:px-5 md:py-3 md:text-base"
 				>
 					{#if item.name === 'Log out'}
-						<a href="#" class="text-lg" on:click|preventDefault={handleLogout}>{item.name}</a>
+						<button class="text-lg" onclick={handleLogout}>{item.name}</button>
 					{:else}
 						<a class="text-lg" href={item.link}>{item.name}</a>
 					{/if}

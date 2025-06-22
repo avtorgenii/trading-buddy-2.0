@@ -1,8 +1,9 @@
 <script>
 	import { onMount } from "svelte";
-	export let symbol = "BYBIT:BTCUSDT.P";
-	let chartDiv;
-	let isMobile = false;
+
+	let { symbol = "BYBIT:BTCUSDT.P" } = $props();
+	let chartDiv = $state();
+	let isMobile = $state(false);
 
 	onMount(() => {
 		chartDiv.innerHTML = "";
@@ -13,7 +14,7 @@
 		script.innerHTML = JSON.stringify({
 			symbol,
 			autosize: true,
-			interval: "30",
+			interval: "15",
 			timezone: "Europe/Warsaw",
 			theme: "dark",
 			style: "1",
