@@ -3,21 +3,19 @@
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 
-	// Replace createEventDispatcher with callback props
 	let {
 		order,
-		onSaveLevels = () => {},
-		onCancel = () => {}
+		onSaveLevels = ({ toolName, levels }) => {
+		},
+		onCancel = () => {
+		}
 	} = $props();
 
+
 	let showLevelsModal = $state(false);
-	let editableLevels = $state({});
+	let editableLevels = $state(order.cancelLevels);
 
 	function openModal() {
-		editableLevels = {
-			cancelLevel: order.cancelLevel,
-			takeProfit: order.takeProfit
-		};
 		showLevelsModal = true;
 	}
 
@@ -27,8 +25,8 @@
 
 	function handleSaveLevels() {
 		onSaveLevels({
-			positionId: order.positionId,
-			levels: editableLevels
+			toolName: order.ticker,
+			levels: Object.values(editableLevels)
 		});
 		closeModal();
 	}
@@ -108,8 +106,8 @@
 				</button>
 				<button
 					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-700 border-2 w-20 transition-colors"
-					class:border-green-600={order.cancelLevel && order.takeProfit}
-					class:border-red-600={!order.cancelLevel || !order.takeProfit}
+					class:border-green-600={order.overLowBuyLevel && order.takeProfitLevel}
+					class:border-red-600={!order.overLowBuyLevel || !order.takeProfitLevel}
 					onclick={openModal}
 					type="button">
 					Levels
@@ -131,7 +129,7 @@
 					</label>
 					<input
 						id="cancel-level"
-						bind:value={editableLevels.cancelLevel}
+						bind:value={editableLevels.overLowBuyLevel}
 						type="number"
 						class="bg-zinc-800 rounded-xl px-4 py-3 w-full"
 						placeholder="Price" />
@@ -141,7 +139,7 @@
 					<label class="block mb-2 text-sm text-zinc-400" for="take-profit">Take Profit</label>
 					<input
 						id="take-profit"
-						bind:value={editableLevels.takeProfit}
+						bind:value={editableLevels.takeProfitLevel}
 						type="number"
 						class="bg-zinc-800 rounded-xl px-4 py-3 w-full"
 						placeholder="Price" />

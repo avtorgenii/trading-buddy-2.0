@@ -3,7 +3,8 @@
 	import PositionCard from '$lib/components/PositionCard.svelte';
 	import PendingCard from '$lib/components/PendingCard.svelte';
 	import { API_BASE_URL } from '$lib/config.js';
-	import { showErrorToast } from '$lib/toasts.js';
+	import { csrfToken } from '$lib/stores.js';
+	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
 	import { goto } from '$app/navigation';
 
 	let intervalId = $state();
@@ -67,7 +68,7 @@
 				leverage: pos.leverage,
 				currentPnl: parseFloat(pos.current_pnl),
 				value: parseFloat(pos.volume) * parseFloat(pos.avg_open),
-				openDate: new Date(pos.open_date),
+				openDate: pos.open_date,
 				realizedPnl: pos.realized_pnl,
 				currentPnlPercent: pos.current_pnl_risk_reward_ratio,
 				stopLoss: null,
@@ -83,6 +84,34 @@
 
 	async function handlePendingCancel() {
 		pendingPositions = await getPendingPositions();
+	}
+
+	async function handleSaveLevels({ toolName, levels }) {
+		const url = `${API_BASE_URL}/trading/positions/pending/cancel-levels/${toolName}/`;
+
+		try {
+			const response = await fetch(url,
+				{
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-CSRFToken': $csrfToken
+					},
+					credentials: 'include',
+					body: JSON.stringify({ 'cancel_levels': levels })
+				});
+			if (!response.ok) {
+				throw new Error('Failed to update cancel levels');
+			}
+
+			const data = await response.json();
+			console.log(data.message);
+			showSuccessToast(data.message);
+		} catch (error) {
+			showErrorToast(error.message);
+			console.error(error);
+			return [];
+		}
 	}
 
 	async function getPendingPositions() {
@@ -103,8 +132,12 @@
 				quantity: parseFloat(pos.volume),
 				margin: parseFloat(pos.margin),
 				orderType: 'Limit',
-				takeProfit: null,
-				cancelLevel: pos.cancel_levels && pos.cancel_levels.length > 0 ? parseFloat(pos.cancel_levels[0]) : null
+				cancelLevels: pos.cancel_levels && pos.cancel_levels.length >= 2
+					? {
+						overLowBuyLevel: parseFloat(pos.cancel_levels[0]),
+						takeProfitLevel: parseFloat(pos.cancel_levels[1])
+					}
+					: null
 			}));
 
 		} catch (error) {
@@ -125,7 +158,7 @@
 
 <div class="flex items-center flex-col">
 	<div
-		class="w-auto md:min-w-4/5 bg-zinc-900 md:px-10 pt-4 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[60vh] max-w-full md:max-w-lg shadow-xl shadow-white/10">
+		class="w-auto md:min-w-4/5 bg-zinc-900 md:px-10 pt-4 pb-12 rounded-2xl text-center flex flex-col min-h-[60vh] max-w-full shadow-xl shadow-white/10">
 		<div class="w-full flex justify-center">
 			<div class="flex w-100 max-w-md rounded-full border-2 border-zinc-700 bg-zinc-900 mx-5 md:mx-1">
 				<button class="flex-1 flex items-center justify-center py-2 text-white cursor-pointer rounded-l-full"
@@ -147,7 +180,7 @@
 		{#if isCurrentSelected}
 			<div
 				bind:this={container}
-				class="mt-4 flex {isMobile ? 'grid gap-24 grid-col-1' : 'flex-nowrap overflow-x-auto md:mx-2 scrollbar-win11'}"
+				class="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 flex-1"
 				onwheel={handleWheel}
 			>
 				{#if isLoading}
@@ -165,7 +198,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="flex flex-col mt-2 px-2 md:px-4 w-full md:w-full mx-auto">
+			<div class="flex flex-col mt-2 px-2 md:px-4 w-full md:w-full mx-auto flex-1">
 				{#if isLoading}
 					<div class="w-full flex items-center justify-center p-10">
 						<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
@@ -173,16 +206,16 @@
 				{:else if pendingPositions.length === 0}
 					<p class="text-center text-zinc-400 py-4">No pending orders.</p>
 				{:else}
-					<div class="flex-none max-h-full md:max-h-[500px] md:overflow-y-auto scrollbar-win11">
+					<div class="flex-1 max-h-[500px] md:overflow-y-auto scrollbar-win11">
 						{#each pendingPositions as order (order.positionId)}
-							<PendingCard {order} onCancel={handlePendingCancel} />
+							<PendingCard {order} onCancel={handlePendingCancel} onSaveLevels={handleSaveLevels} />
 						{/each}
 					</div>
 				{/if}
 			</div>
 		{/if}
 		<button
-			class=" mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg transition-colors duration-200 max-w-xs mx-auto"
+			class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg transition-colors duration-200 max-w-xs mx-auto"
 			onclick={() => goto('/trade')}
 		>
 			Open a Trade

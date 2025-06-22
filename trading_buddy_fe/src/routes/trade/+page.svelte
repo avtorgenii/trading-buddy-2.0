@@ -39,7 +39,15 @@
 
 	let mainAcc = $state(null);
 
-	let isLong = $derived(entryPrice && stopLoss ? entryPrice > stopLoss : null);
+	let isLong = $derived(
+		entryPrice != null && stopLoss != null
+			? entryPrice > stopLoss
+				? true
+				: entryPrice < stopLoss
+					? false
+					: null
+			: null
+	);
 
 	async function getMainAccount() {
 		try {
@@ -164,7 +172,7 @@
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
 			move_stop_after: moveSLToBEIndex + 1 || 0,
 			leverage: leverage,
-			volume: positionSize
+			volume: (positionSize ? positionSize : null)
 		};
 
 		try {
@@ -188,6 +196,7 @@
 			requiredMargin = parseFloat(results.margin);
 			potentialLoss = parseFloat(results.potential_loss);
 			potentialProfit = parseFloat(results.potential_profit);
+			positionSize = parseFloat(results.volume);
 
 			if (potentialProfit > 0 && potentialLoss > 0) {
 				riskRewardRatio = potentialProfit / potentialLoss;
@@ -321,13 +330,15 @@
 				/>
 				<span class="">x</span>
 
-				<div class="flex-1 flex justify-end">
-					<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
-						 class:border-r-green-600={isLong}
-						 class:border-r-red-600={!isLong}>
-						{isLong ? 'Long' : 'Short'}
-					</p>
-				</div>
+				{#if isLong !== null}
+					<div class="flex-1 flex justify-end">
+						<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
+							 class:border-r-green-600={isLong}
+							 class:border-r-red-600={!isLong}>
+							{isLong ? 'Long' : 'Short'}
+						</p>
+					</div>
+				{/if}
 			</div>
 			<div class="flex items-center space-x-2 mb-4">
 				<span class="text-zinc-400 w-24 text-start">Entry:</span>
@@ -359,7 +370,7 @@
 				/>
 			</div>
 			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Size:</span>
+				<span class="text-zinc-400 w-24 text-start">Volume:</span>
 				<input
 					bind:value={positionSize}
 					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
