@@ -50,16 +50,14 @@
 	}
 </script>
 
-<div class="flex-none w-full md:w-1/2 md:px-2 bg-zinc-800 rounded-2xl p-0.5 md:bg-transparent md:rounded-none md:p-0">
+<div class="bg-zinc-800 rounded-2xl p-0.5 md:bg-transparent md:rounded-none md:p-0">
 	<div class="bg-zinc-900 rounded-2xl shadow-xl shadow-white/10 h-full flex flex-col">
-		<!-- Chart -->
 		<div class="bg-zinc-800 rounded-t-2xl flex items-center justify-center p-1">
-			<div class="w-full h-64 md:h-90 lg:h-96 xl:h-106">
+			<div class="w-full aspect-video">
 				<TradingViewWidget class="w-full h-full" symbol={position.tradingViewFormat} />
 			</div>
 		</div>
 
-		<!-- Data -->
 		<div class="p-4 flex-grow flex flex-row">
 			<div class="w-1/5 text-start">
 				<p
@@ -68,14 +66,14 @@
 					class:border-l-red-600={position.side === 'short'}>
 					{position.side}
 				</p>
-				<p class="text-sm text-zinc-400">Leverage: 50.0x</p>
+				<p class="text-sm text-zinc-400">Leverage: {position.leverage}x</p>
 			</div>
 
 			<div class="w-3/5 flex flex-col justify-between">
 				<div class="text-center">
 					<p class="font-medium">{getStringAfterColon(position.ticker)}</p>
 					<p class="text-sm text-zinc-400">
-						Open Date: {position.openDate.toLocaleDateString()}
+						Open Date: {position.openDate}
 					</p>
 				</div>
 				<div class="mt-3 text-center">
