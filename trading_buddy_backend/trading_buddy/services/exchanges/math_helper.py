@@ -58,6 +58,9 @@ def calc_take_profits_volumes(
         factor = 10 ** precision
         return Decimal(round(value * factor) / factor)
 
+    if num_take_profits <= 0:
+        return []
+
     base_volume = Decimal(volume / num_take_profits)
 
     base_volume = round_with_precision(base_volume, quantity_precision)
@@ -83,20 +86,23 @@ def calculate_position_potential_loss_and_profit(
         volume: Decimal,
         quantity_precision: int
 ) -> Tuple[Decimal, Decimal]:
-    volumes = calc_take_profits_volumes(volume, quantity_precision, len(take_ps))
-
     pot_loss = abs(entry_p - stop_p) * volume
 
     sum_of_weighted_prices = 0
+    volumes = calc_take_profits_volumes(volume, quantity_precision, len(take_ps))
 
-    for exit_price, exit_volume in zip(take_ps, volumes):
-        sum_of_weighted_prices += exit_price * exit_volume
+    if len(volumes) > 0:
 
-    if volume == 0:
-        return Decimal(0), Decimal(0)
-    price_of_exit = sum_of_weighted_prices / volume
+        for exit_price, exit_volume in zip(take_ps, volumes):
+            sum_of_weighted_prices += exit_price * exit_volume
 
-    pot_profit = abs(entry_p - price_of_exit) * volume
+        if volume == 0:
+            return Decimal(0), Decimal(0)
+        price_of_exit = sum_of_weighted_prices / volume
+
+        pot_profit = abs(entry_p - price_of_exit) * volume
+    else:
+        pot_profit = Decimal(0)
 
     return floor_to_digits(pot_loss, 2), floor_to_digits(pot_profit, 2)
 

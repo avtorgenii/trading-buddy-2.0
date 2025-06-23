@@ -134,8 +134,8 @@
 
 			console.log('Updated leverage limits:', leverageLimits);
 		} catch (error) {
-			showErrorToast(error.message);
-			leverageLimits = { max_long_leverage: 100, max_short_leverage: 100 };
+			// showErrorToast(error.message);
+			leverageLimits = { max_long_leverage: 50, max_short_leverage: 50 };
 		}
 	}
 
@@ -437,7 +437,7 @@
 				</div>
 				<div class="flex justify-between">
 					<span class="text-zinc-400">Risk reward ratio:</span>
-					<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(0)}` : '-'}</span>
+					<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(2)}` : '-'}</span>
 				</div>
 			</div>
 

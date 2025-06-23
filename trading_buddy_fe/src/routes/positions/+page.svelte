@@ -192,8 +192,8 @@
 						<PositionCard {position} />
 					{/each}
 				{:else}
-					<div class="w-full px-2">
-						<p class="text-center text-zinc-400">No current positions.</p>
+					<div class="w-full flex justify-center col-span-full">
+						<p class="text-center text-zinc-400 py-4">No current positions.</p>
 					</div>
 				{/if}
 			</div>
@@ -204,7 +204,7 @@
 						<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
 					</div>
 				{:else if pendingPositions.length === 0}
-					<p class="text-center text-zinc-400 py-4">No pending orders.</p>
+					<p class="text-center text-zinc-400 py-4">No pending positions.</p>
 				{:else}
 					<div class="flex-1 max-h-[500px] md:overflow-y-auto scrollbar-win11">
 						{#each pendingPositions as order (order.positionId)}
