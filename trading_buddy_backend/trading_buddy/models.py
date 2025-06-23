@@ -198,3 +198,5 @@ class Trade(models.Model):
                                 stop_price=stop_price, take_profit_prices=take_profits,
                                 move_stop_after=move_stop_after, primary_volume=primary_volume, current_volume=0,
                                 account=account, trade=trade)
+
+        return trade

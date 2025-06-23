@@ -336,25 +336,29 @@ class BingXExc(Exchange):
 
             self.client.trade.change_leverage(tool, pos_side, leverage)
 
-            try:
-                self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
+            trade = None
 
+            try:
                 pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
                                                                                 volume)
-
-                print(f"POTENTIAL LOSS OF A TRADE: {pot_loss} \n WITH VOLUME: {volume}")
-
                 # Creating trade and linked position in db
-                Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss, leverage,
-                                   trigger_p,
-                                   entry_p,
-                                   stop_p, take_profits, move_stop_after, volume)
+                trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss,
+                                           leverage,
+                                           trigger_p,
+                                           entry_p,
+                                           stop_p, take_profits, move_stop_after, volume)
+
+                self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
+
+                print(f"Primary order placed successfully.")
 
                 self.create_price_listener_in_thread(tool)
 
                 return "Primary order placed"
 
             except ClientError as e:
+                if trade:
+                    trade.delete()
                 return e.error_message
 
         else:

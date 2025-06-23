@@ -352,7 +352,6 @@ class ToolExchangeFormatSerializer(serializers.Serializer):
 
 
 class CancelLevelsSerializer(serializers.Serializer):
-    side = serializers.CharField(max_length=5)
     cancel_levels = serializers.ListField(
         child=serializers.DecimalField(decimal_places=12, max_digits=20, allow_null=True),
     )

@@ -154,11 +154,6 @@ class BingXOrderListener(BingXListener):
     def on_fill_primary_order(self, tool, avg_price, volume, new_commission):
         print(f"{self.__class__.__name__}: ORDER IS FILLED")
 
-        # It seems like because program use multi-threaded, runtime_manager can't finish writing data into json in
-        # add_position() function when order is immediately filled up after its placing, so we've gotta to pause a
-        # bit this function so rm would finish its business
-        time.sleep(3)
-
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         left_volume_to_fill, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.last_status, pos.fill_history
 
@@ -184,11 +179,6 @@ class BingXOrderListener(BingXListener):
 
     def on_partial_fill_primary_order(self, tool, avg_price, volume, new_commission):
         print(f"{self.__class__.__name__}: ORDER IS PARTIALLY FILLED")
-
-        # It seems like because program is multi-threaded, runtime_manager can't finish writing data into json in
-        # add_position() function when order is immediately filled up after its placing, so we got to pause a
-        # bit this function so rm would finish its business
-        time.sleep(3)
 
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
         left_volume_to_fill, current_volume, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
@@ -276,7 +266,6 @@ class BingXOrderListener(BingXListener):
 
         pos.save()
         pos.close_position()
-
 
     def on_message(self, ws, message):
         utf8_data = super().on_message(ws, message)

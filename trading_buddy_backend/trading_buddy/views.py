@@ -188,7 +188,13 @@ def user_accounts(request):
     elif request.method == 'POST':
         serializer = AccountSerializer(data=request.data, context={'user': user})
         if serializer.is_valid():
-            serializer.save()
+            new_account = serializer.save()
+
+            # TODO in-place check if account credentials are valid
+            # exc = exc_map[new_account.exchange](new_account)
+            #
+            # exc.get_account_details()
+
             return Response({"message": "Account created successfully"}, status=201)
         return Response({"errors": serializer.errors}, status=400)
 
@@ -357,7 +363,7 @@ def get_preset_tools(request):
 
     dummy_tools_for_serialization = [DummyTool(name) for name in tool_names_bingx_format]
 
-    preset_exchange_mode = 'binance'  # tools above are definitely available on binance
+    preset_exchange_mode = 'bingx'  # tools above are definitely available on binance
 
     serializer = ToolSerializer(
         dummy_tools_for_serialization,
@@ -478,7 +484,7 @@ def place_position(request):
     request=CancelLevelsSerializer
 )
 @api_view(['PUT'])
-def update_cancel_levels(request, account_name, tool_name):
+def update_cancel_levels(request, tool_name):
     serializer = CancelLevelsSerializer(data=request.data)
     if serializer.is_valid():
         user = request.user
@@ -488,7 +494,7 @@ def update_cancel_levels(request, account_name, tool_name):
             return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
         account.positions.filter(tool__name=tool_name).update(cancel_levels=serializer.validated_data['cancel_levels'])
-        return Response({"message": "cancel levels updated successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "Cancel levels updated successfully"}, status=status.HTTP_200_OK)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
