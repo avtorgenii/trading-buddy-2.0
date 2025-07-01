@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from "svelte";
 
-	let { symbol = "BYBIT:BTCUSDT.P" } = $props();
+	let { symbol = "BINANCE:BTCUSDT.P" } = $props();
 	let chartDiv = $state();
 	let isMobile = $state(false);
 
@@ -17,7 +17,7 @@
 			interval: "15",
 			timezone: "Europe/Warsaw",
 			theme: "dark",
-			style: "1",
+			style: "0",
 			locale: "en",
 			allow_symbol_change: false,
 			save_image: false,

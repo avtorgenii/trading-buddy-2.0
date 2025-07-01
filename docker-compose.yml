@@ -52,7 +52,7 @@ services:
     image: postgres
     container_name: tb-postgres-db
     ports:
-      - "5432:5432"
+      - "5432:5432" # COMMENT OUT IN REAL PRODUCTION
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
