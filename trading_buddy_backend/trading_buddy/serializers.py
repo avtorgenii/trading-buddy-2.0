@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_email
 from rest_framework import serializers
-from .models import Account
+from .models import Account, Trade
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 """
@@ -226,6 +226,22 @@ class PnLCalendarSerializer(serializers.Serializer):
         }
 
         return {'pnl_by_day': cleaned_data}
+
+
+class ShowTradeSerializer(serializers.ModelSerializer):
+    screenshot_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Trade
+        exclude = ['screenshot', 'account']
+
+    def get_screenshot_url(self, obj):
+        request = self.context.get('request')
+        if obj.screenshot:
+            return request.build_absolute_uri(obj.screenshot.url)
+        return None
+
+# TODO add serializer for sending additional info on trade to backend
 
 
 ##### TRADING #####
