@@ -1,7 +1,6 @@
 from django.urls import path
 
 
-
 def initialize_exchanges():
     """
     Called once on startup of the backend
@@ -25,8 +24,6 @@ def initialize_exchanges():
 # Comment out while doing migrations
 initialize_exchanges()
 
-
-
 from . import views
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
@@ -46,10 +43,10 @@ urlpatterns = [
     path('deposit/', views.update_deposit),  # PUT
 
     # Account(s)
-    path('accounts/<str:account_name>', views.set_current_account),  # POST
+    path('accounts/<str:account_name>/', views.set_current_account),  # POST
     path('accounts/', views.user_accounts),  # GET, POST
-    path('account/', views.delete_account),  # DELETE
     path('account/details/', views.get_deposit_and_account_details),  # GET
+    path('accounts/delete/<str:account_name>/', views.delete_account),  # DELETE
     path('account/risk-percent/', views.update_risk_for_account),  # PUT
 
     # Stats
@@ -67,7 +64,7 @@ urlpatterns = [
     path('account/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
     # Trading under specific account
-    path('trading/tools/<str:tool_name>/leverages', views.get_max_leverages), # GET
+    path('trading/tools/<str:tool_name>/leverages', views.get_max_leverages),  # GET
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
     path('trading/positions/cancel/', views.cancel_position),  # POST

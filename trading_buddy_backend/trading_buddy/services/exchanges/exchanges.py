@@ -1,7 +1,9 @@
 from decimal import Decimal
+import inspect
 from typing import List, Dict, Tuple, Any
 import threading
 
+import bingX.exceptions
 from bingX.perpetual.v2 import PerpetualV2
 from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType)
 from bingX.exceptions import ClientError
@@ -59,46 +61,66 @@ class Exchange:
     def fresh_user(self):
         return User.objects.get(pk=self._user.pk)
 
-    def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
+    @classmethod
+    def check_account_validity(cls, api_key, secret_key) -> bool:
+        raise NotImplementedError("Method not implemented")
+
+    def get_account_details(self) -> Tuple[bool, str, Decimal, Decimal, Decimal | None, Decimal | None]:
         raise NotImplementedError("Method not implemented")
 
     ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH APPROPRIATE EXCHANGE SUFFIX #####
 
-    def get_max_leverage(self, tool: str) -> Tuple[int, int]:
+    def get_max_leverage(self, tool: str) -> Tuple[bool, str, int | None, int | None]:
         raise NotImplementedError("Method not implemented")
 
-    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: Decimal) -> Tuple[
-        Decimal, Decimal]:
+    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, Dict[str, int]]:
+        raise NotImplementedError("Method not implemented")
+
+    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: Decimal) -> tuple[
+                                                                                                                      Decimal, Decimal] | \
+                                                                                                                  tuple[
+                                                                                                                      None, None]:
+        raise NotImplementedError("Method not implemented")
+
+    def calculate_position_potential_loss_and_profit(self, tool: str, entry_p: Decimal, stop_p: Decimal,
+                                                     take_ps: List[Decimal], volume: Decimal) -> tuple[
+                                                                                                     Decimal, Decimal] | \
+                                                                                                 tuple[None, None]:
         raise NotImplementedError("Method not implemented")
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                          take_profits: List[Decimal],
-                         move_stop_after: int, leverage: int, volume: Decimal) -> str:
+                         move_stop_after: int, leverage: int, volume: Decimal) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
+    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> Tuple[
+        bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def cancel_stop_loss_for_tool(self, tool: str) -> None:
+    def cancel_stop_loss_for_tool(self, tool: str) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def cancel_take_profits_for_tool(self, tool: str) -> None:
+    def cancel_take_profits_for_tool(self, tool: str) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False) -> None:
+    def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False) -> Tuple[
+        bool, str]:
         raise NotImplementedError("Method not implemented")
 
     def place_take_profit_orders(self, tool: str, take_profits: List[Decimal], cum_volume: Decimal,
-                                 pos_side: PositionSide) -> None:
+                                 pos_side: PositionSide) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def close_by_market(self, tool: str) -> str:
+    def close_by_market(self, tool: str) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def get_orders_for_tool(self, tool: str) -> Dict[str, Any]:
+    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, Dict[str, Any]]:
         raise NotImplementedError("Method not implemented")
 
-    def get_current_positions_info(self) -> List[Dict[str, Any]]:
+    def get_current_positions_info(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
+        raise NotImplementedError("Method not implemented")
+
+    def get_pending_positions_info(self) -> List[Dict[str, Any]]:
         raise NotImplementedError("Method not implemented")
 
 
@@ -186,6 +208,21 @@ class BingXExc(Exchange):
 
         self.order_listener_manager_thread = listener_thread
 
+    @classmethod
+    def check_account_validity(cls, api_key, secret_key) -> bool:
+        """Exchange instance will self destroy in case of invalid account credentials."""
+        try:
+            client = PerpetualV2(api_key=api_key, secret_key=secret_key)
+            client.other.generate_listen_key()
+        except bingX.exceptions.ServerError as e:
+            print(e)
+            return False
+        except bingX.exceptions.ClientError as e:
+            print(e)
+            return False
+
+        return True
+
     def get_deposit_and_risk(self) -> Tuple[Decimal, Decimal]:
         """
         Returns the deposit and risk % values from the database.
@@ -193,37 +230,51 @@ class BingXExc(Exchange):
         """
         return self.fresh_user.deposit, self.fresh_account.risk_percent
 
-    def get_account_details(self) -> Tuple[Decimal, Decimal, Decimal, Decimal]:
+    def get_account_details(self) -> Tuple[bool, str, Decimal, Decimal, Decimal | None, Decimal | None]:
         """
         Returns the account details.
         :return: A tuple containing deposit, risk %, unrealized profit, and available margin.
         """
-        details = self.client.account.get_details()['balance']
-
         deposit, risk = self.get_deposit_and_risk()
 
-        return deposit, risk, Decimal(details['unrealizedProfit']), Decimal(details['availableMargin'])
+        try:
+            details = self.client.account.get_details()['balance']
+            return True, "Successfully retrieved all account details", deposit, risk, Decimal(
+                details['unrealizedProfit']), Decimal(details['availableMargin'])
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, "Exchange side account details: unrealized and realized profits were unable to retrieved", deposit, risk, None, None
 
-    def _get_tool_precision_info(self, tool: str) -> Dict[str, int]:
+    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, Dict[str, int]]:
         """
         Gets precision information for a trading pair.
         :param tool: The trading pair.
         :return: Dictionary with quantity and price precision.
         """
-        info = self.client.market.get_contract_info(tool)
-        return {"quantityPrecision": info['quantityPrecision'], "pricePrecision": info['pricePrecision']}
+        try:
+            info = self.client.market.get_contract_info(tool)
+            return True, {"quantityPrecision": info['quantityPrecision'], "pricePrecision": info['pricePrecision']}
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, {}
 
-    def get_max_leverage(self, tool: str) -> Tuple[int, int]:
+    def get_max_leverage(self, tool: str) -> Tuple[bool, str, int | None, int | None]:
         """
         Returns the maximum leverage for a trading pair.
         :param tool: The trading pair.
         :return: A tuple containing the maximum long leverage and maximum short leverage.
         """
-        info = self.client.trade.get_leverage(tool)
-        return info["maxLongLeverage"], info["maxShortLeverage"]
+        try:
+            info = self.client.trade.get_leverage(tool)
+            return True, "Successfully retrieved leverage limits", info["maxLongLeverage"], info["maxShortLeverage"]
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, "Failed to retrieve leverage limits", None, None
 
-    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: int) -> Tuple[
-        Decimal, Decimal]:
+    def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: int) -> tuple[
+                                                                                                                  Decimal, Decimal] | \
+                                                                                                              tuple[
+                                                                                                                  None, None]:
         """
         Calculates the position volume and margin.
         :param tool: The trading pair.
@@ -232,17 +283,21 @@ class BingXExc(Exchange):
         :param leverage: Leverage for the trade.
         :return: A tuple containing the calculated volume and margin.
         """
-        _, _, _, available_margin = self.get_account_details()
+        acc_success, _, _, _, _, available_margin = self.get_account_details()
 
-        precision_info = self._get_tool_precision_info(tool)
-        quantity_precision = precision_info['quantityPrecision']
+        prec_success, precision_info = self._get_tool_precision_info(tool)
+        if acc_success and prec_success:
+            quantity_precision = precision_info['quantityPrecision']
 
-        deposit, risk = self.get_deposit_and_risk()
+            deposit, risk = self.get_deposit_and_risk()
 
-        volume, margin = mh.calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_margin, leverage,
-                                                            quantity_precision)
+            volume, margin = mh.calc_position_volume_and_margin(deposit, risk, entry_p, stop_p, available_margin,
+                                                                leverage,
+                                                                quantity_precision)
 
-        return volume, margin
+            return volume, margin
+        else:
+            return None, None
 
     def calc_position_margin(self, entry_p: Decimal, volume: Decimal, leverage: int) -> Decimal:
         """
@@ -256,8 +311,9 @@ class BingXExc(Exchange):
         return mh.calculate_position_margin(entry_p, volume, leverage)
 
     def calculate_position_potential_loss_and_profit(self, tool: str, entry_p: Decimal, stop_p: Decimal,
-                                                     take_ps: List[Decimal], volume: Decimal) -> Tuple[
-        Decimal, Decimal]:
+                                                     take_ps: List[Decimal], volume: Decimal) -> tuple[
+                                                                                                     Decimal, Decimal] | \
+                                                                                                 tuple[None, None]:
         """
         Calculates the potential loss and profit for a position.
         :param tool: The trading pair.
@@ -268,19 +324,26 @@ class BingXExc(Exchange):
         :return: A tuple containing the potential loss and profit.
         """
 
-        quantity_precision = self._get_tool_precision_info(tool)['quantityPrecision']
+        success, precision_info = self._get_tool_precision_info(tool)
+        if success:
+            quantity_precision = precision_info['quantityPrecision']
 
-        return mh.calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volume, quantity_precision)
+            return mh.calculate_position_potential_loss_and_profit(entry_p, stop_p, take_ps, volume, quantity_precision)
+        else:
+            return None, None
 
     def _switch_margin_mode_to_cross(self, tool: str) -> None:
         """
         Switches the margin mode to cross for a tool
         :param tool: The tool name
         """
-        self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
+        try:
+            self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
 
     def _place_primary_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
-                             pos_side: PositionSide, volume: Decimal) -> str:
+                             pos_side: PositionSide, volume: Decimal) -> Tuple[bool, str]:
         """
         Places a primary order.
         :param tool: The trading pair.
@@ -298,13 +361,17 @@ class BingXExc(Exchange):
 
         order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
                       price=entry_p, stopPrice=trigger_p)
-        order_response = self.client.trade.create_order(order)
+        try:
+            order_response = self.client.trade.create_order(order)
 
-        return order_response['order']['orderId']
+            return True, order_response['order']['orderId']
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e)
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                          take_profits: List[Decimal], move_stop_after: int, leverage: int,
-                         volume: Decimal) -> str:
+                         volume: Decimal) -> Tuple[bool, str]:
         """
         Places an open order.
         :param tool: Tool to trade
@@ -318,53 +385,57 @@ class BingXExc(Exchange):
         :return: Status message
         """
         deposit, _ = self.get_deposit_and_risk()
-        if deposit > 0:
+        if deposit <= 0:
+            return False, "Deposit must be positive"
+        else:
             self._switch_margin_mode_to_cross(tool)
 
             pos_side = PositionSide.LONG if entry_p > stop_p else PositionSide.SHORT
 
-            max_long_leverage, max_short_leverage = self.get_max_leverage(tool)
+            success, msg, max_long_leverage, max_short_leverage = self.get_max_leverage(tool)
+
+            if not success:
+                return False, msg
 
             if leverage <= 0:
-                return "Invalid leverage selected"
+                return False, "Invalid leverage selected"
 
             if (
                     (pos_side == PositionSide.LONG and leverage > max_long_leverage)
                     or (pos_side == PositionSide.SHORT and leverage > max_short_leverage)
             ):
-                return "Invalid leverage selected"
-
-            self.client.trade.change_leverage(tool, pos_side, leverage)
-
-            trade = None
+                return False, "Invalid leverage selected"
 
             try:
-                pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
-                                                                                volume)
-                # Creating trade and linked position in db
-                trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss,
-                                           leverage,
-                                           trigger_p,
-                                           entry_p,
-                                           stop_p, take_profits, move_stop_after, volume)
+                self.client.trade.change_leverage(tool, pos_side, leverage)
+            except Exception as e:
+                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                return False, "Failed to change leverage"
 
-                self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
+            pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
+                                                                            volume)
+            # Creating trade and linked position in db
+            trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss,
+                                       leverage,
+                                       trigger_p,
+                                       entry_p,
+                                       stop_p, take_profits, move_stop_after, volume)
 
-                print(f"Primary order placed successfully.")
+            success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
 
+            if success:
+                print(f"Primary order placed successfully: {msg}")
                 self.create_price_listener_in_thread(tool)
 
-                return "Primary order placed"
-
-            except ClientError as e:
+                return True, "Primary order placed"
+            else:
+                print(f"Failed to place primary order")
                 if trade:
                     trade.delete()
-                return e.error_message
+                return False, "Failed to place primary order"
 
-        else:
-            return "Deposit must be positive"
-
-    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> None:
+    def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> Tuple[
+        bool, str]:
         """
         Places a stop loss order.
         :param tool: The tool name.
@@ -378,43 +449,60 @@ class BingXExc(Exchange):
         order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume,
                       type=order_type,
                       stopPrice=stop_p)
-        self.client.trade.create_order(order)
+        try:
+            self.client.trade.create_order(order)
+            print(f"PLACED SL: price: {stop_p}, volume: {volume}")
+            return True, ""
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e)
 
-        print(f"PLACED SL: price: {stop_p}, volume: {volume}")
-
-    def cancel_stop_loss_for_tool(self, tool: str) -> None:
+    def cancel_stop_loss_for_tool(self, tool: str) -> Tuple[bool, str]:
         """
         Cancels the stop loss order for a tool
         :param tool: Tool name
         """
-        orders = self.get_orders_for_tool(tool)
+        success, msg, orders = self.get_orders_for_tool(tool)
+
+        if not success:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            return False, msg
+
         print(f"Orders: {orders}")
 
         stop_order = orders.get('stop')
         if not stop_order:
             print("No stop order found.")
-            return
+            return False, "No stop order found"
 
         stop_order_id = stop_order.get('orderId')
         if not stop_order_id:
             print("No stop order ID found.")
-            return
+            return False, "No stop order ID found"
+        try:
+            self.client.trade.cancel_order(stop_order_id, tool)
+            return True, ""
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e)
 
-        resp = self.client.trade.cancel_order(stop_order_id, tool)
-        print(f"STOP ORDER CANCELLATION RESPONSE: {resp}")
-
-    def cancel_take_profits_for_tool(self, tool: str) -> None:
+    def cancel_take_profits_for_tool(self, tool: str) -> Tuple[bool, str]:
         """
         Cancels all take profit orders for a trading pair.
         :param tool: The trading pair.
         """
-        orders = self.get_orders_for_tool(tool)
+        success, msg, orders = self.get_orders_for_tool(tool)
+
+        if not success:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            return False, msg
+
         print(orders)
 
         take_orders = orders.get('takes')
         if not take_orders:
             print("No take profit orders found.")
-            return
+            return False, "No take profit orders found."
 
         for take_order in take_orders:
             take_order_id = take_order.get('orderId')
@@ -422,11 +510,16 @@ class BingXExc(Exchange):
                 print(f"Take profit order missing 'orderId': {take_order}")
                 continue
 
-            resp = self.client.trade.cancel_order(take_order_id, tool)
-            print(f"TAKE ORDER CANCELLATION RESPONSE: {resp}")
+            try:
+                self.client.trade.cancel_order(take_order_id, tool)
+            except Exception as e:
+                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                return False, str(e)
+
+        return True, ""
 
     def cancel_primary_order_for_tool(self, tool: str, save_to_db: bool = False, only_cancel: bool = False,
-                                      reason: str = None) -> None:
+                                      reason: str = None) -> Tuple[bool, str]:
         """
         Cancels the primary order for a trading pair.
         :param reason: Reason for canceling position.
@@ -435,15 +528,21 @@ class BingXExc(Exchange):
         :param only_cancel: Whether to only cancel the order without updating db.
         """
 
-        orders = self.get_orders_for_tool(tool)
+        success, msg, orders = self.get_orders_for_tool(tool)
+
+        if not success:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            return False, msg
 
         print(orders)
 
         entry_order_id = orders['entry']['orderId']
 
-        resp = self.client.trade.cancel_order(entry_order_id, tool)
-
-        print(f"PRIMARY ORDER CANCELLATION RESPONSE: {resp}")
+        try:
+            self.client.trade.cancel_order(entry_order_id, tool)
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e)
 
         if not only_cancel:
             # last() IS CRUCIAL, as we only fetch trades by name of tool, and not some unique ID within whole account
@@ -457,9 +556,10 @@ class BingXExc(Exchange):
                 trade.delete()  # position will be auto deleted, see models.py for this
 
         self.delete_price_listener(tool)
+        return True, ""
 
     def place_take_profit_orders(self, tool: str, take_profits: List[Decimal], cum_volume: Decimal,
-                                 pos_side: PositionSide) -> None:
+                                 pos_side: PositionSide) -> Tuple[bool, str]:
         """
         Places take profit orders for a trading pair.
         :param tool: The trading pair.
@@ -471,19 +571,29 @@ class BingXExc(Exchange):
         order_side = Side.SELL if pos_side == "LONG" else Side.BUY
         order_type = OrderType.TAKE_PROFIT_MARKET
 
-        quantity_precision = self._get_tool_precision_info(tool)['quantityPrecision']
+        success, dict_with_quantity_precision = self._get_tool_precision_info(tool)
+
+        if not success:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: Failed to fetch quantity precision")
+            return False, "Failed to fetch quantity precision"
+
+        quantity_precision = dict_with_quantity_precision['quantityPrecision']
 
         volumes = mh.calc_take_profits_volumes(cum_volume, quantity_precision, len(take_profits))
 
         for take_profit, volume in zip(take_profits, volumes):
             order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
                           stopPrice=take_profit)
+            try:
+                self.client.trade.create_order(order)
 
-            self.client.trade.create_order(order)
+                print(f"PLACED TP: {take_profit}, volume: {volume}")
+            except Exception as e:
+                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                return False, str(e)
+        return True, "Successfully placed take profit orders."
 
-            print(f"PLACED TP: {take_profit}, volume: {volume}")
-
-    def close_by_market(self, tool: str) -> str:
+    def close_by_market(self, tool: str) -> Tuple[bool, str]:
         trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
 
         pos = Position.objects.filter(pk=trade.position.pk).first()
@@ -493,73 +603,82 @@ class BingXExc(Exchange):
 
         try:
             self.client.trade.close_order(order)
-            return "Closing market order placed successfully"
+            return True, "Closing market order placed successfully"
         except Exception as e:
-            return f"Position wasn't closed: {e}"
+            return False, str(e)
 
-    def get_orders_for_tool(self, tool: str) -> Dict[str, Any]:
+    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, Dict[str, Any]]:
         """
         Gets all open orders for a trading pair.
         :param tool: The trading pair.
         :return: Dictionary containing entry, take profit, and stop orders.
         """
-        orders = self.client.trade.get_open_orders(tool)['orders']
+        try:
+            orders = self.client.trade.get_open_orders(tool)['orders']
+            tps = []
+            stop = None
+            entry = None
 
-        tps = []
-        stop = None
-        entry = None
+            for order in orders:
+                if order['type'] == "TAKE_PROFIT_MARKET":
+                    tps.append(order)
+                elif order['type'] == "STOP_MARKET":
+                    stop = order
+                elif order['type'] == "TRIGGER_LIMIT" or order['type'] == "LIMIT":
+                    entry = order
 
-        for order in orders:
-            if order['type'] == "TAKE_PROFIT_MARKET":
-                tps.append(order)
-            elif order['type'] == "STOP_MARKET":
-                stop = order
-            elif order['type'] == "TRIGGER_LIMIT" or order['type'] == "LIMIT":
-                entry = order
+            return True, "Successfully retrieved orders for tool", {'entry': entry, 'takes': tps, 'stop': stop}
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e), {}
 
-        return {'entry': entry, 'takes': tps, 'stop': stop}
-
-    def get_current_positions_info(self) -> List[Dict[str, Any]]:
+    def get_current_positions_info(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
         """
         Gets information about all current positions.
         :return: List of dictionaries containing position information.
         """
-        positions = self.client.account.get_swap_positions()
+        try:
+            positions = self.client.account.get_swap_positions()
 
-        dicts = []
+            dicts = []
 
-        for position in positions:
-            tool_name = position['symbol']
-            try:
-                db_pos = self.fresh_account.positions.get(tool__name=tool_name)
-            except Position.DoesNotExist as e:
-                print(str(e) + f" for {tool_name}: there are open positions on server, but they aren't in database.")
-                continue
+            for position in positions:
+                tool_name = position['symbol']
+                try:
+                    db_pos = self.fresh_account.positions.get(tool__name=tool_name)
+                except Position.DoesNotExist as e:
+                    print(
+                        str(e) + f" for {tool_name}: there are open positions on server, but they aren't in database.")
+                    continue
 
-            trade = db_pos.trade
+                trade = db_pos.trade
 
-            d = {
-                'tool': tool_name,
-                'pos_side': position['positionSide'],
-                'leverage': str(position['leverage']),
-                'volume': str(position['availableAmt']),
-                'margin': str(round(Decimal(position['margin']), 3)),
-                'avg_open': str(position['avgPrice']),
-                'current_pnl_risk_reward_ratio':
-                    str(mh.floor_to_digits(
-                        (Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit'])) / trade.risk_usd,
-                        4)),
-                'realized_pnl': str(mh.floor_to_digits(Decimal(position['realisedProfit']), 4)),
-                'current_pnl':
-                    str(mh.floor_to_digits(
-                        Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
-                        4)),
-                'open_date': db_pos.start_time
-            }
+                d = {
+                    'tool': tool_name,
+                    'pos_side': position['positionSide'],
+                    'leverage': str(position['leverage']),
+                    'volume': str(position['availableAmt']),
+                    'margin': str(round(Decimal(position['margin']), 3)),
+                    'avg_open': str(position['avgPrice']),
+                    'current_pnl_risk_reward_ratio':
+                        str(mh.floor_to_digits(
+                            (Decimal(position['unrealizedProfit']) + Decimal(
+                                position['realisedProfit'])) / trade.risk_usd,
+                            4)),
+                    'realized_pnl': str(mh.floor_to_digits(Decimal(position['realisedProfit']), 4)),
+                    'current_pnl':
+                        str(mh.floor_to_digits(
+                            Decimal(position['unrealizedProfit']) + Decimal(position['realisedProfit']),
+                            4)),
+                    'open_date': db_pos.start_time
+                }
 
-            dicts.append(d)
+                dicts.append(d)
 
-        return dicts
+            return True, "Successfully retrieved current positions", dicts
+        except Exception as e:
+            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            return False, str(e), []
 
     def get_pending_positions_info(self) -> List[Dict[str, Any]]:
         """

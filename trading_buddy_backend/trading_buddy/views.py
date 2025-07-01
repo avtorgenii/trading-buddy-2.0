@@ -191,9 +191,11 @@ def user_accounts(request):
             new_account = serializer.save()
 
             # TODO in-place check if account credentials are valid
-            # exc = exc_map[new_account.exchange](new_account)
-            #
-            # exc.get_account_details()
+            is_valid = exc_map[new_account.exchange].check_account_validity(new_account.api_key, new_account.secret_key)
+
+            if not is_valid:
+                new_account.delete()
+                return Response({"error": "Invalid API credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({"message": "Account created successfully"}, status=201)
         return Response({"errors": serializer.errors}, status=400)
@@ -232,19 +234,22 @@ def get_deposit_and_account_details(request):
 
     exc = exc_map[account.exchange](account)
 
-    deposit, risk_percent, pnl, available_margin = exc.get_account_details()
+    success, msg, deposit, risk_percent, pnl, available_margin = exc.get_account_details()
 
-    serializer = DepositAndAccountDataSerializer(data={
-        "deposit": deposit,
-        "risk_percent": risk_percent,
-        "available_margin": available_margin,
-        "pnl_usd": pnl,
-    })
+    if success:
+        serializer = DepositAndAccountDataSerializer(data={
+            "deposit": deposit,
+            "risk_percent": risk_percent,
+            "available_margin": available_margin,
+            "pnl_usd": pnl,
+        })
 
-    if serializer.is_valid():  # needed because constructing response from raw data, not models
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if serializer.is_valid():  # needed because constructing response from raw data, not models
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
     else:
-        return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema(
@@ -363,7 +368,7 @@ def get_preset_tools(request):
 
     dummy_tools_for_serialization = [DummyTool(name) for name in tool_names_bingx_format]
 
-    preset_exchange_mode = 'bingx'  # tools above are definitely available on binance
+    preset_exchange_mode = 'binance'  # tools above are definitely available on binance
 
     serializer = ToolSerializer(
         dummy_tools_for_serialization,
@@ -387,14 +392,17 @@ def get_max_leverages(request, tool_name):
         return Response({"error": "No account is chosen as current "}, status=400)
 
     exc = exc_map[account.exchange](account)
-    max_long, max_short = exc.get_max_leverage(tool_name)
+    success, msg, max_long, max_short = exc.get_max_leverage(tool_name)
 
-    serializer = MaxLeveragesSerializer(data={'max_long_leverage': max_long, 'max_short_leverage': max_short})
+    if success:
+        serializer = MaxLeveragesSerializer(data={'max_long_leverage': max_long, 'max_short_leverage': max_short})
 
-    if serializer.is_valid():
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     else:
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Get position data before opening
@@ -467,15 +475,15 @@ def place_position(request):
     if data.get('volume'):
         exc = exc_map[account.exchange](account)
 
-        result = exc.place_open_order(data['tool'], data['trigger_p'], data['entry_p'], data['stop_p'],
-                                      data['take_profits'],
-                                      data['move_stop_after'],
-                                      data['leverage'], data['volume'])
+        success, msg = exc.place_open_order(data['tool'], data['trigger_p'], data['entry_p'], data['stop_p'],
+                                            data['take_profits'],
+                                            data['move_stop_after'],
+                                            data['leverage'], data['volume'])
 
-        if result == "Primary order placed":
+        if success:
             return Response({"message": "Order placed successfully"}, status=status.HTTP_201_CREATED)
         else:
-            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"error": "volume is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -523,8 +531,11 @@ def cancel_position(request):
                 return Response({"error": "Position is already opened"}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 exc = exc_map[account.exchange](account)
-                exc.cancel_primary_order_for_tool(tool_name)
-                return Response({"message": "Position cancelled successfully"}, status=status.HTTP_200_OK)
+                success, msg = exc.cancel_primary_order_for_tool(tool_name)
+                if success:
+                    return Response({"message": "Position cancelled successfully"}, status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response({"error": "No account is chosen as current."}, status=HTTP_400_BAD_REQUEST)
 
@@ -546,12 +557,12 @@ def close_position_by_market(request):
         tool_name = data['tool']
         exc = exc_map[account.exchange](account)
 
-        result = exc.close_by_market(tool_name)
+        success, msg = exc.close_by_market(tool_name)
 
-        if result == "Closing market order placed successfully":
-            return Response({"message": result}, status=status.HTTP_200_OK)
+        if success:
+            return Response({"message": msg}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": result}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -589,11 +600,14 @@ def get_current_positions(request):
 
     if account:
         exc = exc_map[account.exchange](account)
-        pending_data = exc.get_current_positions_info()  # list of dicts
+        success, msg, pending_data = exc.get_current_positions_info()  # list of dicts
 
-        serializer = CurrentPositionSerializer(data=pending_data, many=True, context={'exchange': account.exchange})
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        if success:
+            serializer = CurrentPositionSerializer(data=pending_data, many=True, context={'exchange': account.exchange})
+            if serializer.is_valid():
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 

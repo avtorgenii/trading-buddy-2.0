@@ -108,7 +108,7 @@
 			});
 			if (!response.ok) {
 				const errorData = await response.json();
-				const errorMessage = errorData.detail || Object.values(errorData)[0]?.[0];
+				const errorMessage = errorData.error || Object.values(errorData)[0]?.[0];
 				throw new Error(errorMessage);
 			}
 			showSuccessToast('Account created successfully!');
@@ -124,7 +124,7 @@
 		if (!accountToDelete) return;
 		const accountName = accountToDelete.name;
 		try {
-			const response = await fetch(`${API_BASE_URL}/accounts/${accountName}/`, {
+			const response = await fetch(`${API_BASE_URL}/accounts/delete/${accountName}/`, {
 				method: 'DELETE',
 				credentials: 'include',
 				headers: { 'X-CSRFToken': $csrfToken }

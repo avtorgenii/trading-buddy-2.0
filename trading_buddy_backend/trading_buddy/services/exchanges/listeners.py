@@ -1,6 +1,4 @@
 import json
-import threading
-import time
 from decimal import Decimal
 
 import websocket
@@ -135,21 +133,24 @@ class BingXOrderListener(BingXListener):
         print(f"LAST                    STATUS OF           POSITION IS NOW: {ls}")
 
         # Placing stop-loss
-        try:
-            self.exchange.place_stop_loss_order(tool, stop, volume, pos_side)
-        except Exception as e:
-            print(e)
+        stop_success, stop_msg = self.exchange.place_stop_loss_order(tool, stop, volume, pos_side)
+        if not stop_success:
+            print(f"{self.__class__.__name__}: {stop_msg}")
 
         # Placing take-profits
         print(f"PLACING TAKE PROFITS: {takes}, {volume}")
-        try:
-            self.exchange.place_take_profit_orders(tool, takes, volume, pos_side)
-        except Exception as e:
-            print(e)
+        takes_success, takes_msg = self.exchange.place_take_profit_orders(tool, takes, volume, pos_side)
+        if not takes_success:
+            print(f"{self.__class__.__name__}: {takes_msg}")
 
     def cancel_takes_and_stops(self, tool):
-        self.exchange.cancel_stop_loss_for_tool(tool)
-        self.exchange.cancel_take_profits_for_tool(tool)
+        stop_success, stop_msg = self.exchange.cancel_stop_loss_for_tool(tool)
+        if not stop_success:
+            print(f"{self.__class__.__name__}: {stop_msg}")
+
+        takes_success, takes_msg = self.exchange.cancel_take_profits_for_tool(tool)
+        if not takes_success:
+            print(f"{self.__class__.__name__}: {takes_msg}")
 
     def on_fill_primary_order(self, tool, avg_price, volume, new_commission):
         print(f"{self.__class__.__name__}: ORDER IS FILLED")
@@ -230,7 +231,10 @@ class BingXOrderListener(BingXListener):
 
         # If last status of entry order was partially_filled, and we already reached take-profit, cancel primary order
         if last_status == "PARTIALLY_FILLED":
-            self.exchange.cancel_primary_order_for_tool(tool, only_cancel=True)
+            success, msg = self.exchange.cancel_primary_order_for_tool(tool, only_cancel=True)
+            if not success:
+                print(
+                    f"CRITICAL: Failed to cancel primary order for partially filled position which reached take-profit!: {msg}")
 
         if not breakeven:
             # Decreasing volume for new stop-loss as take-profit already fixed some volume of position
@@ -245,12 +249,19 @@ class BingXOrderListener(BingXListener):
                 pos_side, move_stop_after = pos.side, pos.move_stop_after
 
                 if move_stop_after == 1:  # decremented below
-                    self.exchange.cancel_stop_loss_for_tool(tool)
+                    success, msg = self.exchange.cancel_stop_loss_for_tool(tool)
+
+                    if not success:
+                        print(f"Failed to cancel stop loss while moving it to breakeven: {msg}")
 
                     entry_p = pos.entry_price
                     print(f"PLACING STOP LOSS ON {entry_p}")
 
-                    self.exchange.place_stop_loss_order(tool, entry_p, volume_for_stop_loss, pos_side)
+                    success, msg = self.exchange.place_stop_loss_order(tool, entry_p, volume_for_stop_loss, pos_side)
+
+                    if not success:
+                        print(f"Failed to place stop loss while moving it to breakeven: {msg}")
+
                     pos.move_stop_after -= 1
                     pos.breakeven = True
                     pos.save()
