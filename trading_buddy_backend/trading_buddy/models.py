@@ -124,7 +124,8 @@ class Position(models.Model):
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not
 
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
-    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text='Trading fees, is always negative')
+    commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0,
+                                         help_text='Trading fees, is always negative')
 
     account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
@@ -137,7 +138,7 @@ class Position(models.Model):
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
         self.trade.volume = sum(item[1] for item in self.fill_history)
-        self.trade.pnl_usd = self.pnl_usd + self.commission_usd # commission is always with '-' sign
+        self.trade.pnl_usd = self.pnl_usd + self.commission_usd  # commission is always with '-' sign
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
         self.trade.save()
@@ -174,7 +175,17 @@ class Trade(models.Model):
 
     description = models.TextField(null=True)
     result = models.TextField(null=True)
-    screenshot = models.ImageField(upload_to='screenshots', null=True)
+
+    def screenshot_upload_path(self, filename):
+        account_id = self.account.id if self.account else 'unknown'
+        user_id = "unknown"
+        if account_id != 'unknown':
+            user_id = self.account.user_id
+
+        return f'chart_screenshots/user_{user_id}/account_{account_id}/{filename}'
+
+    screenshot = models.ImageField(upload_to=screenshot_upload_path,
+                                   null=True)  # screenshots folder inside MEDIA_ROOT, check settings.py
 
     account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 

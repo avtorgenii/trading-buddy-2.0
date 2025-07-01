@@ -34,6 +34,11 @@ load_dotenv(dotenv_path=BASE_DIR.parent / ('.env.dev' if DEBUG else '.env.prod')
 
 PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+print(MEDIA_ROOT)
+
 sys.path.insert(0, PROJECT_ROOT_DIR)
 
 # Quick-start development settings - unsuitable for production
