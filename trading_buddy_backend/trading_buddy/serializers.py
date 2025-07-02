@@ -228,20 +228,40 @@ class PnLCalendarSerializer(serializers.Serializer):
         return {'pnl_by_day': cleaned_data}
 
 
+##### JOURNAL #####
 class ShowTradeSerializer(serializers.ModelSerializer):
+    # DRF automatically calls get_screenshot_url before to_representation to set this param
     screenshot_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Trade
-        exclude = ['screenshot', 'account']
+        exclude = ['screenshot']
 
     def get_screenshot_url(self, obj):
         request = self.context.get('request')
         if obj.screenshot:
+            # # build_absolute_uri converts the relative URL to a full URL including domain
             return request.build_absolute_uri(obj.screenshot.url)
         return None
 
-# TODO add serializer for sending additional info on trade to backend
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        if instance.account:
+            data['account_name'] = instance.account.name
+        else:
+            data['account_name'] = None
+
+        del data['account']
+
+        return data
+
+
+# Will be used to send description and/or result and/or screenshot for trade
+class UpdateTradeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trade
+        fields = ('screenshot', 'description', 'result')
 
 
 ##### TRADING #####

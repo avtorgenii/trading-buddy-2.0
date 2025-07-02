@@ -2,6 +2,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -271,6 +272,64 @@ def update_risk_for_account(request):
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+##### JOURNAL #####
+class TradesResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'  # allow client to override page size
+    max_page_size = 100
+
+
+@extend_schema(
+    responses=ShowTradeSerializer(many=True),  # not true, paginator makes response look different
+)
+@api_view(['GET'])
+def get_trades(request):
+    user = request.user
+    account = user.current_account
+    if not account:
+        return Response({"error": "No account is chosen as current "}, status=400)
+
+    trades = Trade.objects.filter(account=account).order_by('-pk')
+    paginator = TradesResultsSetPagination()
+    # Returns subset of trades for current page and page_size
+    result_page = paginator.paginate_queryset(trades, request)
+    serializer = ShowTradeSerializer(result_page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema(
+    responses=ShowTradeSerializer(many=True),
+)
+@api_view(['GET'])
+def get_all_trades(request):
+    user = request.user
+
+    trades = Trade.objects.filter(account__user=user).order_by('-pk')
+    paginator = TradesResultsSetPagination()
+    # Returns subset of trades for current page and page_size
+    result_page = paginator.paginate_queryset(trades, request)
+    serializer = ShowTradeSerializer(result_page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema(
+    request=UpdateTradeSerializer
+)
+@api_view(['PUT'])
+def update_trade(request, trade_id):
+    trade = get_object_or_404(Trade, pk=trade_id)
+
+    # Partial means that serializer won't require all fields to be present for validation
+    serializer = UpdateTradeSerializer(trade, data=request.data, partial=True)
+
+    if serializer.is_valid():
+        serializer.save()  # saves updated fields including the image
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    else:
+        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+##### STATS #####
 @api_view(['GET'])
 def pnl_calendar(request, year, month):
     pnl_by_day, error = request.user.get_pnl_calendar_data(year, month, all_accounts=False)
@@ -368,7 +427,7 @@ def get_preset_tools(request):
 
     dummy_tools_for_serialization = [DummyTool(name) for name in tool_names_bingx_format]
 
-    preset_exchange_mode = 'binance'  # tools above are definitely available on binance
+    preset_exchange_mode = 'bingx'  # bingx for exact price levels, analysis is made on binance
 
     serializer = ToolSerializer(
         dummy_tools_for_serialization,

@@ -183,7 +183,7 @@ class Trade(models.Model):
             user_id = self.account.user_id
 
         return f'chart_screenshots/user_{user_id}/account_{account_id}/{filename}'
-
+    # The actual image file URL relative to your media root is stored in obj.screenshot.url
     screenshot = models.ImageField(upload_to=screenshot_upload_path,
                                    null=True)  # screenshots folder inside MEDIA_ROOT, check settings.py
 
