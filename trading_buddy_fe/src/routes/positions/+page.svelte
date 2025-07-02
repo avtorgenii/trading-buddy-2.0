@@ -58,7 +58,7 @@
 			const apiPositions = await response.json();
 
 			return apiPositions.map(pos => ({
-				positionId: pos.tool + pos.pos_side,
+				positionId: pos.trade_id,
 				ticker: pos.tool,
 				tradingViewFormat: pos.trading_view_format,
 				side: pos.pos_side.toLowerCase(),

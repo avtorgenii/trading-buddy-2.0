@@ -326,6 +326,7 @@ class ProcessedPositionToOpenSerializer(serializers.Serializer):
 
 
 class PendingPositionSerializer(serializers.Serializer):
+    trade_id = serializers.IntegerField()
     tool = serializers.CharField()
     trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0,
                                              allow_null=True)
@@ -359,6 +360,7 @@ class PendingPositionSerializer(serializers.Serializer):
 
 
 class CurrentPositionSerializer(serializers.Serializer):
+    trade_id = serializers.IntegerField()
     tool = serializers.CharField()
     trading_view_format = serializers.CharField(read_only=True)
     avg_open = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0)

@@ -5,8 +5,9 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
+	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
 
-	let { position, onClose } = $props();
+	let { position } = $props();
 
 	const animatedPnl = tweened(0, { duration: 300, easing: cubicOut });
 	$effect(() => {
@@ -43,10 +44,13 @@
 				throw new Error(text || 'Failed to close position.');
 			}
 			showSuccessToast('Position closed.');
-			onClose?.({ positionId: position.positionId });
 		} catch (err) {
 			showErrorToast(err.message);
 		}
+	}
+
+	function toggleDescriptionModal() {
+
 	}
 </script>
 
@@ -73,7 +77,7 @@
 				<div class="text-center">
 					<p class="font-medium">{getStringAfterColon(position.ticker)}</p>
 					<p class="text-sm text-zinc-400">
-						Open Date: {position.openDate}
+						Open date: {position.openDate}
 					</p>
 				</div>
 				<div class="mt-3 text-center">
@@ -107,7 +111,18 @@
 					Close
 				</button>
 				<div class="mt-5"></div>
+				<button
+					class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600"
+					onclick={toggleDescriptionModal}
+					type="button">
+					Description
+				</button>
+				<div class="mt-5"></div>
 			</div>
 		</div>
 	</div>
+</div>
+
+<div>
+	<UpdateTradeFieldModal positionId={position.positionId} fieldName="description"/>
 </div>

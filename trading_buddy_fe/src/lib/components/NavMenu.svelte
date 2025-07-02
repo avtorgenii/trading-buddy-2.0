@@ -117,12 +117,12 @@
 			{#each navs as item, i}
 				<li
 					use:positionMotion
-					class="relative z-10 block cursor-pointer px-3 py-2 text-white md:px-5 md:py-3 md:text-base"
+					class="relative z-10 block px-3 py-2 text-white md:px-5 md:py-3 md:text-base"
 				>
 					{#if item.name === 'Log out'}
-						<button class="text-lg" onclick={handleLogout}>{item.name}</button>
+						<button class="text-lg cursor-pointer" onclick={handleLogout}>{item.name}</button>
 					{:else}
-						<a class="text-lg" href={item.link}>{item.name}</a>
+						<a class="text-lg cursor-pointer" href={item.link}>{item.name}</a>
 					{/if}
 				</li>
 			{/each}
