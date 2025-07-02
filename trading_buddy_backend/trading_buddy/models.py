@@ -1,3 +1,5 @@
+import os
+import uuid
 from calendar import monthrange
 from datetime import datetime
 from decimal import Decimal
@@ -182,8 +184,13 @@ class Trade(models.Model):
         if account_id != 'unknown':
             user_id = self.account.user_id
 
-        return f'chart_screenshots/user_{user_id}/account_{account_id}/{filename}'
-    # The actual image file URL relative to your media root is stored in obj.screenshot.url
+        # Get file extension
+        ext = os.path.splitext(filename)[1]
+        new_filename = f"trade_{self.pk or uuid.uuid4().hex}{ext}"
+
+        return f'chart_screenshots/user_{user_id}/account_{account_id}/{new_filename}'
+
+    # The actual image file URL relative to your media root is stored in screenshot.url
     screenshot = models.ImageField(upload_to=screenshot_upload_path,
                                    null=True)  # screenshots folder inside MEDIA_ROOT, check settings.py
 

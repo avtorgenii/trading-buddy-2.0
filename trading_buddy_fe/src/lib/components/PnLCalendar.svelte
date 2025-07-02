@@ -99,7 +99,7 @@
 <div class="bg-zinc-900 text-white p-2 md:p-6 rounded-2xl max-w-full md:max-w-lg mx-auto shadow-lg">
 
 	<header class="flex items-center justify-between mb-4 md:mb-6">
-		<button on:click={goToPreviousMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&lt;</button>
+		<button onclick={goToPreviousMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&lt;</button>
 		<div class="font-bold text-lg md:text-2xl text-center w-48">
 			{#if isLoading}
 				<span class="text-zinc-500 animate-pulse">Loading...</span>
@@ -107,7 +107,7 @@
 				{enMonths[currentMonth]} {currentYear}
 			{/if}
 		</div>
-		<button on:click={goToNextMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&gt;</button>
+		<button onclick={goToNextMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&gt;</button>
 	</header>
 
 	<div class="relative">

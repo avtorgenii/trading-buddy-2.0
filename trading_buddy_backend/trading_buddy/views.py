@@ -319,6 +319,7 @@ def get_all_trades(request):
 def update_trade(request, trade_id):
     trade = get_object_or_404(Trade, pk=trade_id)
 
+    # Passing Trade instance into serializer constructor means it will update existing record, instead of creating new one
     # Partial means that serializer won't require all fields to be present for validation
     serializer = UpdateTradeSerializer(trade, data=request.data, partial=True)
 

@@ -37,8 +37,6 @@ PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-print(MEDIA_ROOT)
-
 sys.path.insert(0, PROJECT_ROOT_DIR)
 
 # Quick-start development settings - unsuitable for production

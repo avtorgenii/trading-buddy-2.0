@@ -654,6 +654,7 @@ class BingXExc(Exchange):
                 trade = db_pos.trade
 
                 d = {
+                    'trade_id': trade.pk,
                     'tool': tool_name,
                     'pos_side': position['positionSide'],
                     'leverage': str(position['leverage']),
@@ -692,6 +693,7 @@ class BingXExc(Exchange):
         for pos in positions:
             if pos.last_status == "NEW":
                 d = {
+                    'trade_id': pos.trade.pk,
                     'tool': pos.tool.name,
                     'entry_price': str(pos.entry_price),
                     'pos_side': pos.side,
