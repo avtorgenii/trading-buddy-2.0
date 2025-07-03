@@ -8,6 +8,7 @@
 	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
 
 	let { position } = $props();
+	let isDescriptionModalOpen = $state(false);
 
 	const animatedPnl = tweened(0, { duration: 300, easing: cubicOut });
 	$effect(() => {
@@ -50,7 +51,7 @@
 	}
 
 	function toggleDescriptionModal() {
-
+		isDescriptionModalOpen = !isDescriptionModalOpen;
 	}
 </script>
 
@@ -124,5 +125,5 @@
 </div>
 
 <div>
-	<UpdateTradeFieldModal positionId={position.positionId} fieldName="description"/>
+	<UpdateTradeFieldModal positionId={position.positionId} fieldName="description" initialValue={position.description} bind:open={isDescriptionModalOpen}/>
 </div>

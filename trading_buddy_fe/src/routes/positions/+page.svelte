@@ -72,7 +72,8 @@
 				realizedPnl: pos.realized_pnl,
 				currentPnlPercent: pos.current_pnl_risk_reward_ratio,
 				stopLoss: null,
-				takeProfit: null
+				takeProfit: null,
+				description: pos.description
 			}));
 
 		} catch (error) {

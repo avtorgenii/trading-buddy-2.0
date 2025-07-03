@@ -662,6 +662,8 @@ def get_current_positions(request):
         exc = exc_map[account.exchange](account)
         success, msg, pending_data = exc.get_current_positions_info()  # list of dicts
 
+        # print(pending_data)
+
         if success:
             serializer = CurrentPositionSerializer(data=pending_data, many=True, context={'exchange': account.exchange})
             if serializer.is_valid():
