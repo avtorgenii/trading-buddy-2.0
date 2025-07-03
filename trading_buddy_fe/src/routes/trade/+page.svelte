@@ -159,6 +159,8 @@
 	}
 
 	async function processPositionData() {
+		console.log(mainAcc, selectedTicker, entryPrice, stopLoss, leverage);
+		console.log('aaa');
 		if (!mainAcc || !selectedTicker || !entryPrice || !stopLoss || !leverage) {
 			return;
 		}
@@ -309,7 +311,7 @@
 
 			<div class="flex justify-center space-x-6 bg-zinc-800 p-2 rounded-xl mb-6 text-sm">
 				<div>
-					<span class="text-zinc-400">Balance: </span>
+					<span class="text-zinc-400">Available margin: </span>
 					<span class="font-mono text-white">${accountBalance.toLocaleString('en-US')}</span>
 				</div>
 				<div>

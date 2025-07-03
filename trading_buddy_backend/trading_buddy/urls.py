@@ -61,7 +61,7 @@ urlpatterns = [
     path('journal/trades/all/', views.get_all_trades),  # GET, under all accounts, pagination query params are used, check views.py
     path('journal/trades/', views.get_trades),  # GET, under current selected account, pagination query params are used, check views.py
 
-    path('journal/trades/<int:trade_id>', views.update_trade), # PUT
+    path('journal/trades/<int:trade_id>/', views.update_trade), # PUT
 
     # Preset list of tools
     path('trading/tools/', views.get_preset_tools),  # GET

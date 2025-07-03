@@ -372,6 +372,7 @@ class CurrentPositionSerializer(serializers.Serializer):
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
     open_date = serializers.DateTimeField()
     current_pnl_risk_reward_ratio = serializers.DecimalField(decimal_places=4, default=0.00, max_digits=10)
+    description = serializers.CharField(allow_blank=True, allow_null=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
