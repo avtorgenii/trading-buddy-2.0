@@ -167,6 +167,7 @@ class Trade(models.Model):
 
     tool = models.ForeignKey(Tool, on_delete=models.RESTRICT, related_name='trades')
 
+    # All datetimes are in utc
     start_time = models.DateTimeField(null=True)
     end_time = models.DateTimeField(null=True)
 
@@ -191,6 +192,7 @@ class Trade(models.Model):
         return f'chart_screenshots/user_{user_id}/account_{account_id}/{new_filename}'
 
     # The actual image file URL relative to your media root is stored in screenshot.url
+    # also has relative path: .name, absolute path, .path, actual file object: .file
     screenshot = models.ImageField(upload_to=screenshot_upload_path,
                                    null=True)  # screenshots folder inside MEDIA_ROOT, check settings.py
 
