@@ -1,7 +1,14 @@
+"""
+RUN THIS SCRIPT IN DJANGO SHELL
+"""
+
 import os
+from datetime import datetime
 from pathlib import Path
 import requests
 import json
+
+from ...models import Trade, Tool, Account
 
 from dotenv import load_dotenv
 
@@ -109,9 +116,58 @@ def download_trades():
 
 
 def import_trades_to_db():
-    pass
+    """
+    Assumes user id is 1, and account id is 1
+    """
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+    # Build full path to your JSON file relative to project root
+    json_path = os.path.join(BASE_DIR + '/utils', 'data.json')
 
-if __name__ == "__main__":
-    download_trades()
-    import_trades_to_db()
+    trade_dicts = json.load(open(json_path, encoding='utf-8'))
+
+    for d in trade_dicts:
+        try:
+            account = Account.objects.get(pk=1)
+            tool_name = d.get("Инструмент").strip()
+            tool, created = Tool.objects.get_or_create(name=tool_name, defaults={'account': account})
+
+            start_time = datetime.fromisoformat(d["Вход"]) if d["Вход"] else None
+
+            print(start_time)
+
+            end_time = datetime.fromisoformat(d["Выход"]) if d["Выход"] else None
+
+            risk_usd = float(d["Риск"])
+            pnl_usd = float(d["Прибыль"]) if d["Прибыль"] else 0
+            description = d.get("description", "")
+            result = d.get("result", "")
+
+            trade = Trade.objects.create(
+                side='SHORT',
+                tool=tool,
+                account=account,
+                start_time=start_time,
+                end_time=end_time,
+                risk_percent=risk_usd,  # same as risk_percent because deposit is 100$
+                risk_usd=risk_usd,  # If you want to derive this from account balance, handle separately
+                pnl_usd=pnl_usd,
+                commission_usd=0,
+                description=description,
+                result=result,
+            )
+
+            screenshot_path = f'chart_screenshots/user_{account.user_id}/account_{account.id}/{trade.pk}.png'
+            full_path = Path('media') / screenshot_path  # Adjust if your MEDIA_ROOT is elsewhere
+            if full_path.exists():
+                trade.screenshot = screenshot_path
+                print(f"Trade screenshot relative path: {trade.screenshot.name}")
+            trade.save()
+
+        except Exception as e:
+            print(f"Error importing trade {d.get('Инструмент')}: {e}")
+
+# Execute in db console before applying script
+"""TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
+# download_trades()
+import_trades_to_db()
