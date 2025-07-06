@@ -545,8 +545,8 @@ class BingXExc(Exchange):
             return False, str(e)
 
         if not only_cancel:
-            # last() IS CRUCIAL, as we only fetch trades by name of tool, and not some unique ID within whole account
-            trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
+            # first() and reverse order IS CRUCIAL, as we only fetch trades by name of tool, and not some unique ID within whole account
+            trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).order_by('-pk').first()
             if save_to_db:
                 # For positions closing, cancellation via overhigh/overlow and automatic cancellation of orders when reached take-profit level, their data is being saved into database
                 pos = Position.objects.filter(pk=trade.position.pk).first()
@@ -594,7 +594,7 @@ class BingXExc(Exchange):
         return True, "Successfully placed take profit orders."
 
     def close_by_market(self, tool: str) -> Tuple[bool, str]:
-        trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).last()
+        trade = Trade.objects.filter(account=self.fresh_account, tool__name=tool).order_by('-pk').first()
 
         pos = Position.objects.filter(pk=trade.position.pk).first()
 
