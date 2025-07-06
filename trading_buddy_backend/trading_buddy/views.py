@@ -191,7 +191,6 @@ def user_accounts(request):
         if serializer.is_valid():
             new_account = serializer.save()
 
-            # TODO in-place check if account credentials are valid
             is_valid = exc_map[new_account.exchange].check_account_validity(new_account.api_key, new_account.secret_key)
 
             if not is_valid:

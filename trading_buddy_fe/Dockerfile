@@ -5,10 +5,12 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
+# Build-time only
 ARG VITE_API_BASE_URL
 ARG VITE_API_SUFFIX
 ARG VITE_API_BE_BASE_URL
 
+# Runtime and build-time, to persist args passed at build time
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_API_SUFFIX=$VITE_API_SUFFIX
 ENV VITE_API_BE_BASE_URL=$VITE_API_BE_BASE_URL
