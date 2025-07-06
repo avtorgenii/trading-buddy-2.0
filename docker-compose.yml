@@ -49,10 +49,10 @@ services:
       - dev
 
   db:
-    image: postgres
+    image: postgres:15.4
     container_name: tb-postgres-db
     ports:
-      - "5432:5432" # COMMENT OUT IN REAL PRODUCTION
+      - "5432:5432" # COMMENT OUT IN PRODUCTION
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
