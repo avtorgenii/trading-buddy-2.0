@@ -20,6 +20,7 @@
 		{ name: 'Trade', link: '/trade' },
 		{ name: 'Positions', link: '/positions' },
 		{ name: 'Stats', link: '/stats' },
+		{ name: 'Journal', link: '/journal' },
 		{ name: 'Settings', link: '/settings' }
 	];
 

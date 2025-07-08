@@ -148,6 +148,30 @@ def get_trading_view_convention(name: str, exchange_name: str) -> str:
     return f'{exchange_name}:{base_name}USDT.P'
 
 
+def get_tool_label(name: str) -> str:
+    """
+    Private helper method to convert a tool's exchange format name
+    into the convention required by TradingView for perpetual contracts.
+
+    Example:
+        - "WLD-USDT" -> "WLDUSDT"
+        - "BTCUSDT" -> "BTCUSDT"
+    """
+    base_name = name
+
+    # If there's a hyphen (e.g., WLD-USDT), split and use the base
+    if '-' in name:
+        base_name = name.split('-')[0]
+    # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
+    else:
+        for quote in ['USDT', 'USD']:
+            if name.endswith(quote):
+                base_name = name[:-len(quote)]
+                break  # Exit loop once a match is found
+
+    return f'{base_name}USDT'
+
+
 class ToolSerializer(serializers.Serializer):
     """
     Serializes a Tool object, with the ability to dynamically format
@@ -156,29 +180,6 @@ class ToolSerializer(serializers.Serializer):
     label = serializers.CharField(write_only=True)
     trading_view_format = serializers.CharField(write_only=True)
     exchange_format = serializers.CharField()
-
-    def _get_label(self, name: str) -> str:
-        """
-        Private helper method to convert a tool's exchange format name
-        into the convention required by TradingView for perpetual contracts.
-
-        Example:
-            - "WLD-USDT" -> "WLDUSDT"
-            - "BTCUSDT" -> "BTCUSDT"
-        """
-        base_name = name
-
-        # If there's a hyphen (e.g., WLD-USDT), split and use the base
-        if '-' in name:
-            base_name = name.split('-')[0]
-        # Otherwise, if it's concatenated (e.g., BTCUSDT), strip common quote currencies
-        else:
-            for quote in ['USDT', 'USD']:
-                if name.endswith(quote):
-                    base_name = name[:-len(quote)]
-                    break  # Exit loop once a match is found
-
-        return f'{base_name}USDT'
 
     def to_representation(self, instance):
         """
@@ -197,7 +198,7 @@ class ToolSerializer(serializers.Serializer):
 
         data['exchange_format'] = source_name
         data['trading_view_format'] = get_trading_view_convention(source_name, preprocess_mode.upper())
-        data['label'] = self._get_label(source_name)
+        data['label'] = get_tool_label(source_name)
 
         return data
 
@@ -252,16 +253,36 @@ class ShowTradeSerializer(serializers.ModelSerializer):
         else:
             data['account_name'] = None
 
+        if instance.tool:
+            data['tool_name'] = get_tool_label(instance.tool.name)
+        else:
+            data['tool_name'] = None
+
+        start_time = data['start_time']
+        end_time = data['end_time']
+
+        data['start_time'] = datetime.fromisoformat(start_time.replace("Z", "+00:00")).strftime(
+            "%B %d, %Y %H:%M") if start_time else None
+        data['end_time'] = datetime.fromisoformat(end_time.replace("Z", "+00:00")).strftime(
+            "%B %d, %Y %H:%M") if end_time else None
+
+        del data['tool']
         del data['account']
+
+        data['pnl_risk_ratio'] = instance.pnl_usd / instance.risk_usd
+
+        for field in ['risk_usd', 'risk_percent', 'commission_usd', 'pnl_usd', 'pnl_risk_ratio']:
+            if field in data:
+                data[field] = f"{Decimal(data[field]):.2f}"
 
         return data
 
 
-# Will be used to send description and/or result and/or screenshot for trade
+# Will be used to send description and/or result and/or screenshot and/or timeframe for trade
 class UpdateTradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trade
-        fields = ('screenshot', 'description', 'result')
+        fields = ('screenshot', 'description', 'result', 'timeframe')
 
 
 ##### TRADING #####

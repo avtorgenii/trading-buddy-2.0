@@ -4,12 +4,15 @@
 	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 	import { fly } from 'svelte/transition';
+	import { createEventDispatcher } from 'svelte';
 
 	let { positionId, fieldName, initialValue, open = $bindable() } = $props();
 
 	let value = $state(initialValue);
 	let isSubmitting = $state(false);
 	let textareaEl = $state();
+
+	const dispatch = createEventDispatcher();
 
 	// Autofocus textarea when modal opens
 	$effect(() => {
@@ -44,10 +47,13 @@
 
 			if (!res.ok) {
 				const text = await res.text();
-				throw new Error(text || `Failed to update position ${fieldName}.`);
+				throw new Error(text || `Failed to update trade ${fieldName}.`);
 			}
 
 			showSuccessToast(`Position ${fieldName} updated.`);
+
+			// Dispatch saved event to parent component
+			dispatch('saved', { fieldName, value });
 			close();
 		} catch (err) {
 			showErrorToast(err.message);
@@ -97,7 +103,6 @@
 					rows="2"
 					class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
 					placeholder={`Enter ${fieldName}...`}
-					required
 				></textarea>
 
 				<div class="flex justify-end mt-6 space-x-4">
