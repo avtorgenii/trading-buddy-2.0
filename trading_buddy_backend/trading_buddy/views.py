@@ -273,6 +273,7 @@ def update_risk_for_account(request):
 
 ##### JOURNAL #####
 class TradesResultsSetPagination(PageNumberPagination):
+    # page and page_size query params
     page_size = 20
     page_size_query_param = 'page_size'  # allow client to override page size
     max_page_size = 100

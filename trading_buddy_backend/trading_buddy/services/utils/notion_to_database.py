@@ -76,6 +76,8 @@ def download_trades():
             elif property_name == "Инструмент":
                 d[property_name] = property_data['title'][0]['plain_text']
 
+        d['side'] = 'SHORT'
+
         if d['Рынок'] == 'Крипта':
             trade_num += 1
             page_id = item['id'].replace('-', '')
@@ -129,7 +131,7 @@ def import_trades_to_db():
     for d in trade_dicts:
         try:
             account = Account.objects.get(pk=1)
-            tool_name = d.get("Инструмент").strip()
+            tool_name = d.get("Инструмент").strip() + "-USDT"
             tool, created = Tool.objects.get_or_create(name=tool_name, defaults={'account': account})
 
             start_time = datetime.fromisoformat(d["Вход"]) if d["Вход"] else None
@@ -142,9 +144,10 @@ def import_trades_to_db():
             pnl_usd = float(d["Прибыль"]) if d["Прибыль"] else 0
             description = d.get("description", "")
             result = d.get("result", "")
+            side = d.get("side", "")
 
             trade = Trade.objects.create(
-                side='SHORT',
+                side=side,
                 tool=tool,
                 account=account,
                 start_time=start_time,
@@ -169,5 +172,5 @@ def import_trades_to_db():
 
 # Execute in db console before applying script
 """TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
-# download_trades()
+download_trades()
 import_trades_to_db()

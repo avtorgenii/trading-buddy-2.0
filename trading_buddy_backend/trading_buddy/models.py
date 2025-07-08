@@ -176,8 +176,9 @@ class Trade(models.Model):
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text="Net profit, after commissions")
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
-    description = models.TextField(null=True)
-    result = models.TextField(null=True)
+    timeframe = models.CharField(max_length=10, default='M15', null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    result = models.TextField(null=True, blank=True)
 
     def screenshot_upload_path(self, filename):
         account_id = self.account.id if self.account else 'unknown'

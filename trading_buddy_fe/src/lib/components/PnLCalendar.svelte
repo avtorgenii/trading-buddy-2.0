@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 
 	let monthlyData = $state({});
@@ -154,7 +153,7 @@
 			<span class="text-white text-lg md:text-xl font-mono"
 						class:text-green-500={avgDailyPnl > 0}
 						class:text-red-500={avgDailyPnl < 0}>
-        ${avgDailyPnl.toFixed(2)}
+				{avgDailyPnl < 0 ? `-$${Math.abs(avgDailyPnl).toFixed(2)}` : `$${avgDailyPnl.toFixed(2)}`}
       </span>
 		</div>
 		<div class="flex justify-between">
