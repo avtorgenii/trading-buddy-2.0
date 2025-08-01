@@ -2,6 +2,8 @@
 	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
 
 	let { trade } = $props();
+	// To mitigate browsers aggressive caching
+	let screenshotUrl = $derived(trade.screenshot_url ? `${trade.screenshot_url}?t=${Date.now()}` : null);
 
 	// Editable fields
 	let modalOpen = $state(false);
@@ -114,10 +116,10 @@
 	</div>
 
 	<!-- Screenshot placeholder -->
-	{#if trade.screenshot_url}
+	{#if screenshotUrl}
 		<button onclick={openImageModal}>
 			<img
-				src={trade.screenshot_url}
+				src={screenshotUrl}
 				alt="screenshot"
 				class="w-full h-72 object-cover rounded-lg border border-zinc-700 cursor-pointer transition hover:scale-105 duration-200"
 			/>
@@ -142,7 +144,7 @@
 		aria-label="Close image modal"
 	>
 		<img
-			src={trade.screenshot_url}
+			src={screenshotUrl}
 			alt="full screenshot"
 			class="max-w-[90vw] max-h-[90vh] rounded-xl border border-zinc-700 shadow-2xl transition-transform duration-300 scale-100"
 		/>
