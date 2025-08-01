@@ -9,7 +9,7 @@
 	let settingsSaveStatus = $state('idle');
 	let view = $state('list');
 	let currentlyEditingAccount = $state(null);
-	const availableExchanges = ['BingX', 'ByBit'];
+	const availableExchanges = ['BingX'];
 
 	let deposit = $state(null);
 	let depositDebounceTimer;
@@ -23,29 +23,52 @@
 				fetch(`${API_BASE_URL}/account/details/`, { credentials: 'include' })
 			]);
 
-			if (!accResponse.ok) throw new Error('Could not fetch accounts.');
-			if (!statusResponse.ok) throw new Error('Could not fetch main account status.');
-			if (!depositResponse.ok) throw new Error('Could not fetch deposit.');
-			const depositData = await depositResponse.json();
-			deposit = parseFloat(depositData.deposit);
+			// Process accounts
+			if (accResponse.ok) {
+				const apiAccounts = await accResponse.json();
+				accounts = apiAccounts.map(acc => ({
+					id: acc.id,
+					exchange: acc.exchange,
+					name: acc.name,
+					risk: parseFloat(acc.risk_percent),
+					// Will mark main account below after status fetched
+					isMain: false
+				}));
+			} else {
+				showErrorToast('Could not fetch accounts.');
+				accounts = [];
+			}
 
-			const apiAccounts = await accResponse.json();
-			const statusData = await statusResponse.json();
-			const mainAccName = statusData.current_account?.name;
+			// Process status
+			let mainAccName;
+			if (statusResponse.ok) {
+				const statusData = await statusResponse.json();
+				mainAccName = statusData.current_account?.name;
+				if (accounts.length > 0 && mainAccName) {
+					accounts = accounts.map(acc => ({
+						...acc,
+						isMain: acc.name === mainAccName
+					}));
+				}
+			} else {
+				showErrorToast('Could not fetch main account status.');
+				mainAccName = null;
+			}
 
-			accounts = apiAccounts.map(acc => ({
-				id: acc.id,
-				exchange: acc.exchange,
-				name: acc.name,
-				risk: parseFloat(acc.risk_percent),
-				isMain: acc.name === mainAccName
-			}));
-
+			// Process deposit
+			if (depositResponse.ok) {
+				const depositData = await depositResponse.json();
+				deposit = parseFloat(depositData.deposit);
+			} else {
+				showErrorToast('Could not fetch deposit.');
+				deposit = null;
+			}
 		} catch (error) {
-			showErrorToast(error.message);
+			showErrorToast('An unexpected error occurred.');
 		} finally {
 			isLoading = false;
 		}
+
 	}
 
 	async function updateDeposit() {

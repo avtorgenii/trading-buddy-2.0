@@ -137,7 +137,8 @@ class BingXExc(Exchange):
         """
         super().__init__(account, *args, **kwargs)
 
-        if self._initialized:
+        # Reinitialize if account's api key has been changed
+        if self._initialized and self._account.api_key == self.API_KEY and self._account.secret_key == self.SECRET_KEY:
             return
 
         self.client = PerpetualV2(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
