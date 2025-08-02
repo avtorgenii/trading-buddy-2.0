@@ -4,10 +4,24 @@
 	import { goto } from '$app/navigation';
 	import { csrfToken } from '$lib/stores.js';
 	import { getCookie } from '$lib/utils.js';
+	import { onMount } from 'svelte';
 
 	let isSubmitting = $state(false);
 	let email = $state('');
 	let password = $state('');
+
+	// If user is already logged in - redirect user to trade page
+	onMount(async () => {
+		const response = await fetch('/api/v1/auth/status/', {
+			credentials: 'include'
+		});
+		if (response.ok) {
+			const data = await response.json();
+			if (data.logged_in) {
+				goto('/trade');
+			}
+		}
+	});
 
 	async function handleLogin(event) {
 		event.preventDefault();
