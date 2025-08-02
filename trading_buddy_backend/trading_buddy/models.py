@@ -188,7 +188,7 @@ class Trade(models.Model):
 
         # Get file extension
         ext = os.path.splitext(filename)[1]
-        new_filename = f"trade_{self.pk or uuid.uuid4().hex}{ext}"
+        new_filename = f"{self.pk or uuid.uuid4().hex}{ext}"
 
         return f'chart_screenshots/user_{user_id}/account_{account_id}/{new_filename}'
 

@@ -1,9 +1,18 @@
 <script>
 	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
+	import { API_BASE_URL } from '$lib/config.js';
+	import { csrfToken } from '$lib/stores.js';
+	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
 
 	let { trade } = $props();
 	// To mitigate browsers aggressive caching
-	let screenshotUrl = $derived(trade.screenshot_url ? `${trade.screenshot_url}?t=${Date.now()}` : null);
+	let screenshotUrl = $derived(
+		trade.screenshot_url
+			? trade.screenshot_url.startsWith('data:')
+				? trade.screenshot_url // Keep base64 data URL as-is
+				: `${trade.screenshot_url}?t=${Date.now()}` // Append timestamp to regular URL
+			: null
+	);
 
 	// Editable fields
 	let modalOpen = $state(false);
@@ -27,11 +36,42 @@
 		fileInput.click();
 	}
 
+	async function uploadScreenshot(file) {
+		const formData = new FormData();
+		formData.append('screenshot', file);
+
+		try {
+			// Suppose your update URL is /api/trades/{id}/
+			const url = `${API_BASE_URL}/journal/trades/${trade.id}/`;
+			const resp = await fetch(url, {
+				method: 'PUT',
+				headers: {
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: formData
+			});
+
+			if (resp.ok) {
+				showSuccessToast(`Screenshot uploaded.`);
+			} else {
+				const error = await resp.json();
+				showErrorToast(error.message);
+			}
+		} catch (err) {
+			showErrorToast(err.message);
+		}
+	}
+
+
 	function handleFileChange(e) {
 		const file = e.target.files[0];
 		if (!file) return;
 		const reader = new FileReader();
-		reader.onload = () => (trade.screenshot_url = reader.result);
+		reader.onload = () => {
+			trade.screenshot_url = reader.result;
+			uploadScreenshot(file);
+		};
 		reader.readAsDataURL(file);
 	}
 
