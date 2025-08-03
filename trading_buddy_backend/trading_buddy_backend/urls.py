@@ -30,6 +30,6 @@ urlpatterns = [
     path('api/v1/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
-# For media serving, in production is via Nginx
+# For media serving, in production is via bounded to Nginx volume
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

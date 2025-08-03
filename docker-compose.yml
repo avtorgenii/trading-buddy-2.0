@@ -27,6 +27,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - media_data:/app/media
     networks:
       - dev
 
@@ -49,10 +51,10 @@ services:
       - dev
 
   db:
-    image: postgres:15.4
+    image: postgres:17.0
     container_name: tb-postgres-db
     ports:
-      - "5432:5432" # COMMENT OUT IN PRODUCTION
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -71,3 +73,4 @@ services:
 # Still will be created by docker, but better to be declared here
 volumes:
   postgres_data:
+  media_data:

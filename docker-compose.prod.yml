@@ -1,7 +1,6 @@
 networks:
   dev:
 
-# Replace all dockerfiles with images before prod
 services:
   nginx:
     image: avtopetrovich/tb-nginx:1.0
@@ -41,8 +40,10 @@ services:
       - dev
 
   db:
-    image: postgres:15.4
+    image: postgres:17.0
     container_name: tb-postgres-db
+    ports:
+      - "5432:5432"
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -54,10 +55,11 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      # Named volume. Path inside the container where the volume is mounted.
+      # Named volume. Means: "Plug postgres_data volume to /var/lib/postgresql/data inside container"
       - postgres_data:/var/lib/postgresql/data
     labels:
-      - "docker-volume-backup.archive-pre=/bin/sh -c ..... > /"
+#      - "docker-volume-backup.archive-pre=/bin/sh -c ..... > /"
+      - docker-volume-backup.stop-during-backup=true
     networks:
       - dev
 
@@ -68,15 +70,16 @@ services:
     env_file:
       - ./backup.env
     volumes:
+      # Volume with no name. "Take folder /backup-configuration from host and plug to /etc/dockervolumebackup/conf.d"
       - ./backup-configuration:/etc/dockervolumebackup/conf.d
-      # Stops container during backup
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Giving this container permissions to pause containers, get list of containers and their statuses and execute docker commands from within containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - postgres_data:/backup/postgres-data-backup:ro
       - media_data:/backup/media-data-backup:ro
 
 
 
-# Still will be created by docker, but better to be declared here
+# Still will be created by docker, but better to be declared here. Volumes are created by docker in /var/lib/docker/volumes
 volumes:
   postgres_data:
   media_data:
