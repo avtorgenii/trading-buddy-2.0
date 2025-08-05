@@ -11,6 +11,7 @@ services:
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
       - './nginx.conf:/etc/nginx/nginx.conf'
+      - media_data:/app/media
     depends_on:
       - backend
       - frontend

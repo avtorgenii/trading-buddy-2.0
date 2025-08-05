@@ -2,5 +2,7 @@ docker-compose down            -- Stops and removes containers defined in docker
 docker-compose --env-file .env.prod up --build  -- Forces rebuild of all images before starting containers
 docker-compose -f docker-compose.dev.yml --env-file .env.prod up -d --build
 
+docker build -f trading_buddy_backend/Dockerfile -t avtopetrovich/tb-backend:1.0 .
+
 # Frontend must be built with those --build-args because of VITE
 docker build --build-arg VITE_API_BASE_URL="http://tb-backend:8000/api/v1" --build-arg VITE_API_SUFFIX="/api/v1" --build-arg VITE_API_BE_BASE_URL="/api/v1" -t avtopetrovich/tb-frontend:1.0 ./trading_buddy_fe/
