@@ -8,6 +8,8 @@ services:
     restart: always
     ports:
       - "80:80"
+    volumes:
+      - media_data:/app/media
     depends_on:
       - backend
       - frontend

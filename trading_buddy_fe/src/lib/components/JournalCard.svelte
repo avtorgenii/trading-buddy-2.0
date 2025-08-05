@@ -112,7 +112,7 @@
 	<!-- Metrics -->
 	<div class="grid grid-cols-2 gap-y-1 text-sm">
 		<div class="text-zinc-400">Risk:</div>
-		<div class="text-white">{trade.risk_percent}%</div>
+		<div class="text-white">{trade.risk_percent}% = ${trade.risk_usd}</div>
 
 		<div class="text-zinc-400">Net PnL:</div>
 		<div class="text-white">
