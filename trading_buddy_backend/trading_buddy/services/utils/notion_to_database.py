@@ -44,6 +44,8 @@ def download_trades():
     db_id = "1c8a445e6e6280629effd7dfa5ece817"
     db_url = f"https://api.notion.com/v1/databases/{db_id}/query"
 
+    print(os.environ['NOTION_TOKEN'])
+
     headers = {
         "Authorization": f"Bearer {os.environ['NOTION_TOKEN']}",
         "Notion-Version": "2022-06-28",
@@ -53,6 +55,7 @@ def download_trades():
     response = requests.post(db_url, headers=headers)
 
     data = response.json()
+    print(data)
     output = list()
 
     trade_num = 0
@@ -172,5 +175,5 @@ def import_trades_to_db():
 
 # Execute in db console before applying script
 """TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
-download_trades()
+# download_trades()
 import_trades_to_db()

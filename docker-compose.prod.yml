@@ -58,7 +58,6 @@ services:
       # Named volume. Means: "Plug postgres_data volume to /var/lib/postgresql/data inside container"
       - postgres_data:/var/lib/postgresql/data
     labels:
-#      - "docker-volume-backup.archive-pre=/bin/sh -c ..... > /"
       - docker-volume-backup.stop-during-backup=true
     networks:
       - dev
