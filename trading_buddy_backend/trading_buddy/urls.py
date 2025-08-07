@@ -1,29 +1,5 @@
 from django.urls import path
 
-
-def initialize_exchanges():
-    """
-    Called once on startup of the backend
-    """
-    from .models import Account
-    from .services.exchanges.exchanges import BingXExc
-
-    map = {
-        "BingX": BingXExc,
-        # "ByBit": ByBitExc
-    }
-
-    accounts = Account.objects.all()
-    for account in accounts:
-        if account.exchange == "BingX":
-            map[account.exchange](account)  # simply initialize class to restore all listeners
-
-    print("INITIALIZED EXCHANGES")
-
-
-# Comment out while doing migrations
-initialize_exchanges()
-
 from . import views
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
@@ -58,10 +34,12 @@ urlpatterns = [
 
     ##### JOURNAL #####
     # api/v1/stats/trades/all/?page=2&page_size=5
-    path('journal/trades/all/', views.get_all_trades),  # GET, under all accounts, pagination query params are used, check views.py
-    path('journal/trades/', views.get_trades),  # GET, under current selected account, pagination query params are used, check views.py
+    path('journal/trades/all/', views.get_all_trades),
+    # GET, under all accounts, pagination query params are used, check views.py
+    path('journal/trades/', views.get_trades),
+    # GET, under current selected account, pagination query params are used, check views.py
 
-    path('journal/trades/<int:trade_id>/', views.update_trade), # PUT
+    path('journal/trades/<int:trade_id>/', views.update_trade),  # PUT
 
     # Preset list of tools
     path('trading/tools/', views.get_preset_tools),  # GET
@@ -76,7 +54,7 @@ urlpatterns = [
     path('trading/positions/place/', views.place_position),  # POST
     path('trading/positions/cancel/', views.cancel_position),  # POST
     path('trading/positions/close-by-market/', views.close_position_by_market),  # POST
-    path('trading/positions/pending/cancel-levels/<str:tool_name>/', views.update_cancel_levels), # PUT
+    path('trading/positions/pending/cancel-levels/<str:tool_name>/', views.update_cancel_levels),  # PUT
     path('trading/positions/pending/', views.get_pending_positions),  # GET
     path('trading/positions/current/', views.get_current_positions),  # GET
 ]

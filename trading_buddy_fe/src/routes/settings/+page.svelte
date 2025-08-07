@@ -66,7 +66,7 @@
 				const depositData = await depositResponse.json();
 				deposit = parseFloat(depositData.deposit);
 			} else {
-				showErrorToast('Could not fetch deposit.');
+				showErrorToast('Could not fetch deposit or/and account details.');
 				deposit = null;
 			}
 		} catch (error) {
@@ -190,7 +190,7 @@
 		const accountToSet = accounts.find(acc => acc.id === accountIdToSet);
 		if (!accountToSet) return;
 		const accountName = accountToSet.name;
-		const url = `${API_BASE_URL}/accounts/${accountName}`;
+		const url = `${API_BASE_URL}/accounts/${accountName}/`;
 		try {
 			const response = await fetch(url, {
 				method: 'POST',
