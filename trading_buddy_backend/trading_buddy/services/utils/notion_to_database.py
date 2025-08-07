@@ -25,8 +25,14 @@ def download_image(url, filename):
         response.raise_for_status()  # Raise an exception for bad status codes
 
         # Create the file path
-        file_path = Path(
-            f"C:\\Users\\ashes\\PycharmProjects\\trading-buddy-2.0\\trading_buddy_backend\\media\\chart_screenshots\\user_1\\account_1\\{filename}")
+        file_path = Path(cwd.parent.parent.parent.parent / 'media' / 'chart_screenshots' / 'user_1' / 'account_1' / filename)
+
+        # Get the directory part of the file path
+        dir_path = file_path.parent
+
+        # Check if directory exists, create it if it doesn't
+        if not dir_path.exists():
+            dir_path.mkdir(parents=True, exist_ok=True)
 
         # Write the image content to file
         with open(file_path, 'wb') as f:
@@ -177,4 +183,4 @@ def import_trades_to_db():
 # Execute in db console before applying script
 """TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
 download_trades()
-# import_trades_to_db()
+import_trades_to_db()

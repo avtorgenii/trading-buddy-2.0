@@ -46,8 +46,6 @@ services:
   db:
     image: postgres:17.0
     container_name: tb-postgres-db
-    ports:
-      - "5432:5432"
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}

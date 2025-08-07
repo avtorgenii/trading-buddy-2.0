@@ -1,8 +1,8 @@
-# Debug
-docker-compose down            -- Stops and removes containers defined in docker-compose.yml
-docker-compose --env-file .env.prod up --build  -- Forces rebuild of all images before starting containers
-docker-compose -f docker-compose.dev.yml --env-file .env.prod up -d --build
-docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Debug and run
+docker compose down            -- Stops and removes containers defined in docker-compose.yml
+docker compose --env-file .env.prod up --build  -- Forces rebuild of all images before starting containers
+docker compose -f docker-compose.dev.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
 
 # Building
@@ -15,5 +15,15 @@ docker build --build-arg VITE_API_BASE_URL="http://tb-backend:8000/api/v1" --bui
 docker push avtopetrovich/tb-backend:1.0
 docker push avtopetrovich/tb-frontend:1.0
 
+# Pulling
+docker pull avtopetrovich/tb-backend:1.0
+docker pull avtopetrovich/tb-frontend:1.0
+
 # SCP
-scp docker-compose.prod.yml .env.prod backup.env nginx.conf root@1.1.1.1.com:/
+scp docker-compose.prod.yml .env.prod backup.env nginx.conf root@1.1.1.1:~
+
+
+# Notion
+nano trading_buddy/services/utils/notion_to_database.py
+python manage.py shell_plus
+import trading_buddy.services.utils.notion_to_database

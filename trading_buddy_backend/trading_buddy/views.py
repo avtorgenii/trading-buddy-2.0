@@ -75,6 +75,28 @@ exc_map = {
     # "ByBit": ByBitExc
 }
 
+# Initializing exchanges
+_exchanges_initialized = False
+
+
+def ensure_exchanges_initialized():
+    global _exchanges_initialized
+    if not _exchanges_initialized:
+        try:
+            accounts = Account.objects.all()
+            for account in accounts:
+                if account.exchange == "BingX":
+                    exc_map[account.exchange](account)  # initialize class to restore all listeners
+
+            print("INITIALIZED EXCHANGES")
+            _exchanges_initialized = True
+        except Exception as e:
+            # Handle the case where database isn't ready
+            print(e)
+
+
+ensure_exchanges_initialized()
+
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
 # Sign status
@@ -115,7 +137,7 @@ def register(request):
             'message': 'User created successfully',
             'user_id': user.id
         }, status=status.HTTP_201_CREATED)
-    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Logging In
