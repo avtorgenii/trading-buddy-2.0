@@ -446,10 +446,10 @@
 			<button
 				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
             transition-colors duration-200 max-w-xs mx-auto"
-				disabled={isSubmitting}
+				disabled={isSubmitting || isLong === null}
 				onclick={handleOpenTrade}
 			>
-				Open {isLong ? 'Long' : "Short"}
+				Open {isLong !== null ? (isLong ? 'Long' : 'Short') : ''}
 			</button>
 		</div>
 	</div>

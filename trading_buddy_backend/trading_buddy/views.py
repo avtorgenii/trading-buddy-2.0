@@ -256,16 +256,17 @@ def get_deposit_and_account_details(request):
     request=RiskSerializer,
 )
 @api_view(['PUT'])
-def update_risk_for_account(request):
+def update_risk_for_account(request, account_name):
     serializer = RiskSerializer(data=request.data)
 
     if serializer.is_valid():
         user = request.user
-        account = user.current_account
+        account = Account.objects.filter(name=account_name, user=user).first()
         if not account:
-            return Response({"error": "No account is chosen as current."}, status=400)
+            return Response({"error": "Account not found."}, status=400)
 
-        account.update(risk_percent=serializer.validated_data['risk_percent'])
+        account.risk_percent = serializer.validated_data['risk_percent']
+        account.save()
         return Response({"message": "Risk updated successfully."}, status=status.HTTP_200_OK)
 
     return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)

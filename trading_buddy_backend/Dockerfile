@@ -25,6 +25,8 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --no-root
 RUN poetry add gunicorn
 
+RUN mkdir -p /app/media
+
 # Copy the full project and bingX library
 COPY trading_buddy_backend/ /app/
 COPY bingX/ /app/bingX/
@@ -32,5 +34,5 @@ COPY bingX/ /app/bingX/
 # Expose Django's default port
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 3"]
+CMD ["sh", "-c", "python manage.py migrate && gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 1"]
 

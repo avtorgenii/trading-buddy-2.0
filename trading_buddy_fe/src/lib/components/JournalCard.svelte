@@ -1,5 +1,5 @@
 <script>
-	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
+	import UpdateTradeFieldModal from '$lib/components/modals/UpdateTradeFieldModal.svelte';
 	import { API_BASE_URL } from '$lib/config.js';
 	import { csrfToken } from '$lib/stores.js';
 	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
@@ -116,13 +116,13 @@
 
 		<div class="text-zinc-400">Net PnL:</div>
 		<div class="text-white">
-			{trade.pnl_usd < 0 ? `-$${Math.abs(trade.pnl_usd)}` : `$${trade.pnl_usd}`}
+			{trade.pnl_usd < 0 ? `-$${Math.abs(trade.pnl_usd).toFixed(2)}` : `$${trade.pnl_usd}`}
 		</div>
 
 
 		<div class="text-zinc-400">Commissions:</div>
 		<div class="text-white">
-			{trade.commission_usd < 0 ? `-$${Math.abs(trade.commission_usd)}` : `$${trade.commission_usd}`}
+			{trade.commission_usd < 0 ? `-$${Math.abs(trade.commission_usd).toFixed(2)}` : `$${Math.abs(trade.commission_usd).toFixed(2)}`}
 		</div>
 
 

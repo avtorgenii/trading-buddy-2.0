@@ -3,6 +3,7 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
+	import AccountRiskModal from '$lib/components/modals/AccountRiskModal.svelte';
 
 	let accounts = $state([]);
 	let isLoading = $state(true);
@@ -10,6 +11,11 @@
 	let view = $state('list');
 	let currentlyEditingAccount = $state(null);
 	const availableExchanges = ['BingX'];
+
+	let showRiskDialog = $state(false);
+	let initialRisk = $state();
+	let currentAccountName = $state('');
+
 
 	let deposit = $state(null);
 	let depositDebounceTimer;
@@ -71,6 +77,10 @@
 
 	}
 
+	onMount(() => {
+		loadData();
+	});
+
 	async function updateDeposit() {
 		if (deposit === null || deposit < 0) return;
 
@@ -98,9 +108,23 @@
 		depositDebounceTimer = setTimeout(updateDeposit, 750);
 	}
 
-	onMount(() => {
-		loadData();
-	});
+
+	function openRiskDialog(accountName, currentRisk) {
+		initialRisk = currentRisk;
+		currentAccountName = accountName;
+		showRiskDialog = true;
+	}
+
+	function handleRiskSaved(e) {
+		let accountName = e.detail.accountName;
+		let accountRisk = e.detail.value;
+
+		for (let i = 0; i < accounts.length; i++) {
+			if (accounts[i].name === accountName) {
+				accounts[i].risk = accountRisk;
+			}
+		}
+	}
 
 	function showAddForm() {
 		currentlyEditingAccount = {
@@ -241,7 +265,10 @@
 												as Main
 											</button>
 										{/if}
-
+										<button type="button" onclick={() => openRiskDialog(account.name, account.risk)}
+														class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-blue-900/50 border-2 border-blue-900/80 hover:border-blue-800 transition-colors">
+											Risk
+										</button>
 										<button type="button" onclick={() => deleteAccount(account.id)}
 														class="py-2 px-4 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
 											Delete
@@ -307,6 +334,16 @@
 		{/if}
 	</div>
 </div>
+
+<!-- Dialogs -->
+{#if showRiskDialog}
+	<AccountRiskModal
+		initialValue={initialRisk}
+		accountName={currentAccountName}
+		bind:open={showRiskDialog}
+		on:saved={handleRiskSaved}
+	/>
+{/if}
 
 <style>
     .deposit-input::-webkit-inner-spin-button,
