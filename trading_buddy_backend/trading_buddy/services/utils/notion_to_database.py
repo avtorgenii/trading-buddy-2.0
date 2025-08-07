@@ -13,6 +13,7 @@ from ...models import Trade, Tool, Account
 from dotenv import load_dotenv
 
 cwd = Path(__file__).resolve()
+
 load_dotenv(dotenv_path=cwd.parent.parent.parent.parent.parent / '.env.dev')
 
 
@@ -109,14 +110,14 @@ def download_trades():
             d['result'] = result
             d['description'] = description
 
-            with open("data.json", "w", encoding="utf-8") as f:
+            with open(f"{cwd.parent}/data.json", "w", encoding="utf-8") as f:
                 json.dump(d, f, indent=4, ensure_ascii=False)
 
             output.append(d)
         else:
             d = {}
 
-    with open("data.json", "w", encoding="utf-8") as f:
+    with open(f"{cwd.parent}/data.json", "w", encoding="utf-8") as f:
         json.dump(output, f, indent=4, ensure_ascii=False)
 
 
@@ -175,5 +176,5 @@ def import_trades_to_db():
 
 # Execute in db console before applying script
 """TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
-# download_trades()
-import_trades_to_db()
+download_trades()
+# import_trades_to_db()

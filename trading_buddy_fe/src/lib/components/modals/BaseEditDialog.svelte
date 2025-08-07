@@ -1,24 +1,32 @@
 <script>
-	// Currently is used only for updating description field of trade, while it is current
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 	import { fly } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
 
-	let { positionId, fieldName, initialValue, open = $bindable() } = $props();
+	let {
+		positionId,
+		fieldName,
+		initialValue,
+		open = $bindable(),
+		apiEndpoint = `/journal/trades/${positionId}/`,
+		inputType = 'textarea', // 'textarea' or 'input'
+		rows = 2,
+		placeholder = `Enter ${fieldName}...`,
+		title = `Edit ${fieldName}`,
+		successMessage = `Position ${fieldName} updated.`
+	} = $props();
 
 	let value = $state(initialValue);
 	let isSubmitting = $state(false);
-	let textareaEl = $state();
-
+	let inputEl = $state();
 	const dispatch = createEventDispatcher();
 
-	// Autofocus textarea when modal opens
+	// Autofocus input when modal opens
 	$effect(() => {
-		if (open && textareaEl) {
-			// Use setTimeout to ensure the modal is fully rendered
-			setTimeout(() => textareaEl.focus(), 100);
+		if (open && inputEl) {
+			setTimeout(() => inputEl.focus(), 100);
 		}
 	});
 
@@ -29,30 +37,25 @@
 	async function handleSave(e) {
 		e.preventDefault();
 		if (isSubmitting) return;
-
 		isSubmitting = true;
+
 		try {
-			const res = await fetch(
-				`${API_BASE_URL}/journal/trades/${positionId}/`,
-				{
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json',
-						'X-CSRFToken': $csrfToken
-					},
-					credentials: 'include',
-					body: JSON.stringify({ [fieldName]: value })
-				}
-			);
+			const res = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': $csrfToken
+				},
+				credentials: 'include',
+				body: JSON.stringify({ [fieldName]: value })
+			});
 
 			if (!res.ok) {
 				const text = await res.text();
-				throw new Error(text || `Failed to update trade ${fieldName}.`);
+				throw new Error(text || `Failed to update ${fieldName}.`);
 			}
 
-			showSuccessToast(`Position ${fieldName} updated.`);
-
-			// Dispatch saved event to parent component
+			showSuccessToast(successMessage);
 			dispatch('saved', { fieldName, value });
 			close();
 		} catch (err) {
@@ -63,7 +66,6 @@
 	}
 
 	function handleBackdropClick(e) {
-		// Close modal when clicking on backdrop
 		if (e.target === e.currentTarget) {
 			close();
 		}
@@ -84,7 +86,7 @@
 		onkeydown={handleKeydown}
 		role="dialog"
 		aria-modal="true"
-		aria-label={`Edit ${fieldName}`}
+		aria-label={title}
 		tabindex="-1"
 	>
 		<!-- Modal Content -->
@@ -95,15 +97,25 @@
 			role="document"
 		>
 			<form onsubmit={handleSave}>
-				<h2 class="text-xl font-semibold text-white mb-4 capitalize">Edit {fieldName}</h2>
+				<h2 class="text-xl font-semibold text-white mb-4 capitalize">{title}</h2>
 
-				<textarea
-					bind:this={textareaEl}
-					bind:value={value}
-					rows="2"
-					class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
-					placeholder={`Enter ${fieldName}...`}
-				></textarea>
+				{#if inputType === 'textarea'}
+          <textarea
+						bind:this={inputEl}
+						bind:value={value}
+						{rows}
+						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
+						{placeholder}
+					></textarea>
+				{:else}
+					<input
+						bind:this={inputEl}
+						bind:value={value}
+						type="number"
+						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600"
+						{placeholder}
+					/>
+				{/if}
 
 				<div class="flex justify-end mt-6 space-x-4">
 					<button
@@ -114,7 +126,6 @@
 					>
 						Cancel
 					</button>
-
 					<button
 						type="submit"
 						class="py-2 px-6 rounded-xl bg-blue-800 hover:bg-blue-700 transition-colors disabled:opacity-60"

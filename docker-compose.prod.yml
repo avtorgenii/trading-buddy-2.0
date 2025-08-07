@@ -3,12 +3,14 @@ networks:
 
 services:
   nginx:
-    image: avtopetrovich/tb-nginx:1.0
+    image: nginx:stable-alpine
     container_name: nginx-proxy
     restart: always
     ports:
-      - "80:80"
+      - "80:80"      # For HTTP traffic
     volumes:
+      # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
+      - './nginx.conf:/etc/nginx/nginx.conf'
       - media_data:/app/media
     depends_on:
       - backend

@@ -5,7 +5,7 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
-	import UpdateTradeFieldModal from '$lib/components/UpdateTradeFieldModal.svelte';
+	import UpdateTradeFieldModal from '$lib/components/modals/UpdateTradeFieldModal.svelte';
 
 	let { position } = $props();
 	let isDescriptionModalOpen = $state(false);

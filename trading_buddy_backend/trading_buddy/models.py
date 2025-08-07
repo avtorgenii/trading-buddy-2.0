@@ -127,7 +127,7 @@ class Position(models.Model):
 
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0,
-                                         help_text='Trading fees, is always negative')
+                                         help_text='Trading fees, are always negative')
 
     account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
