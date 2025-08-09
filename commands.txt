@@ -24,6 +24,8 @@ scp docker-compose.prod.yml .env.prod backup.env nginx.conf root@1.1.1.1:~
 
 
 # Notion
+docker exec -it tb-backend /bin/sh
+apt install nano
 nano trading_buddy/services/utils/notion_to_database.py
 python manage.py shell_plus
 import trading_buddy.services.utils.notion_to_database
