@@ -3,3 +3,6 @@
 @plugin '@tailwindcss/typography';
 
 /*global styling for app*/
+html {
+    overflow-y: scroll; /* Always show vertical scrollbar */
+}

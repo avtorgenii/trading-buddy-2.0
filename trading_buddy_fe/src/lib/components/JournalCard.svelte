@@ -3,6 +3,7 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { csrfToken } from '$lib/stores.js';
 	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
+	import { createEventDispatcher } from 'svelte';
 
 	let { trade } = $props();
 	// To mitigate browsers aggressive caching
@@ -14,9 +15,17 @@
 			: null
 	);
 
+
+	let isSubmitting = $state(false);
+
 	// Editable fields
 	let modalOpen = $state(false);
 	let modalField = $state(''); // 'timeframe' | 'description' | 'result'
+
+	// Delete modal
+	const dispatch = createEventDispatcher();
+	let deleteModalOpen = $state(false);
+
 
 	function openEdit(field) {
 		modalField = field;
@@ -40,8 +49,8 @@
 		const formData = new FormData();
 		formData.append('screenshot', file);
 
+		isSubmitting = true;
 		try {
-			// Suppose your update URL is /api/trades/{id}/
 			const url = `${API_BASE_URL}/journal/trades/${trade.id}/`;
 			const resp = await fetch(url, {
 				method: 'PUT',
@@ -61,6 +70,8 @@
 		} catch (err) {
 			showErrorToast(err.message);
 		}
+
+		isSubmitting = false;
 	}
 
 
@@ -83,6 +94,14 @@
 		showImageModal = false;
 	}
 
+
+	function handleDelete() {
+		isSubmitting = true;
+		dispatch('deleted');
+		deleteModalOpen = false;
+		isSubmitting = false;
+	}
+
 	const sideColor = trade.side === 'LONG' ? 'text-green-400' : 'text-red-400';
 	const sideBg = trade.side === 'LONG' ? 'bg-green-900/40' : 'bg-red-900/40';
 </script>
@@ -91,7 +110,7 @@
 	<!-- Header row -->
 	<div class="flex items-baseline justify-between flex-wrap gap-2">
 		<h3 class="text-xl font-bold text-white whitespace-nowrap">
-			{trade.id}. {trade.tool_name}
+			{trade.tradeNumber}. {trade.tool_name}
 			<button onclick={() => openEdit('timeframe')}><span
 				class="cursor-pointer hover:text-blue-400 transition">
 			{trade.timeframe}
@@ -100,6 +119,12 @@
 		</h3>
 		<span class={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${sideBg} ${sideColor}`}>{trade.side}</span>
 		<span class="text-sm text-zinc-400 ml-auto">{trade.account_name}</span>
+		<button onclick={() => {
+			deleteModalOpen = true;
+		}}><span
+			class="cursor-pointer hover:text-red-400 transition text-2xl">
+			×
+		</span></button>
 	</div>
 
 	<!-- Time range -->
@@ -198,4 +223,44 @@
 		initialValue={trade[modalField]}
 		bind:open={modalOpen}
 		on:saved={handleSaved} />
+{/if}
+
+{#if deleteModalOpen}
+	<!-- Backdrop -->
+	<div
+		class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Delete trade"
+		tabindex="-1"
+	>
+		<!-- Modal Content -->
+		<div
+			class="bg-zinc-900 w-full max-w-lg mx-4 rounded-2xl shadow-xl shadow-white/10 p-6"
+			role="document"
+		>
+			<form onsubmit={handleDelete}>
+				<h2 class="text-xl font-semibold text-white mb-4 capitalize">Delete trade</h2>
+				<p>Are you sure you want to delete this trade?</p>
+				<p>This action is irreversible.</p>
+				<div class="flex justify-end mt-6 space-x-4">
+					<button
+						type="button"
+						class="py-2 px-4 rounded-xl border-2 border-zinc-600 hover:bg-zinc-800 transition-colors"
+						onclick={() => {deleteModalOpen = false}}
+						disabled={isSubmitting}
+					>
+						Cancel
+					</button>
+					<button
+						type="submit"
+						class="py-2 px-6 rounded-xl bg-red-800 hover:bg-red-700 transition-colors disabled:opacity-60"
+						disabled={isSubmitting}
+					>
+						{isSubmitting ? 'Deleting...' : 'Delete'}
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
 {/if}

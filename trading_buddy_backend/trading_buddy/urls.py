@@ -34,13 +34,12 @@ urlpatterns = [
 
     ##### JOURNAL #####
     # api/v1/stats/trades/all/?page=2&page_size=5
-    path('journal/trades/all/', views.get_all_trades),
+    path('journal/trades/', views.get_all_trades),
     # GET, under all accounts, pagination query params are used, check views.py
-    path('journal/trades/', views.get_trades),
-    # GET, under current selected account, pagination query params are used, check views.py
 
-    path('journal/trades/<int:trade_id>/', views.update_trade),  # PUT
+    path('journal/trades/<int:trade_id>/', views.journal_trade),  # PUT, DELETE
 
+    ##### TOOLS #####
     # Preset list of tools
     path('trading/tools/', views.get_preset_tools),  # GET
 
@@ -48,7 +47,7 @@ urlpatterns = [
     path('account/tools/', views.manage_tools),  # GET, POST
     path('account/tools/<str:tool_name>/', views.remove_tool),  # DELETE
 
-    # Trading under specific account
+    ##### TRADING under specific account #####
     path('trading/tools/<str:tool_name>/leverages/', views.get_max_leverages),  # GET
     path('trading/positions/process/', views.process_position_data),  # POST
     path('trading/positions/place/', views.place_position),  # POST
