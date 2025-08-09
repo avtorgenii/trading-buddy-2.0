@@ -303,24 +303,6 @@ class TradesResultsSetPagination(PageNumberPagination):
 
 
 @extend_schema(
-    responses=ShowTradeSerializer(many=True),  # not true, paginator makes response look different
-)
-@api_view(['GET'])
-def get_trades(request):
-    user = request.user
-    account = user.current_account
-    if not account:
-        return Response({"error": "No account is chosen as current "}, status=400)
-
-    trades = Trade.objects.filter(account=account).order_by('-pk')
-    paginator = TradesResultsSetPagination()
-    # Returns subset of trades for current page and page_size
-    result_page = paginator.paginate_queryset(trades, request)
-    serializer = ShowTradeSerializer(result_page, many=True, context={'request': request})
-    return paginator.get_paginated_response(serializer.data)
-
-
-@extend_schema(
     responses=ShowTradeSerializer(many=True),
 )
 @api_view(['GET'])
@@ -338,19 +320,25 @@ def get_all_trades(request):
 @extend_schema(
     request=UpdateTradeSerializer
 )
-@api_view(['PUT'])
-def update_trade(request, trade_id):
+@api_view(['PUT', 'DELETE'])
+def journal_trade(request, trade_id):
     trade = get_object_or_404(Trade, pk=trade_id)
 
-    # Passing Trade instance into serializer constructor means it will update existing record, instead of creating new one
-    # Partial means that serializer won't require all fields to be present for validation
-    serializer = UpdateTradeSerializer(trade, data=request.data, partial=True)
+    if request.method == 'PUT':
+        # Passing Trade instance into serializer constructor means it will update existing record, instead of creating new one
+        # Partial means that serializer won't require all fields to be present for validation
+        serializer = UpdateTradeSerializer(trade, data=request.data, partial=True)
 
-    if serializer.is_valid():
-        serializer.save()  # saves updated fields including the image
+        if serializer.is_valid():
+            serializer.save()  # saves updated fields including the image
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    elif request.method == 'DELETE':
+        trade.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    else:
-        return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 ##### STATS #####
