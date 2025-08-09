@@ -11,7 +11,17 @@
 
 	let selectedTicker = $state({ value: null, label: null, exchangeFormat: null });
 	let screenWidth = $state(0);
-	let isMobile = $derived(screenWidth < 768);
+
+	// Some shit code below, works correct for layout setup but I don't know why
+	let isMobile = $state(false);
+	let layoutChangeTimeout;
+
+	$effect(() => {
+		clearTimeout(layoutChangeTimeout);
+		layoutChangeTimeout = setTimeout(() => {
+			isMobile = screenWidth > 768;
+		}, 100);
+	});
 
 	let accountBalance = $state(0);
 	let riskPercent = $state(0);
@@ -160,7 +170,6 @@
 
 	async function processPositionData() {
 		console.log(mainAcc, selectedTicker, entryPrice, stopLoss, leverage);
-		console.log('aaa');
 		if (!mainAcc || !selectedTicker || !entryPrice || !stopLoss || !leverage) {
 			return;
 		}
@@ -283,175 +292,355 @@
 	});
 </script>
 
-<div class="flex items-center flex-col">
-	<div
-		class="w-auto md:min-w-2/3 bg-zinc-900 md:px-10 pt-4 pb-12 rounded-2xl text-center flex flex-col justify-between min-h-[60vh] max-w-full md:max-w-lg shadow-xl shadow-white/10">
-		<Select --item-hover-bg="#52525b" --list-background="#27272a" bind:value={selectedTicker} containerStyles="
-        background-color: #27272a;
-        border: 1px solid #374151;
-        border-radius: 0.5rem;
-        color: #ffffff;
-        width: 100%;
-        max-width: 20rem;
-        margin: 0 auto;
-      "
-						{items}
-						placeholder="Select Ticker"
-		/>
-
-		<div class="bg-zinc-800 rounded-t-2xl flex items-center justify-center p-1 mt-3">
-			<div class="w-full h-64 md:h-90 lg:h-96 xl:h-106 ">
-				{#key selectedTicker}
-					<TradingViewWidget class="w-full h-full" symbol={selectedTicker.value} />
-				{/key}
-			</div>
-		</div>
-
-		<div class="w-full max-w-md mx-auto mt-6 px-4">
-
-			<div class="flex justify-center space-x-6 bg-zinc-800 p-2 rounded-xl mb-6 text-sm">
-				<div>
-					<span class="text-zinc-400">Available margin: </span>
-					<span class="font-mono text-white">${accountBalance.toLocaleString('en-US')}</span>
-				</div>
-				<div>
-					<span class="text-zinc-400">Risk per Trade: </span>
-					<span class="font-mono text-white">{riskPercent}%</span>
-				</div>
-			</div>
-
-			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Leverage:</span>
-				<input
-					bind:value={leverage}
-					class="bg-zinc-800 text-center w-24 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					max="100"
-					min="1"
-					step="1"
-					type="number"
+<div class="w-full min-h-screen p-4">
+	<div class="w-full max-w-7xl mx-auto">
+		{#if isMobile}
+			<!-- Mobile: Single column layout -->
+			<div
+				class="w-full bg-zinc-900 px-4 pt-4 pb-12 rounded-2xl text-center flex flex-col justify-between shadow-xl shadow-white/10">
+				<Select --item-hover-bg="#52525b" --list-background="#27272a" bind:value={selectedTicker} containerStyles="
+		        background-color: #27272a;
+		        border: 1px solid #374151;
+		        border-radius: 0.5rem;
+		        color: #ffffff;
+		        width: 100%;
+		        margin: 0 auto;
+		      "
+								{items}
+								placeholder="Select Ticker"
 				/>
-				<span class="">x</span>
 
-				{#if isLong !== null}
-					<div class="flex-1 flex justify-end">
-						<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
-							 class:border-r-green-600={isLong}
-							 class:border-r-red-600={!isLong}>
-							{isLong ? 'Long' : 'Short'}
-						</p>
+				<div class="bg-zinc-800 rounded-t-2xl flex items-center justify-center p-1 mt-3">
+					<div class="w-full h-64">
+						{#key selectedTicker}
+							<TradingViewWidget class="w-full h-full" symbol={selectedTicker.value} />
+						{/key}
 					</div>
-				{/if}
-			</div>
-			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Entry:</span>
-				<input
-					bind:value={entryPrice}
-					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Limit Entry Price"
-					type="number"
-				/>
-			</div>
+				</div>
 
-			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Trigger:</span>
-				<input
-					bind:value={triggerLevel}
-					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Trigger Level (Optional)"
-					type="number"
-				/>
-			</div>
+				<div class="w-full mt-6 px-2">
+					<div class="flex justify-center space-x-6 bg-zinc-800 p-2 rounded-xl mb-6 text-sm">
+						<div>
+							<span class="text-zinc-400">Available margin: </span>
+							<span class="font-mono text-white">${accountBalance.toLocaleString('en-US')}</span>
+						</div>
+						<div>
+							<span class="text-zinc-400">Risk per trade: </span>
+							<span class="font-mono text-white">{riskPercent}%</span>
+						</div>
+					</div>
 
-			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Stop Loss:</span>
-				<input
-					bind:value={stopLoss}
-					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Stop Loss"
-					type="number"
-				/>
-			</div>
-			<div class="flex items-center space-x-2 mb-4">
-				<span class="text-zinc-400 w-24 text-start">Volume:</span>
-				<input
-					bind:value={positionSize}
-					class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
-					placeholder="Position Size (Optional)"
-					type="number"
-				/>
-			</div>
-
-			<p class="text-zinc-400 w-full text-left mb-2">Move SL to BE after:</p>
-
-			{#each takeProfits as tp, index (index)}
-				<div class="flex items-center gap-2 mb-4 flex-wrap">
-
-					<input
-						type="radio"
-						id="tp-be-{index}"
-						name="sl_be_after_tp"
-						class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500"
-						bind:group={moveSLToBEIndex}
-						value={index}
-					/>
-					<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap">TP {index + 1}:</label>
-
-					<div class="flex-1 flex gap-2 min-w-[200px]">
+					<div class="flex items-center space-x-2 mb-4">
+						<span class="text-zinc-400 w-24 text-start">Leverage:</span>
 						<input
+							bind:value={leverage}
+							class="bg-zinc-800 text-center w-24 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+							max="100"
+							min="1"
+							step="1"
 							type="number"
-							bind:value={tp.price}
-							placeholder="Price"
-							class="bg-zinc-800 flex-1 min-w-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+						/>
+						<span class="">x</span>
+
+						{#if isLong !== null}
+							<div class="flex-1 flex justify-end">
+								<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
+									 class:border-r-green-600={isLong}
+									 class:border-r-red-600={!isLong}>
+									{isLong ? 'Long' : 'Short'}
+								</p>
+							</div>
+						{/if}
+					</div>
+					<div class="flex items-center space-x-2 mb-4">
+						<span class="text-zinc-400 w-24 text-start">Entry:</span>
+						<input
+							bind:value={entryPrice}
+							class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+							placeholder="Limit Entry Price"
+							type="number"
 						/>
 					</div>
 
+					<div class="flex items-center space-x-2 mb-4">
+						<span class="text-zinc-400 w-24 text-start">Trigger:</span>
+						<input
+							bind:value={triggerLevel}
+							class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+							placeholder="Trigger Level (Optional)"
+							type="number"
+						/>
+					</div>
+
+					<div class="flex items-center space-x-2 mb-4">
+						<span class="text-zinc-400 w-24 text-start">Stop Loss:</span>
+						<input
+							bind:value={stopLoss}
+							class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+							placeholder="Stop Loss"
+							type="number"
+						/>
+					</div>
+					<div class="flex items-center space-x-2 mb-4">
+						<span class="text-zinc-400 w-24 text-start">Volume:</span>
+						<input
+							bind:value={positionSize}
+							class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+							placeholder="Position Size (Optional)"
+							type="number"
+						/>
+					</div>
+
+					<p class="text-zinc-400 w-full text-left mb-2">Move SL to BE after:</p>
+
+					{#each takeProfits as tp, index (index)}
+						<div class="flex items-center gap-2 mb-4 flex-wrap">
+							<input
+								type="radio"
+								id="tp-be-{index}"
+								name="sl_be_after_tp"
+								class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500"
+								bind:group={moveSLToBEIndex}
+								value={index}
+							/>
+							<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap">TP {index + 1}:</label>
+
+							<div class="flex-1 flex gap-2 min-w-[200px]">
+								<input
+									type="number"
+									bind:value={tp.price}
+									placeholder="Price"
+									class="bg-zinc-800 flex-1 min-w-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+								/>
+							</div>
+
+							<button
+								class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+								onclick={() => removeTakeProfit(index)}
+								disabled={takeProfits.length <= 1}
+								tabindex="0"
+								type="button">
+								Remove
+							</button>
+						</div>
+					{/each}
+					<div class="text-center mb-4">
+						<button
+							class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={takeProfits.length >= 5}
+							onclick={addTakeProfit}
+							tabindex="0"
+							type="button">
+							Add Take Profit
+						</button>
+					</div>
+
+					<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
+						<div class="flex justify-between">
+							<span class="text-zinc-400">Required margin:</span>
+							<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-zinc-400">Potential loss:</span>
+							<span class="text-red-500">{potentialLoss ? `$${potentialLoss.toFixed(2)}` : '-'}</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-zinc-400">Potential profit:</span>
+							<span class="text-green-500">{potentialProfit ? `$${potentialProfit.toFixed(2)}` : '-'}</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-zinc-400">Risk reward ratio:</span>
+							<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(2)}` : '-'}</span>
+						</div>
+					</div>
+
 					<button
-						class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
-						onclick={() => removeTakeProfit(index)}
-						disabled={takeProfits.length <= 1}
-						tabindex="0"
-						type="button">
-						Remove
+						class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
+			        transition-colors duration-200"
+						disabled={isSubmitting || isLong === null}
+						onclick={handleOpenTrade}
+					>
+						Open {isLong !== null ? (isLong ? 'Long' : 'Short') : ''}
 					</button>
 				</div>
-			{/each}
-			<button
-				class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-				disabled={takeProfits.length >= 5}
-				onclick={addTakeProfit}
-				tabindex="0"
-				type="button">
-				Add Take Profit
-			</button>
+			</div>
+		{:else}
+			<!-- Desktop: Two column layout -->
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+				<!-- Chart Column -->
+				<div class="bg-zinc-900 rounded-2xl p-4 shadow-xl shadow-white/10">
+					<Select --item-hover-bg="#52525b" --list-background="#27272a" bind:value={selectedTicker} containerStyles="
+			        background-color: #27272a;
+			        border: 1px solid #374151;
+			        border-radius: 0.5rem;
+			        color: #ffffff;
+			        width: 100%;
+			        margin: 0 auto 1rem auto;
+			      "
+									{items}
+									placeholder="Select Ticker"
+					/>
 
-			<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Required margin:</span>
-					<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
+					<div class="bg-zinc-800 rounded-2xl p-2 h-96 lg:h-[500px] xl:h-[600px]">
+						{#key selectedTicker}
+							<TradingViewWidget class="w-full h-full" symbol={selectedTicker.value} />
+						{/key}
+					</div>
 				</div>
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Potential loss:</span>
-					<span class="text-red-500">{potentialLoss ? `$${potentialLoss.toFixed(2)}` : '-'}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Potential profit:</span>
-					<span class="text-green-500">{potentialProfit ? `$${potentialProfit.toFixed(2)}` : '-'}</span>
-				</div>
-				<div class="flex justify-between">
-					<span class="text-zinc-400">Risk reward ratio:</span>
-					<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(2)}` : '-'}</span>
+
+				<!-- Form Column -->
+				<div class="bg-zinc-900 rounded-2xl p-6 shadow-xl shadow-white/10 flex flex-col">
+					<div class="flex justify-center space-x-6 bg-zinc-800 p-3 rounded-xl mb-6 text-sm">
+						<div>
+							<span class="text-zinc-400">Available margin: </span>
+							<span class="font-mono text-white">${accountBalance.toLocaleString('en-US')}</span>
+						</div>
+						<div>
+							<span class="text-zinc-400">Risk per trade: </span>
+							<span class="font-mono text-white">{riskPercent}%</span>
+						</div>
+					</div>
+
+					<div class="space-y-4 flex-1">
+						<div class="flex items-center space-x-2">
+							<span class="text-zinc-400 w-24 text-start">Leverage:</span>
+							<input
+								bind:value={leverage}
+								class="bg-zinc-800 text-center w-24 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+								max="100"
+								min="1"
+								step="1"
+								type="number"
+							/>
+							<span class="">x</span>
+
+							{#if isLong !== null}
+								<div class="flex-1 flex justify-end">
+									<p class="uppercase border-r-4 px-2.5 mb-1 text-lg"
+										 class:border-r-green-600={isLong}
+										 class:border-r-red-600={!isLong}>
+										{isLong ? 'Long' : 'Short'}
+									</p>
+								</div>
+							{/if}
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<span class="text-zinc-400 w-24 text-start">Entry:</span>
+							<input
+								bind:value={entryPrice}
+								class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+								placeholder="Limit Entry Price"
+								type="number"
+							/>
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<span class="text-zinc-400 w-24 text-start">Trigger:</span>
+							<input
+								bind:value={triggerLevel}
+								class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+								placeholder="Trigger Level (Optional)"
+								type="number"
+							/>
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<span class="text-zinc-400 w-24 text-start">Stop Loss:</span>
+							<input
+								bind:value={stopLoss}
+								class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+								placeholder="Stop Loss"
+								type="number"
+							/>
+						</div>
+
+						<div class="flex items-center space-x-2">
+							<span class="text-zinc-400 w-24 text-start">Volume:</span>
+							<input
+								bind:value={positionSize}
+								class="bg-zinc-800 w-full rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+								placeholder="Position Size (Optional)"
+								type="number"
+							/>
+						</div>
+
+						<p class="text-zinc-400 w-full text-left mb-2">Move stop-loss to entry after:</p>
+
+						{#each takeProfits as tp, index (index)}
+							<div class="flex items-center gap-2 mb-4 flex-wrap">
+								<input
+									type="radio"
+									id="tp-be-{index}"
+									name="sl_be_after_tp"
+									class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500"
+									bind:group={moveSLToBEIndex}
+									value={index}
+								/>
+								<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap">TP {index + 1}:</label>
+
+								<div class="flex-1 flex gap-2">
+									<input
+										type="number"
+										bind:value={tp.price}
+										placeholder="Price"
+										class="bg-zinc-800 flex-1 min-w-0 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
+									/>
+								</div>
+
+								<button
+									class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+									onclick={() => removeTakeProfit(index)}
+									disabled={takeProfits.length <= 1}
+									tabindex="0"
+									type="button">
+									Remove
+								</button>
+							</div>
+						{/each}
+
+						<div class="text-center mb-4">
+							<button
+								class="py-1 px-3 cursor-pointer rounded-xl hover:bg-zinc-800 border-2 border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+								disabled={takeProfits.length >= 5}
+								onclick={addTakeProfit}
+								tabindex="0"
+								type="button">
+								Add Take Profit
+							</button>
+						</div>
+
+						<div class="space-y-2 bg-zinc-800 rounded-xl p-4 mb-4">
+							<div class="flex justify-between">
+								<span class="text-zinc-400">Required margin:</span>
+								<span class="text-white">{requiredMargin ? `$${requiredMargin.toFixed(2)}` : '-'}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-zinc-400">Potential loss:</span>
+								<span class="text-red-500">{potentialLoss ? `$${potentialLoss.toFixed(2)}` : '-'}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-zinc-400">Potential profit:</span>
+								<span class="text-green-500">{potentialProfit ? `$${potentialProfit.toFixed(2)}` : '-'}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-zinc-400">Risk reward ratio:</span>
+								<span class="text-white">{riskRewardRatio ? `1 : ${riskRewardRatio.toFixed(2)}` : '-'}</span>
+							</div>
+						</div>
+
+						<button
+							class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
+				        transition-colors duration-200"
+							disabled={isSubmitting || isLong === null}
+							onclick={handleOpenTrade}
+						>
+							Open {isLong !== null ? (isLong ? 'Long' : 'Short') : ''}
+						</button>
+					</div>
 				</div>
 			</div>
-
-			<button
-				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
-            transition-colors duration-200 max-w-xs mx-auto"
-				disabled={isSubmitting || isLong === null}
-				onclick={handleOpenTrade}
-			>
-				Open {isLong !== null ? (isLong ? 'Long' : 'Short') : ''}
-			</button>
-		</div>
+		{/if}
 	</div>
 </div>
 
