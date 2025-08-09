@@ -226,7 +226,7 @@
 				<label class="block mb-2 text-left" for="deposit-field">Deposit</label>
 				<input
 					id="deposit-field"
-					type="number"
+					type="number" inputmode="decimal"
 					placeholder="0.00"
 					bind:value={deposit}
 					oninput={handleDepositInput}

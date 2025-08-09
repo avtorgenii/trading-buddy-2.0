@@ -39,4 +39,4 @@
 </script>
 
 <!--Needs to be wrapped with fixed width/height container-->
-<div class="tradingview-widget-container" bind:this={chartDiv}></div>
+<div class="tradingview-widget-container w-full h-full" bind:this={chartDiv}></div>

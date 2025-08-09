@@ -39,11 +39,15 @@
 	async function handleLogout(event: MouseEvent) {
 		event.preventDefault();
 
+		const url = `${API_BASE_URL}/auth/logout/`;
+		console.log(url);
+
 		try {
 			const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
 				method: 'POST',
 				headers: {
-					'X-CSRFToken': $csrfToken
+					'X-CSRFToken': $csrfToken,
+					'Content-Type': 'application/json'
 				},
 				credentials: 'include'
 			});
