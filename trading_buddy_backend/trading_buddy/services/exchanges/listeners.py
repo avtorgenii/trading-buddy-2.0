@@ -45,7 +45,7 @@ class Listener:
         utf8_data = self.decode_data(message)
 
         if utf8_data == "Ping":  # this is very important , if you receive 'Ping' you need to send 'Pong'
-            print(f"{self.__class__.__name__}: {timezone.now()} Ping")
+            # print(f"{self.__class__.__name__}: {timezone.now()} Ping")
             ws.send("Pong")
 
         return utf8_data
@@ -364,7 +364,7 @@ class BingXPriceListener(BingXListener):
 
         # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
         over_and_take, pos_side = pos.cancel_levels, pos.side
-        print("PRICE LISTENER ALIVE")
+        # print("PRICE LISTENER ALIVE")
 
         try:
             over, take = over_and_take
@@ -373,12 +373,12 @@ class BingXPriceListener(BingXListener):
                 if (over is not None and price <= over) or (take is not None and price >= take):
                     print(f"LONG: over: {over}, take: {take}, price: {price}")
                     self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                reason="Overlow or price got too close to take-profit")
+                                                                reason="Оверлой или цена подошла слишком близко к тейку")
             else:
                 if (over is not None and price >= over) or (take is not None and price <= take):
                     print(f"SHORT: over: {over}, take: {take}, price: {price}")
                     self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                reason="Overbuy or price got too close to take-profit")
+                                                                reason="Овербай или цена подошла слишком близко к тейку")
 
         except Exception as e:
             # print(f"{__class__.__name__}, {self.tool}: Cancelation levels for {self.tool} not specified: {e}")

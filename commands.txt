@@ -20,12 +20,15 @@ docker pull avtopetrovich/tb-backend:1.0
 docker pull avtopetrovich/tb-frontend:1.0
 
 # SCP
+ssh root@1.1.1.1
 scp docker-compose.prod.yml .env.prod backup.env nginx.conf root@1.1.1.1:~
 
 
 # Notion
-docker exec -it tb-backend /bin/sh
+docker exec -it tb-backend /bin/bash
 apt install nano
 nano trading_buddy/services/utils/notion_to_database.py
 python manage.py shell_plus
 import trading_buddy.services.utils.notion_to_database
+
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec db psql -U avtorpetrovich -d postgres -c "TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE;"

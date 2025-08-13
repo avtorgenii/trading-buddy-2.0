@@ -78,7 +78,7 @@
 				return true;
 			} else {
 				const error = await resp.json();
-				showErrorToast(error.message);
+				showErrorToast(error.error);
 				return false;
 			}
 		} catch (err) {
@@ -88,8 +88,8 @@
 	}
 
 
-	function handleDelete(tradeId) {
-		let success = deleteTrade(tradeId);
+	async function handleDelete(tradeId) {
+		let success = await deleteTrade(tradeId);
 		if (success) {
 			let tradeIdxToDeleted;
 			for (let i = 0; i < trades.length; i++) {

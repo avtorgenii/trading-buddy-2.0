@@ -335,8 +335,11 @@ def journal_trade(request, trade_id):
         else:
             return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
-        trade.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if hasattr(trade, 'position'): # trade.position if there is no position will throw an exception
+            return Response({"error": "Cannot remove trade with connected non-closed position.\nCancel order or close opened position in Positions first."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            trade.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
