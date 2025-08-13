@@ -181,19 +181,21 @@
 		{#if isCurrentSelected}
 			<div
 				bind:this={container}
-				class="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 flex-1"
+				class="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 flex-1 w-full"
 				onwheel={handleWheel}
 			>
 				{#if isLoading}
-					<div class="w-full flex items-center justify-center p-10">
+					<div class="col-span-full w-full flex items-center justify-center p-10">
 						<div class="w-8 h-8 border-4 border-zinc-600 border-t-blue-500 rounded-full animate-spin"></div>
 					</div>
 				{:else if positions.length > 0}
 					{#each positions as position (position.positionId)}
-						<PositionCard {position} />
+						<div class="col-span-1">
+							<PositionCard {position} />
+						</div>
 					{/each}
 				{:else}
-					<div class="w-full flex justify-center col-span-full">
+					<div class="col-span-full w-full flex justify-center">
 						<p class="text-center text-zinc-400 py-4">No current positions.</p>
 					</div>
 				{/if}

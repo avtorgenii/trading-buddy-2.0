@@ -65,7 +65,10 @@ def download_trades():
     print(data)
     output = list()
 
-    trade_num = 0
+    try:
+        trade_num = Trade.objects.order_by('-pk').first().pk
+    except:
+        trade_num = 0
 
     for item in data['results'][::-1]:
         d = {}
@@ -183,4 +186,4 @@ def import_trades_to_db():
 # Execute in db console before applying script
 """TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE"""
 download_trades()
-import_trades_to_db()
+# import_trades_to_db()

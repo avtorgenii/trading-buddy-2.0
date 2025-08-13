@@ -416,7 +416,7 @@ class BingXExc(Exchange):
             pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
                                                                             volume)
             # Creating trade and linked position in db
-            trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, pot_loss / deposit, pot_loss,
+            trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, (pot_loss / deposit) * 100, pot_loss,
                                        leverage,
                                        trigger_p,
                                        entry_p,
@@ -433,7 +433,7 @@ class BingXExc(Exchange):
                 print(f"Failed to place primary order")
                 if trade:
                     trade.delete()
-                return False, "Failed to place primary order"
+                return False, msg
 
     def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> Tuple[
         bool, str]:
