@@ -1,8 +1,10 @@
 # Use the official Python runtime image
 FROM python:3.13
 
-# Set environment variables
+### Set environment variables ###
+# No filesystem writes needed
 ENV PYTHONDONTWRITEBYTECODE=1
+# Better debugging - See output in real-time during development
 ENV PYTHONUNBUFFERED=1
 
 # Install system dependencies

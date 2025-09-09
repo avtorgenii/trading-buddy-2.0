@@ -349,10 +349,16 @@ class ProcessedPositionToOpenSerializer(serializers.Serializer):
 class PendingPositionSerializer(serializers.Serializer):
     trade_id = serializers.IntegerField()
     tool = serializers.CharField()
+    pos_side = serializers.CharField(max_length=5)
+
     trigger_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20, min_value=0,
                                              allow_null=True)
-    pos_side = serializers.CharField(max_length=5)
     entry_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    stop_price = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
+    take_profit_prices = serializers.ListField(
+        child=serializers.DecimalField(decimal_places=12, max_digits=20, allow_null=True),
+    )
+
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
@@ -362,21 +368,22 @@ class PendingPositionSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        for field in ['entry_price', 'trigger_price', 'margin', 'volume']:
+        for field in ['entry_price', 'trigger_price', 'stop_price', 'margin', 'volume']:
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
 
         if data['trigger_price'] == 0:
             data['trigger_price'] = None
 
-        if 'cancel_levels' in data and data['cancel_levels'] is not None:
-            cleaned_levels = []
-            for val in data['cancel_levels']:
-                if val is None:
-                    cleaned_levels.append(None)
-                else:
-                    cleaned_levels.append(clean_decimal_str(Decimal(val)))
-            data['cancel_levels'] = cleaned_levels
+        for field in ['cancel_levels', 'take_profit_prices']:
+            if field in data and data[field] is not None:
+                cleaned_values = []
+                for val in data[field]:
+                    if val is None:
+                        cleaned_values.append(None)
+                    else:
+                        cleaned_values.append(clean_decimal_str(Decimal(val)))
+                data[field] = cleaned_values
         return data
 
 
@@ -391,7 +398,7 @@ class CurrentPositionSerializer(serializers.Serializer):
     margin = serializers.DecimalField(decimal_places=12, default=0.00, max_digits=20)
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=12, max_digits=20)
-    open_date = serializers.DateTimeField()
+    open_date = serializers.DateTimeField(allow_null=True)
     current_pnl_risk_reward_ratio = serializers.DecimalField(decimal_places=4, default=0.00, max_digits=10)
     description = serializers.CharField(allow_blank=True, allow_null=True)
 

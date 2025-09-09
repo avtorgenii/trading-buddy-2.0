@@ -4,9 +4,5 @@
 
 
 <div class="p-0">
-
 	<PnLCalendar />
-
-
-
 </div>

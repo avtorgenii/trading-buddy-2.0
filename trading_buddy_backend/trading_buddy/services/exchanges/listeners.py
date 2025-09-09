@@ -90,12 +90,10 @@ class BingXOrderListener(BingXListener):
         job = schedule.every(7).minutes.do(self.extend_listen_key_validity)
         self.scheduled_jobs.append(job)
 
-    def __init__(self, manager, exchange):
+    def __init__(self, exchange):
         super().__init__(exchange)
 
         self.other = Other(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
-
-        self.manager = manager
 
         listen_key_response = self.other.generate_listen_key()
         self.listen_key = listen_key_response['listenKey']
@@ -321,8 +319,6 @@ class BingXOrderListener(BingXListener):
             schedule.cancel_job(job)
         self.scheduled_jobs = []
 
-        self.manager.on_close_listener()
-
     def listen_for_events(self):
         self.ws = websocket.WebSocketApp(
             self.ws_url,
@@ -341,14 +337,27 @@ class BingXOrderListenerManager:
 
     def __init__(self, exchange):
         self.exchange = exchange
-        self.order_listener = BingXOrderListener(self, self.exchange)
-        self.order_listener.listen_for_events()
+        self.order_listener = None # Initialize as None
 
     def on_close_listener(self):
-        print("OrderListenerManager: Restarting BingX Order Listener...")
+        print("BingXOrderListenerManager: The listener has closed. It will be restarted by the manager's loop.")
 
-        self.order_listener = BingXOrderListener(self, self.exchange)
-        self.order_listener.listen_for_events()
+    def run(self):
+        """
+        A persistent loop to run and restart the listener.
+        This should be the main entry point for the manager.
+        """
+        while True:
+            try:
+                print("BingXOrderListenerManager: Starting BingX Order Listener...")
+                self.order_listener = BingXOrderListener(self.exchange)
+                self.order_listener.listen_for_events() # This is a blocking call. It will run until the connection closes.
+
+            except Exception as e:
+                print(f"BingXOrderListenerManager: An unexpected error occurred: {e}")
+
+            # When listen_for_events() returns (due to on_close), the code continues here.
+            print("BingXOrderListenerManager: Listener stopped. Restarting in 5 seconds...")
 
 
 class BingXPriceListener(BingXListener):
