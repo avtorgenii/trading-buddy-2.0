@@ -198,16 +198,21 @@ class BingXExc(Exchange):
         except Exception as e:
             print("Price listener already deleted")
 
-    def _create_order_listener_manager(self):
+    def create_order_listener_manager_in_thread(self):
+        """Creates the manager and runs its loop in a background thread."""
+        if self.order_listener_manager is not None:
+            print("BingX Order listener is already running.")
+            return
+
         self.order_listener_manager = BingXOrderListenerManager(self)
 
-    def create_order_listener_manager_in_thread(self):
-        listener_thread = threading.Thread(target=self._create_order_listener_manager)
+        self.order_listener_manager_thread = threading.Thread(
+            target=self.order_listener_manager.run
+        )
         # Daemon threads exit automatically when the main program exits.
-        listener_thread.daemon = True
-        listener_thread.start()
-
-        self.order_listener_manager_thread = listener_thread
+        self.order_listener_manager_thread.daemon = True
+        self.order_listener_manager_thread.start()
+        print("BingX Order listener thread started.")
 
     @classmethod
     def check_account_validity(cls, api_key, secret_key) -> bool:
@@ -693,17 +698,20 @@ class BingXExc(Exchange):
         dicts = []
 
         for pos in positions:
-            if pos.last_status == "NEW":
+            if pos.last_status in ["NEW", "PARTIALLY_FILLED"]:
                 d = {
                     'trade_id': pos.trade.pk,
                     'tool': pos.tool.name,
                     'entry_price': str(pos.entry_price),
+                    'trigger_price': str(pos.trigger_price),
+                    'stop_price': str(pos.stop_price),
+                    'take_profit_prices': [str(price) for price in pos.take_profit_prices],
                     'pos_side': pos.side,
                     'leverage': str(pos.leverage),
                     'volume': str(pos.primary_volume),
                     'margin': str(round(Decimal(pos.entry_price * pos.primary_volume / pos.leverage), 3)),
-                    'trigger_price': str(pos.trigger_price),
                     'cancel_levels': [str(level) if level is not None else level for level in pos.cancel_levels],
+                    'status': pos.last_status
                 }
 
                 dicts.append(d)

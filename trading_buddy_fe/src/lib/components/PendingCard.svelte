@@ -83,14 +83,28 @@
                  {order.side === 'long' ? 'border-l-green-600' : 'border-l-red-600'}">
 					{order.side}
 				</p>
-				<p class="text-sm text-zinc-400">Qty: {order.quantity}</p>
+				<p class="text-sm text-zinc-400">Volume: {order.volume}</p>
 			</div>
 
-			<div class="w-3/5 flex flex-col justify-between">
+			<div class="w-3/5 flex flex-col">
 				<div class="text-center">
 					<p class="font-medium">{getStringAfterColon(order.ticker)}</p>
-					<p class="text-sm text-zinc-400">Margin: {order.margin}$</p>
-					<p class="text-sm text-zinc-400">Leverage: {order.leverage}x</p>
+					<br>
+					<div class="flex justify-center text-sm text-zinc-400">
+						<div class="mr-2">
+							<br>
+							<p>Margin: {order.margin}$</p>
+							<p>Leverage: {order.leverage}x</p>
+						</div>
+						<div class="ml-2">
+							{#if order.triggerPrice}
+								<p>Trigger price: {order.triggerPrice}</p>
+							{/if}
+							<p>Entry price: {order.entryPrice}</p>
+							<p>Stop-loss: {order.stopPrice}</p>
+							<p>Take-profits: [{order.takeProfits}]</p>
+						</div>
+					</div>
 				</div>
 				<div class="mt-3 text-center">
 					<p class="text-sm text-zinc-200">{order.status}</p>

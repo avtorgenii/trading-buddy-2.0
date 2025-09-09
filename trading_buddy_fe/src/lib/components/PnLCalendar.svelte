@@ -8,6 +8,7 @@
 	let currentYear = $state(currentDate.getFullYear());
 	let currentMonth = $state(currentDate.getMonth());
 
+	let totalPnl = $state(0);
 	let avgDailyPnl = $state(0);
 	let winningDaysPercent = $state(0);
 
@@ -40,7 +41,7 @@
 			monthlyData = parsedData;
 
 		} catch (error) {
-			console.error("Error Downloading data:", error);
+			console.error('Error Downloading data:', error);
 			monthlyData = {};
 		} finally {
 			isLoading = false;
@@ -59,9 +60,10 @@
 
 		if (tradeCount > 0) {
 			const winningDaysCount = monthEntries.filter(([_, pnl]) => pnl > 0).length;
-			const totalPnL = monthEntries.reduce((sum, [_, pnl]) => sum + pnl, 0);
+			totalPnl = monthEntries.reduce((sum, [_, pnl]) => sum + pnl, 0);
 
-			avgDailyPnl = totalPnL / tradeCount;
+
+			avgDailyPnl = totalPnl / tradeCount;
 			winningDaysPercent = (winningDaysCount / tradeCount) * 100;
 		} else {
 			avgDailyPnl = 0;
@@ -75,17 +77,31 @@
 		const paddingDays = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
 		const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-		for (let i = 0; i < paddingDays; i++) { grid.push(null); }
-		for (let i = 1; i <= daysInMonth; i++) { grid.push(new Date(currentYear, currentMonth, i)); }
+		for (let i = 0; i < paddingDays; i++) {
+			grid.push(null);
+		}
+		for (let i = 1; i <= daysInMonth; i++) {
+			grid.push(new Date(currentYear, currentMonth, i));
+		}
 		return grid;
 	});
 
 	function goToPreviousMonth() {
-		if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
+		if (currentMonth === 0) {
+			currentMonth = 11;
+			currentYear--;
+		} else {
+			currentMonth--;
+		}
 	}
 
 	function goToNextMonth() {
-		if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
+		if (currentMonth === 11) {
+			currentMonth = 0;
+			currentYear++;
+		} else {
+			currentMonth++;
+		}
 	}
 
 	function toISODateString(date) {
@@ -98,7 +114,9 @@
 <div class="bg-zinc-900 text-white p-2 md:p-6 rounded-2xl max-w-full md:max-w-lg mx-auto shadow-lg">
 
 	<header class="flex items-center justify-between mb-4 md:mb-6">
-		<button onclick={goToPreviousMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&lt;</button>
+		<button onclick={goToPreviousMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors"
+						disabled={isLoading}>&lt;
+		</button>
 		<div class="font-bold text-lg md:text-2xl text-center w-48">
 			{#if isLoading}
 				<span class="text-zinc-500 animate-pulse">Loading...</span>
@@ -106,7 +124,9 @@
 				{enMonths[currentMonth]} {currentYear}
 			{/if}
 		</div>
-		<button onclick={goToNextMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>&gt;</button>
+		<button onclick={goToNextMonth} class="p-2 rounded-full hover:bg-zinc-700 transition-colors" disabled={isLoading}>
+			&gt;
+		</button>
 	</header>
 
 	<div class="relative">
@@ -148,6 +168,14 @@
 	</div>
 
 	<div class="space-y-2 bg-zinc-800 rounded-xl p-4 my-4">
+		<div class="flex justify-between">
+			<span class="text-zinc-400 text-lg md:text-xl">Toral PnL</span>
+			<span class="text-white text-lg md:text-xl font-mono"
+						class:text-green-500={totalPnl > 0}
+						class:text-red-500={totalPnl < 0}>
+				{totalPnl < 0 ? `-$${Math.abs(totalPnl).toFixed(2)}` : `$${totalPnl.toFixed(2)}`}
+      </span>
+		</div>
 		<div class="flex justify-between">
 			<span class="text-zinc-400 text-lg md:text-xl">Avg Daily PnL</span>
 			<span class="text-white text-lg md:text-xl font-mono"

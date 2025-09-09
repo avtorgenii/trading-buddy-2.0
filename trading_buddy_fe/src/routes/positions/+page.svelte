@@ -63,7 +63,7 @@
 				tradingViewFormat: pos.trading_view_format,
 				side: pos.pos_side.toLowerCase(),
 				entryPrice: parseFloat(pos.avg_open),
-				quantity: parseFloat(pos.volume),
+				volume: parseFloat(pos.volume),
 				margin: parseFloat(pos.margin),
 				leverage: pos.leverage,
 				currentPnl: parseFloat(pos.current_pnl),
@@ -126,19 +126,27 @@
 			const apiPositions = await response.json();
 
 			return apiPositions.map(pos => ({
-				positionId: pos.tool + pos.pos_side + pos.entry_price,
+				positionId: pos.trade_id,
 				ticker: pos.tool,
 				side: pos.pos_side.toLowerCase(),
-				leverage: parseInt(pos.leverage, 10),
-				quantity: parseFloat(pos.volume),
-				margin: parseFloat(pos.margin),
 				orderType: 'Limit',
+
+				leverage: parseInt(pos.leverage, 10),
+				volume: parseFloat(pos.volume),
+				margin: parseFloat(pos.margin),
+
+				entryPrice: parseFloat(pos.entry_price),
+				triggerPrice: parseFloat(pos.trigger_price),
+				stopPrice: parseFloat(pos.stop_price),
+				takeProfits: pos.take_profit_prices,
+
 				cancelLevels: pos.cancel_levels && pos.cancel_levels.length >= 2
 					? {
 						overLowBuyLevel: parseFloat(pos.cancel_levels[0]),
 						takeProfitLevel: parseFloat(pos.cancel_levels[1])
 					}
-					: null
+					: null,
+
 			}));
 
 		} catch (error) {
