@@ -229,6 +229,17 @@ class PnLCalendarSerializer(serializers.Serializer):
         return {'pnl_by_day': cleaned_data}
 
 
+class TotalPnLSerializer(serializers.Serializer):
+    pnl = serializers.DecimalField(decimal_places=2, max_digits=12)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        data['pnl'] = clean_decimal_str(Decimal(data['pnl']))
+
+        return data
+
+
 ##### JOURNAL #####
 class ShowTradeSerializer(serializers.ModelSerializer):
     # DRF automatically calls get_screenshot_url before to_representation to set this param
