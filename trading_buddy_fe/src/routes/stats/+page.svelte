@@ -1,8 +1,47 @@
 <script>
 	import PnLCalendar from '$lib/components/PnLCalendar.svelte';
+	import { NON_PROXY_API_BASE_URL } from '$lib/config.js';
+	import { onMount } from 'svelte';
+
+	let totalPnl = $state(0);
+
+	async function fetchTotalPnl() {
+		const url = `${NON_PROXY_API_BASE_URL}/stats/total-pnl/all/`;
+
+		try {
+			const response = await fetch(url, {
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error(`Response error: ${response.status}`);
+			}
+
+			const responseData = await response.json();
+
+			totalPnl = responseData?.pnl;
+
+			console.log(responseData);
+		} catch (error) {
+			console.error('Error Downloading data:', error);
+		}
+
+		return { totalPnl };
+	}
+
+	onMount(() => {
+		fetchTotalPnl();
+	});
+
 </script>
 
 
 <div class="p-0">
 	<PnLCalendar />
+	<div class="page-wrapper flex items-center flex-col my-10">
+		<div class="text-center">
+			<h2 class="text-2xl text-white mb-2">Total PnL</h2>
+			<p class="text-4xl text-green-500">${totalPnl}</p>
+		</div>
+	</div>
 </div>

@@ -335,8 +335,10 @@ def journal_trade(request, trade_id):
         else:
             return Response({"error": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
-        if hasattr(trade, 'position'): # trade.position if there is no position will throw an exception
-            return Response({"error": "Cannot remove trade with connected non-closed position.\nCancel order or close opened position in Positions first."}, status=status.HTTP_400_BAD_REQUEST)
+        if hasattr(trade, 'position'):  # trade.position if there is no position will throw an exception
+            return Response({
+                                "error": "Cannot remove trade with connected non-closed position.\nCancel order or close opened position in Positions first."},
+                            status=status.HTTP_400_BAD_REQUEST)
         else:
             trade.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -345,6 +347,7 @@ def journal_trade(request, trade_id):
 
 
 ##### STATS #####
+@extend_schema(responses=PnLCalendarSerializer)
 @api_view(['GET'])
 def pnl_calendar(request, year, month):
     pnl_by_day, error = request.user.get_pnl_calendar_data(year, month, all_accounts=False)
@@ -364,6 +367,24 @@ def pnl_calendar_all(request, year, month):
         return Response({"error": error}, status=400)
 
     serializer = PnLCalendarSerializer({'pnl_by_day': pnl_by_day})
+    return Response(serializer.data)
+
+
+@extend_schema(responses=TotalPnLSerializer)
+@api_view(['GET'])
+def total_pnl(request):
+    total_pnl = request.user.get_total_pnl(all_accounts=False)
+
+    serializer = TotalPnLSerializer({'pnl': total_pnl})
+    return Response(serializer.data)
+
+
+@extend_schema(responses=TotalPnLSerializer)
+@api_view(['GET'])
+def total_pnl_all(request):
+    total_pnl = request.user.get_total_pnl(all_accounts=True)
+
+    serializer = TotalPnLSerializer({'pnl': total_pnl})
     return Response(serializer.data)
 
 

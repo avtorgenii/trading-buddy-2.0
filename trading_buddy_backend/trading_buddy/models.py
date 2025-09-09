@@ -54,6 +54,21 @@ class User(AbstractUser):
 
         return pnl_by_day, None
 
+    def get_total_pnl(self, all_accounts=False):
+        trades = Trade.objects.all()
+
+        if all_accounts:
+            user_accounts = self.accounts.all()
+            trades = trades.filter(account__in=user_accounts)
+        else:
+            if not self.current_account:
+                return None, "No account is chosen as current"
+            trades = trades.filter(account=self.current_account)
+
+        total_pnl = trades.aggregate(total_pnl=Sum('pnl_usd'))['total_pnl']
+
+        return total_pnl if total_pnl is not None else 0
+
 
 # Exchange account
 class Account(models.Model):
