@@ -66,6 +66,7 @@
 			avgDailyPnl = totalPnl / tradeCount;
 			winningDaysPercent = (winningDaysCount / tradeCount) * 100;
 		} else {
+			totalPnl = 0;
 			avgDailyPnl = 0;
 			winningDaysPercent = 0;
 		}
@@ -169,7 +170,7 @@
 
 	<div class="space-y-2 bg-zinc-800 rounded-xl p-4 my-4">
 		<div class="flex justify-between">
-			<span class="text-zinc-400 text-lg md:text-xl">Toral PnL</span>
+			<span class="text-zinc-400 text-lg md:text-xl">Total PnL</span>
 			<span class="text-white text-lg md:text-xl font-mono"
 						class:text-green-500={totalPnl > 0}
 						class:text-red-500={totalPnl < 0}>
