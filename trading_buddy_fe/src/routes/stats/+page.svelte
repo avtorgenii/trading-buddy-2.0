@@ -1,12 +1,12 @@
 <script>
 	import PnLCalendar from '$lib/components/PnLCalendar.svelte';
-	import { NON_PROXY_API_BASE_URL } from '$lib/config.js';
+	import { API_BASE_URL } from '$lib/config.js';
 	import { onMount } from 'svelte';
 
 	let totalPnl = $state(0);
 
 	async function fetchTotalPnl() {
-		const url = `${NON_PROXY_API_BASE_URL}/stats/total-pnl/all/`;
+		const url = `${API_BASE_URL}/stats/total-pnl/all/`;
 
 		try {
 			const response = await fetch(url, {

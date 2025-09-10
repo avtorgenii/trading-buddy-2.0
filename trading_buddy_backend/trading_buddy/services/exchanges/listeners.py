@@ -380,12 +380,12 @@ class BingXPriceListener(BingXListener):
 
             if pos_side == "LONG":
                 if (over is not None and price <= over) or (take is not None and price >= take):
-                    print(f"LONG: over: {over}, take: {take}, price: {price}")
+                    # print(f"LONG: over: {over}, take: {take}, price: {price}")
                     self.exchange.cancel_primary_order_for_tool(self.tool, True,
                                                                 reason="Оверлой или цена подошла слишком близко к тейку")
             else:
                 if (over is not None and price >= over) or (take is not None and price <= take):
-                    print(f"SHORT: over: {over}, take: {take}, price: {price}")
+                    # print(f"SHORT: over: {over}, take: {take}, price: {price}")
                     self.exchange.cancel_primary_order_for_tool(self.tool, True,
                                                                 reason="Овербай или цена подошла слишком близко к тейку")
 
