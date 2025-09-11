@@ -77,6 +77,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - postgres_data:/backup/postgres-data-backup:ro
       - media_data:/backup/media-data-backup:ro
+    networks:
+      - dev
 
 
 

@@ -189,6 +189,15 @@
 				class="w-full h-72 object-cover rounded-lg border border-zinc-700 cursor-pointer transition hover:scale-105 duration-200"
 			/>
 		</button>
+		<div class="flex justify-end my-0">
+			<button
+				type="button"
+				class="bg-zinc-800 hover:bg-zinc-700 text-sm px-4 py-2 rounded-xl transition-colors"
+				onclick={triggerUpload}
+			>
+				Replace screenshot
+			</button>
+		</div>
 	{:else}
 		<button
 			class="w-full h-40 rounded-lg border-2 border-dashed border-zinc-700 flex items-center justify-center text-zinc-500 text-sm cursor-pointer"
