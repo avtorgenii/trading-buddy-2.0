@@ -21,7 +21,8 @@ docker pull avtopetrovich/tb-frontend:1.0
 
 # SCP
 ssh root@1.1.1.1
-scp docker-compose.prod.yml .env.prod backup.env nginx.conf root@1.1.1.1:~
+scp -r docker-compose.prod.yml .env.prod backup.env nginx.conf backup-configuration root@1.1.1.1:~
+-r means recursive to transfer folders
 
 
 # Notion
