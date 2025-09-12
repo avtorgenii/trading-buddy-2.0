@@ -79,6 +79,7 @@ target/
 
 
 ### Django ###
+trading_buddy/logs
 *.log
 *.pyc
 local_settings.py

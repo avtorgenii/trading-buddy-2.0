@@ -34,6 +34,14 @@ load_dotenv(dotenv_path=BASE_DIR.parent / ('.env.dev' if DEBUG else '.env.prod')
 
 PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
 
+##### LOGGING #####
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
+from .logging_config import setup_loguru
+setup_loguru()
+
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 

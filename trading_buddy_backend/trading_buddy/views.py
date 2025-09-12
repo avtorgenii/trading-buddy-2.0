@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import login as django_login
 from django.contrib.auth import logout as django_logout
 from rest_framework.status import HTTP_400_BAD_REQUEST
+from loguru import logger
 
 from .models import Tool
 from .serializers import *
@@ -88,11 +89,11 @@ def ensure_exchanges_initialized():
                 if account.exchange == "BingX":
                     exc_map[account.exchange](account)  # initialize class to restore all listeners
 
-            print("INITIALIZED EXCHANGES")
+            logger.info('Initialized exchanges')
             _exchanges_initialized = True
         except Exception as e:
             # Handle the case where database isn't ready
-            print(e)
+            logger.exception('Failed to initialize exchanges')
 
 
 ensure_exchanges_initialized()
@@ -112,7 +113,6 @@ def auth_status(request):
                 'name': request.user.current_account.name,
                 'exchange': request.user.current_account.exchange,
             }
-
         return Response({
             "logged_in": True,
             "email": request.user.email,
@@ -337,8 +337,8 @@ def journal_trade(request, trade_id):
     elif request.method == 'DELETE':
         if hasattr(trade, 'position'):  # trade.position if there is no position will throw an exception
             return Response({
-                                "error": "Cannot remove trade with connected non-closed position.\nCancel order or close opened position in Positions first."},
-                            status=status.HTTP_400_BAD_REQUEST)
+                "error": "Cannot remove trade with connected non-closed position.\nCancel order or close opened position in Positions first."},
+                status=status.HTTP_400_BAD_REQUEST)
         else:
             trade.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
@@ -696,8 +696,6 @@ def get_current_positions(request):
     if account:
         exc = exc_map[account.exchange](account)
         success, msg, pending_data = exc.get_current_positions_info()  # list of dicts
-
-        # print(pending_data)
 
         if success:
             serializer = CurrentPositionSerializer(data=pending_data, many=True, context={'exchange': account.exchange})

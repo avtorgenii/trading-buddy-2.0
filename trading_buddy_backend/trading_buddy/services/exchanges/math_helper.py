@@ -1,5 +1,6 @@
 from decimal import Decimal, ROUND_DOWN
 from typing import Tuple, List
+from loguru import logger
 
 import pytz
 from datetime import datetime
@@ -28,11 +29,11 @@ def calc_position_volume_and_margin(
     required_margin = volume * entry_p / leverage
 
     if available_margin >= required_margin:
-        print(f"Margin required: {required_margin}")
+        logger.debug(f"Margin required: {required_margin}")
         return volume, Decimal(round(required_margin, 2))
     else:
         allowed_volume = floor_to_digits(leverage * available_margin / entry_p, quantity_precision)
-        print(f"Margin allowed: {allowed_volume * entry_p / leverage}")
+        logger.debug(f"Margin allowed: {allowed_volume * entry_p / leverage}")
         return allowed_volume, Decimal(round(allowed_volume * entry_p / leverage, 2))
 
 
