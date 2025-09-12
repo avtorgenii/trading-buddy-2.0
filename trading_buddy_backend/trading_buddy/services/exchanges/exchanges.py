@@ -2,6 +2,7 @@ from decimal import Decimal
 import inspect
 from typing import List, Dict, Tuple, Any
 import threading
+from loguru import logger
 
 import bingX.exceptions
 from bingX.perpetual.v2 import PerpetualV2
@@ -178,7 +179,7 @@ class BingXExc(Exchange):
 
                 del self.price_listeners_and_threads[tool_name]
             except Exception as e:
-                print("Price listener already deleted")
+                logger.warning("Price listener already deleted")
 
         # Create new ones for each tool
         positions = self.fresh_account.positions.all()
@@ -196,12 +197,12 @@ class BingXExc(Exchange):
 
             del self.price_listeners_and_threads[tool_name]
         except Exception as e:
-            print("Price listener already deleted")
+            logger.warning("Price listener already deleted")
 
     def create_order_listener_manager_in_thread(self):
         """Creates the manager and runs its loop in a background thread."""
         if self.order_listener_manager is not None:
-            print("BingX Order listener is already running.")
+            logger.info("BingX Order listener is already running.")
             return
 
         self.order_listener_manager = BingXOrderListenerManager(self)
@@ -212,7 +213,7 @@ class BingXExc(Exchange):
         # Daemon threads exit automatically when the main program exits.
         self.order_listener_manager_thread.daemon = True
         self.order_listener_manager_thread.start()
-        print("BingX Order listener thread started.")
+        logger.info("BingX Order listener thread started.")
 
     @classmethod
     def check_account_validity(cls, api_key, secret_key) -> bool:
@@ -221,10 +222,10 @@ class BingXExc(Exchange):
             client = PerpetualV2(api_key=api_key, secret_key=secret_key)
             client.other.generate_listen_key()
         except bingX.exceptions.ServerError as e:
-            print(e)
+            logger.warning("Error from server checking account validity")
             return False
         except bingX.exceptions.ClientError as e:
-            print(e)
+            logger.warning("Error from client checking account validity")
             return False
 
         return True
@@ -248,7 +249,7 @@ class BingXExc(Exchange):
             return True, "Successfully retrieved all account details", deposit, risk, Decimal(
                 details['unrealizedProfit']), Decimal(details['availableMargin'])
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning("Failed to get account details")
             return False, "Exchange side account details: unrealized and realized profits were unable to retrieved", deposit, risk, None, None
 
     def _get_tool_precision_info(self, tool: str) -> Tuple[bool, Dict[str, int]]:
@@ -261,7 +262,7 @@ class BingXExc(Exchange):
             info = self.client.market.get_contract_info(tool)
             return True, {"quantityPrecision": info['quantityPrecision'], "pricePrecision": info['pricePrecision']}
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning(f"Failed to get tool precision info for {tool}")
             return False, {}
 
     def get_max_leverage(self, tool: str) -> Tuple[bool, str, int | None, int | None]:
@@ -274,7 +275,7 @@ class BingXExc(Exchange):
             info = self.client.trade.get_leverage(tool)
             return True, "Successfully retrieved leverage limits", info["maxLongLeverage"], info["maxShortLeverage"]
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning(f'Failed to get max leverage info for {tool}')
             return False, "Failed to retrieve leverage limits", None, None
 
     def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: int) -> tuple[
@@ -346,7 +347,7 @@ class BingXExc(Exchange):
         try:
             self.client.trade.change_margin_mode(symbol=tool, margin_type=MarginType.CROSSED)
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning('Failed to switch to cross margin mode')
 
     def _place_primary_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                              pos_side: PositionSide, volume: Decimal) -> Tuple[bool, str]:
@@ -372,7 +373,7 @@ class BingXExc(Exchange):
 
             return True, order_response['order']['orderId']
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.exception(f'Failed to place primary order for {order_side} {tool} on {entry_p}')
             return False, str(e)
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
@@ -415,7 +416,7 @@ class BingXExc(Exchange):
             try:
                 self.client.trade.change_leverage(tool, pos_side, leverage)
             except Exception as e:
-                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                logger.exception(f'Failed to place open order for {tool} due to failure to change leverage')
                 return False, "Failed to change leverage"
 
             pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
@@ -430,12 +431,12 @@ class BingXExc(Exchange):
             success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
 
             if success:
-                print(f"Primary order placed successfully: {msg}")
+                logger.success(f'Primary order for {tool} placed successfully')
                 self.create_price_listener_in_thread(tool)
 
                 return True, "Primary order placed"
             else:
-                print(f"Failed to place primary order")
+                logger.error(f'Failed to place primary order for {tool}')
                 if trade:
                     trade.delete()
                 return False, msg
@@ -457,10 +458,10 @@ class BingXExc(Exchange):
                       stopPrice=stop_p)
         try:
             self.client.trade.create_order(order)
-            print(f"PLACED SL: price: {stop_p}, volume: {volume}")
+            logger.success(f'Place stop-loss at {stop_p} for volume of {volume}')
             return True, ""
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.critical(f'Failed to place stop-loss for {pos_side} {tool} at {stop_p}')
             return False, str(e)
 
     def cancel_stop_loss_for_tool(self, tool: str) -> Tuple[bool, str]:
@@ -471,25 +472,26 @@ class BingXExc(Exchange):
         success, msg, orders = self.get_orders_for_tool(tool)
 
         if not success:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            logger.error(f'Failed to get orders for tool {tool} for canceling stop-loss order')
             return False, msg
 
-        print(f"Orders: {orders}")
+        logger.debug(f'Orders for {tool}: {orders}')
 
         stop_order = orders.get('stop')
         if not stop_order:
-            print("No stop order found.")
+            logger.warning(f'No stop-loss order found for {tool}')
             return False, "No stop order found"
 
         stop_order_id = stop_order.get('orderId')
         if not stop_order_id:
-            print("No stop order ID found.")
+            logger.warning(f'No stop-loss order ID found for {tool}')
             return False, "No stop order ID found"
         try:
             self.client.trade.cancel_order(stop_order_id, tool)
+            logger.success(f'Canceled stop-loss order for {tool}')
             return True, ""
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.critical(f'Failed to cancel stop-loss order for {tool}: {stop_order}')
             return False, str(e)
 
     def cancel_take_profits_for_tool(self, tool: str) -> Tuple[bool, str]:
@@ -500,26 +502,27 @@ class BingXExc(Exchange):
         success, msg, orders = self.get_orders_for_tool(tool)
 
         if not success:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            logger.error(f'Failed to get orders for {tool} for canceling take-profit orders')
             return False, msg
 
-        print(orders)
+        logger.debug(f'Orders for {tool}: {orders}')
 
         take_orders = orders.get('takes')
         if not take_orders:
-            print("No take profit orders found.")
+            logger.warning(f'No take-proft orders found for {tool}')
             return False, "No take profit orders found."
 
         for take_order in take_orders:
             take_order_id = take_order.get('orderId')
             if not take_order_id:
-                print(f"Take profit order missing 'orderId': {take_order}")
+                logger.warning(f'No take-profit order ID found for {tool}')
                 continue
 
             try:
                 self.client.trade.cancel_order(take_order_id, tool)
+                logger.success(f'Canceled stop-loss order for {tool}')
             except Exception as e:
-                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                logger.critical(f'Failed to cancel take-profit order for {tool}: {take_order}')
                 return False, str(e)
 
         return True, ""
@@ -537,17 +540,17 @@ class BingXExc(Exchange):
         success, msg, orders = self.get_orders_for_tool(tool)
 
         if not success:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {msg}")
+            logger.error(f'Failed to get orders for {tool} for canceling primary order')
             return False, msg
 
-        print(orders)
+        logger.debug(f'Orders for {tool}: {orders}')
 
         entry_order_id = orders['entry']['orderId']
 
         try:
             self.client.trade.cancel_order(entry_order_id, tool)
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.critical(f'Failed to cancel primary order for {tool}')
             return False, str(e)
 
         if not only_cancel:
@@ -580,7 +583,7 @@ class BingXExc(Exchange):
         success, dict_with_quantity_precision = self._get_tool_precision_info(tool)
 
         if not success:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: Failed to fetch quantity precision")
+            logger.error(f'Failed to fetch quantity precision for {tool} for placing take-profit orders')
             return False, "Failed to fetch quantity precision"
 
         quantity_precision = dict_with_quantity_precision['quantityPrecision']
@@ -593,9 +596,9 @@ class BingXExc(Exchange):
             try:
                 self.client.trade.create_order(order)
 
-                print(f"PLACED TP: {take_profit}, volume: {volume}")
+                logger.success(f'Place take-profit order for {tool}: at {take_profit} with volume {volume}')
             except Exception as e:
-                print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+                logger.exception(f'Failed to place take-profit order for {tool}: at {take_profit} with volume {volume}')
                 return False, str(e)
         return True, "Successfully placed take profit orders."
 
@@ -609,8 +612,10 @@ class BingXExc(Exchange):
 
         try:
             self.client.trade.close_order(order)
+            logger.success(f'Closed position for {tool} by market')
             return True, "Closing market order placed successfully"
         except Exception as e:
+            logger.critical(f'Failed to close position for {tool} by market order')
             return False, str(e)
 
     def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, Dict[str, Any]]:
@@ -635,7 +640,7 @@ class BingXExc(Exchange):
 
             return True, "Successfully retrieved orders for tool", {'entry': entry, 'takes': tps, 'stop': stop}
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning(f'Failed to get orders for {tool}')
             return False, str(e), {}
 
     def get_current_positions_info(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
@@ -653,8 +658,8 @@ class BingXExc(Exchange):
                 try:
                     db_pos = self.fresh_account.positions.get(tool__name=tool_name)
                 except Position.DoesNotExist as e:
-                    print(
-                        str(e) + f" for {tool_name}: there are open positions on server, but they aren't in database.")
+                    logger.warning(
+                        f'There is an open position for {tool_name} on server, but it is not in database\n{e}')
                     continue
 
                 trade = db_pos.trade
@@ -685,7 +690,7 @@ class BingXExc(Exchange):
 
             return True, "Successfully retrieved current positions", dicts
         except Exception as e:
-            print(f"Error in {inspect.currentframe().f_code.co_name}: {e}")
+            logger.warning('Failed to fetch current positions info')
             return False, str(e), []
 
     def get_pending_positions_info(self) -> List[Dict[str, Any]]:

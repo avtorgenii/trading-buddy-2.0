@@ -3,3 +3,4 @@ trading_buddy_backend/.gitignore
 trading_buddy_backend/client_secret_800150852832-bbqaq8ra6sq1nm0sqo7n2nddn1nc3pp1.apps.googleusercontent.com.json
 trading_buddy_backend/Dockerfile
 trading_buddy_backend/README.md
+trading_buddy_backend/trading_buddy/logs
