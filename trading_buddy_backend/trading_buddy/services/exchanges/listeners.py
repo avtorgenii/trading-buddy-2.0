@@ -14,6 +14,10 @@ from loguru import logger
 from ...models import User, Account, Position
 
 
+def format_dict_for_log(dict_data: dict) -> str:
+    return json.dumps(dict_data, indent=2).replace("{", '').replace("}", '')
+
+
 class Listener:
     def __init__(self, user: User, account: Account):
         self._user = user
@@ -114,9 +118,7 @@ class BingXOrderListener(BingXListener):
             self.logger.exception(f'Failed to generate listen key')
             raise
 
-    def extract_info_from_utf_data(self, data):
-        dict_data = json.loads(data)
-
+    def extract_info_from_utf_data(self, dict_data: dict):
         order = dict_data["o"]
 
         tool = order["s"]
@@ -284,11 +286,11 @@ class BingXOrderListener(BingXListener):
 
         if utf8_data != "Ping":
             if "ORDER_TRADE_UPDATE" in utf8_data:
+                dict_data = json.loads(utf8_data)
+                self.logger.info(
+                    f'Order listener received an order trade updated message: {format_dict_for_log(dict_data)}')
                 tool, order_type, volume, avg_price, status, pnl, commission = self.extract_info_from_utf_data(
-                    utf8_data)
-
-                # Doesn't work due to curly braces of dict
-                # self.logger.info(f'Data for new order: {utf8_data}')
+                    dict_data)
 
                 if order_type == "TRIGGER_LIMIT" or order_type == "LIMIT":  # entry
                     if status == "FILLED":
@@ -310,10 +312,28 @@ class BingXOrderListener(BingXListener):
                     if status == "PARTIALLY_FILLED" or status == "FILLED":
                         self.on_close_by_market(tool, volume, pnl, commission, status)
 
+            elif 'listenKeyExpired' in utf8_data:
+                dict_data = json.loads(utf8_data)
+                self.logger.error(f'Listen key expired with next message: {format_dict_for_log(dict_data)}')
+                self.on_close(self.ws, 1000, 'Listen key expired')
+
     def on_close(self, ws, close_status_code, close_msg):
         super().on_close(ws, close_status_code, close_msg)
 
         self.stop_listening()
+        self.other.delete_listen_key(self.listen_key)
+
+        self.logger.error('Deleting listener...')
+
+        for job in self.scheduled_jobs:
+            schedule.cancel_job(job)
+        self.scheduled_jobs = []
+
+    def on_error(self, ws, error):
+        super().on_error(ws, error)
+
+        self.stop_listening()
+        self.other.delete_listen_key(self.listen_key)
 
         self.logger.error('Deleting listener...')
 
@@ -361,18 +381,17 @@ class BingXOrderListenerManager:
                 self.logger.exception('Connection closed for last BingX Order Listener')
 
             # When listen_for_events() returns (due to on_close), the code continues here.
-            self.logger.info('BingX Order Listener stopped. Restarting in 2 seconds')
+            self.logger.warning('BingX Order Listener stopped. Restarting in 2 seconds')
             time.sleep(2)
 
 
 class BingXPriceListener(BingXListener):
     def __init__(self, tool, exchange):
+        self.tool = tool
+        self.CHANNEL = {"id": "24dd0e35-56a4-4f7a-af8a-394c7060909c", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
+
         super().__init__(exchange)
         self.logger = self.logger.bind(class_name=self.__class__.__name__)
-
-        self.tool = tool
-
-        self.CHANNEL = {"id": "24dd0e35-56a4-4f7a-af8a-394c7060909c", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
 
     def check_price_for_order_cancellation(self, price):
         pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
@@ -394,7 +413,6 @@ class BingXPriceListener(BingXListener):
 
         except Exception as e:
             self.logger.debug('Tried to check price for order cancelling')
-            pass
 
     def on_open(self, ws):
         super().on_open(ws)
@@ -406,11 +424,15 @@ class BingXPriceListener(BingXListener):
 
         if utf8_data and utf8_data != "Ping":
             dict_data = json.loads(utf8_data)
+            # self.logger.info(f"Received data: {format_dict_for_log(dict_data)}")
 
-            price = Decimal(dict_data["data"]["c"])
+            try:
+                price = Decimal(dict_data["data"]["c"])
 
-            if price is not None:
-                self.check_price_for_order_cancellation(price)
+                if price is not None:
+                    self.check_price_for_order_cancellation(price)
+            except:
+                self.logger.warning(f'Failed to retrieve price data for {self.tool} from dict data sent by BingX')
 
     def listen_for_events(self):
         self.ws = websocket.WebSocketApp(

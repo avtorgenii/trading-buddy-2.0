@@ -18,14 +18,13 @@ ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /app
 
 # Copy only Poetry files first (for caching)
-COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/poetry.lock* /app/
+COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/poetry.lock /app/
 
 # Configure Poetry to not create a virtualenv
 RUN poetry config virtualenvs.create false
 
 # Install dependencies
 RUN poetry install --no-root
-RUN poetry add gunicorn
 
 RUN mkdir -p /app/media
 

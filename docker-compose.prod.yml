@@ -5,7 +5,7 @@ services:
   nginx:
     image: nginx:stable-alpine
     container_name: nginx-proxy
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"      # For HTTP traffic
     volumes:
@@ -21,7 +21,7 @@ services:
   backend:
     image: avtopetrovich/tb-backend:1.0
     container_name: tb-backend
-    restart: always
+    restart: unless-stopped
     env_file:
       - .env.prod
     depends_on:
@@ -35,7 +35,7 @@ services:
   frontend:
     image: avtopetrovich/tb-frontend:1.0
     container_name: tb-frontend
-    restart: always
+    restart: unless-stopped
     env_file:
       - .env.prod
     depends_on:
@@ -46,7 +46,7 @@ services:
   db:
     image: postgres:17.0
     container_name: tb-postgres-db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -67,7 +67,7 @@ services:
   backup:
     image: offen/docker-volume-backup:v2.43.4
     container_name: tb-backup
-    restart: always # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
+    restart: unless-stopped # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
     env_file:
       - ./backup.env
     volumes:

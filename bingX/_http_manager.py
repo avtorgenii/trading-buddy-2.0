@@ -1,5 +1,7 @@
+import json
 from json.decoder import JSONDecodeError
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -30,18 +32,58 @@ class _HTTPManager:
         signature = hmac.hexdigest()
         return signature
 
+    # def _generate_query_string(self, payload: dict[str, Any] = {}) -> str:
+    #     """
+    #     It takes a payload and returns a query string
+    #
+    #     :param payload: The payload that you want to convert to a query string
+    #     :return: A string of the query string
+    #     """
+    #
+    #     payload["timestamp"] = generate_timestamp()
+    #     query_string = '&'.join(f'{k}={v}' for k, v in payload.items() if v)
+    #     query_string += f"&signature={self._generate_signature(query_string)}"
+    #     return query_string
+
     def _generate_query_string(self, payload: dict[str, Any] = {}) -> str:
         """
-        It takes a payload and returns a query string
+        It takes a payload and returns a query string compliant with BingX API
 
         :param payload: The payload that you want to convert to a query string
         :return: A string of the query string
         """
-
+        # Add timestamp
         payload["timestamp"] = generate_timestamp()
-        query_string = '&'.join(f'{k}={v}' for k, v in payload.items() if v)
-        query_string += f"&signature={self._generate_signature(query_string)}"
-        return query_string
+
+        # Handle special fields that need to be JSON strings
+        processed_payload = {}
+        for key, value in payload.items():
+            if value is not None and value != "":
+                if key in ['takeProfit', 'stopLoss'] and isinstance(value, dict):
+                    # Convert nested dict to JSON string WITHOUT URL encoding
+                    json_str = json.dumps(value, separators=(',', ':'))
+                    processed_payload[key] = json_str
+                else:
+                    processed_payload[key] = value
+
+        # Sort parameters alphabetically
+        sorted_keys = sorted(processed_payload.keys())
+
+        # Create query string with sorted parameters (WITHOUT URL encoding)
+        query_parts = []
+        for k in sorted_keys:
+            value = processed_payload[k]
+            # Don't URL encode - just escape quotes if needed
+            query_parts.append(f"{k}={value}")
+
+        query_string = "&".join(query_parts)
+
+        # Generate signature from query string (without signature parameter)
+        signature = self._generate_signature(query_string)
+
+        # Add signature to final query string
+        final_query_string = f"{query_string}&signature={signature}"
+        return final_query_string
 
     def _request(self, method: str, endpoint: str, payload: dict[str, Any] = {}, headers: dict[str, Any] = {}) -> requests.Response:
         """

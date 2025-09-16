@@ -1,3 +1,5 @@
+import sys
+
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -14,6 +16,7 @@ from loguru import logger
 from .models import Tool
 from .serializers import *
 from .services.exchanges.exchanges import BingXExc
+from .services.exchanges.pollers import init_poller
 
 """
 {
@@ -76,27 +79,26 @@ exc_map = {
     # "ByBit": ByBitExc
 }
 
-# Initializing exchanges
-_exchanges_initialized = False
+# Initializing poller
+_poller_initialized = False
 
 
-def ensure_exchanges_initialized():
-    global _exchanges_initialized
-    if not _exchanges_initialized:
-        try:
-            accounts = Account.objects.all()
-            for account in accounts:
-                if account.exchange == "BingX":
-                    exc_map[account.exchange](account)  # initialize class to restore all listeners
-
-            logger.info('Initialized exchanges')
-            _exchanges_initialized = True
-        except Exception as e:
-            # Handle the case where database isn't ready
-            logger.exception('Failed to initialize exchanges')
+def ensure_poller_initialized():
+    global _poller_initialized
+    if not _poller_initialized:
+        poller = init_poller()
+        logger.info('Initialized order poller')
+        _poller_initialized = True
 
 
-ensure_exchanges_initialized()
+# Check if we're running a Django management command
+def is_running_management_command():
+    return len(sys.argv) >= 2 and sys.argv[1] in ['shell', 'shell_plus', 'makemigrations', 'migrate', 'test']
+
+
+# Only run if not in management command
+# if not is_running_management_command():
+#     ensure_poller_initialized()
 
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
