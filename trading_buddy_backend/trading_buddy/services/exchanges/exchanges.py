@@ -1,12 +1,12 @@
 from decimal import Decimal
 import inspect
-from typing import List, Dict, Tuple, Any
+from typing import List, Tuple, Any
 import threading
 from loguru import logger
 
 import bingX.exceptions
 from bingX.perpetual.v2 import PerpetualV2
-from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType)
+from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType, StopLossOrder, TakeProfitOrder)
 from bingX.exceptions import ClientError
 from ...models import Account, User, Position, Trade, Tool
 
@@ -20,7 +20,7 @@ class Exchange:
     Subclasses must define `exchange_name`.
     """
 
-    _instances: Dict[Any, 'Exchange'] = {}
+    _instances: dict[Any, 'Exchange'] = {}
     _lock = threading.Lock()
 
     exchange_name: str = "BASE_EXCHANGE"  # Should be overridden in subclasses
@@ -74,7 +74,7 @@ class Exchange:
     def get_max_leverage(self, tool: str) -> Tuple[bool, str, int | None, int | None]:
         raise NotImplementedError("Method not implemented")
 
-    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, Dict[str, int]]:
+    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, dict[str, int]]:
         raise NotImplementedError("Method not implemented")
 
     def calc_position_volume_and_margin(self, tool: str, entry_p: Decimal, stop_p: Decimal, leverage: Decimal) -> tuple[
@@ -115,13 +115,13 @@ class Exchange:
     def close_by_market(self, tool: str) -> Tuple[bool, str]:
         raise NotImplementedError("Method not implemented")
 
-    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, Dict[str, Any]]:
+    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, dict[str, Any]]:
         raise NotImplementedError("Method not implemented")
 
-    def get_current_positions_info(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
+    def get_current_positions_info(self) -> Tuple[bool, str, List[dict[str, Any]]]:
         raise NotImplementedError("Method not implemented")
 
-    def get_pending_positions_info(self) -> List[Dict[str, Any]]:
+    def get_pending_positions_info(self) -> List[dict[str, Any]]:
         raise NotImplementedError("Method not implemented")
 
 
@@ -150,7 +150,7 @@ class BingXExc(Exchange):
         self.order_listener_manager_thread = None
 
         self.restore_price_listeners()
-        self.create_order_listener_manager_in_thread()
+        # self.create_order_listener_manager_in_thread()
 
         # Mark the instance as fully initialized
         self._initialized = True
@@ -175,8 +175,6 @@ class BingXExc(Exchange):
             try:
                 tool_name = listener.tool.name
                 listener.stop_listening()
-                thread.exit()
-
                 del self.price_listeners_and_threads[tool_name]
             except Exception as e:
                 logger.warning("Price listener already deleted")
@@ -193,27 +191,25 @@ class BingXExc(Exchange):
         try:
             listener, thread = self.price_listeners_and_threads[tool_name]
             listener.stop_listening()
-            thread.exit()
-
             del self.price_listeners_and_threads[tool_name]
         except Exception as e:
             logger.warning("Price listener already deleted")
 
-    def create_order_listener_manager_in_thread(self):
-        """Creates the manager and runs its loop in a background thread."""
-        if self.order_listener_manager is not None:
-            logger.info("BingX Order listener is already running.")
-            return
-
-        self.order_listener_manager = BingXOrderListenerManager(self)
-
-        self.order_listener_manager_thread = threading.Thread(
-            target=self.order_listener_manager.run
-        )
-        # Daemon threads exit automatically when the main program exits.
-        self.order_listener_manager_thread.daemon = True
-        self.order_listener_manager_thread.start()
-        logger.info("BingX Order listener thread started.")
+    # def create_order_listener_manager_in_thread(self):
+    #     """Creates the manager and runs its loop in a background thread."""
+    #     if self.order_listener_manager is not None:
+    #         logger.info("BingX Order listener is already running.")
+    #         return
+    #
+    #     self.order_listener_manager = BingXOrderListenerManager(self)
+    #
+    #     self.order_listener_manager_thread = threading.Thread(
+    #         target=self.order_listener_manager.run
+    #     )
+    #     # Daemon threads exit automatically when the main program exits.
+    #     self.order_listener_manager_thread.daemon = True
+    #     self.order_listener_manager_thread.start()
+    #     logger.info("BingX Order listener thread started.")
 
     @classmethod
     def check_account_validity(cls, api_key, secret_key) -> bool:
@@ -252,11 +248,11 @@ class BingXExc(Exchange):
             logger.warning("Failed to get account details")
             return False, "Exchange side account details: unrealized and realized profits were unable to retrieved", deposit, risk, None, None
 
-    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, Dict[str, int]]:
+    def _get_tool_precision_info(self, tool: str) -> Tuple[bool, dict[str, int]]:
         """
         Gets precision information for a trading pair.
         :param tool: The trading pair.
-        :return: Dictionary with quantity and price precision.
+        :return: dictionary with quantity and price precision.
         """
         try:
             info = self.client.market.get_contract_info(tool)
@@ -350,13 +346,15 @@ class BingXExc(Exchange):
             logger.warning('Failed to switch to cross margin mode')
 
     def _place_primary_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
+                             take_profit_p: Decimal,
                              pos_side: PositionSide, volume: Decimal) -> Tuple[bool, str]:
         """
         Places a primary order.
         :param tool: The trading pair.
         :param trigger_p: Trigger price.
         :param entry_p: Entry price.
-        :param stop_p: Stop loss price.
+        :param stop_p: Stop-loss price.
+        :param take_profit_p: First take-profit price.
         :param pos_side: Position side (LONG/SHORT).
         :param volume: Trading volume.
         :return: Order ID.
@@ -366,10 +364,14 @@ class BingXExc(Exchange):
         # If trigger price is not specified, system treats order as a limit order
         order_type = OrderType.TRIGGER_LIMIT if trigger_p != 0 else OrderType.LIMIT
 
-        order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
-                      price=entry_p, stopPrice=trigger_p)
+        stop_loss_order = StopLossOrder(stopPrice=stop_p, price=stop_p)
+        take_profit_order = TakeProfitOrder(stopPrice=take_profit_p, price=take_profit_p)
+
+        primary_order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
+                              price=entry_p, stopPrice=trigger_p, stopLoss=stop_loss_order,
+                              takeProfit=take_profit_order)
         try:
-            order_response = self.client.trade.create_order(order)
+            order_response = self.client.trade.create_order(primary_order)
 
             return True, order_response['order']['orderId']
         except Exception as e:
@@ -415,7 +417,7 @@ class BingXExc(Exchange):
 
             try:
                 self.client.trade.change_leverage(tool, pos_side, leverage)
-            except Exception as e:
+            except:
                 logger.exception(f'Failed to place open order for {tool} due to failure to change leverage')
                 return False, "Failed to change leverage"
 
@@ -428,7 +430,8 @@ class BingXExc(Exchange):
                                        entry_p,
                                        stop_p, take_profits, move_stop_after, volume)
 
-            success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, pos_side, volume)
+            success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, take_profits[0], pos_side,
+                                                     volume)
 
             if success:
                 logger.success(f'Primary order for {tool} placed successfully')
@@ -457,7 +460,7 @@ class BingXExc(Exchange):
                       type=order_type,
                       stopPrice=stop_p)
         try:
-            self.client.trade.create_order(order)
+            # self.client.trade.create_order(order)
             logger.success(f'Place stop-loss at {stop_p} for volume of {volume}')
             return True, ""
         except Exception as e:
@@ -474,8 +477,6 @@ class BingXExc(Exchange):
         if not success:
             logger.error(f'Failed to get orders for tool {tool} for canceling stop-loss order')
             return False, msg
-
-        logger.debug(f'Orders for {tool}: {orders}')
 
         stop_order = orders.get('stop')
         if not stop_order:
@@ -504,8 +505,6 @@ class BingXExc(Exchange):
         if not success:
             logger.error(f'Failed to get orders for {tool} for canceling take-profit orders')
             return False, msg
-
-        logger.debug(f'Orders for {tool}: {orders}')
 
         take_orders = orders.get('takes')
         if not take_orders:
@@ -542,8 +541,6 @@ class BingXExc(Exchange):
         if not success:
             logger.error(f'Failed to get orders for {tool} for canceling primary order')
             return False, msg
-
-        logger.debug(f'Orders for {tool}: {orders}')
 
         entry_order_id = orders['entry']['orderId']
 
@@ -594,7 +591,7 @@ class BingXExc(Exchange):
             order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
                           stopPrice=take_profit)
             try:
-                self.client.trade.create_order(order)
+                # self.client.trade.create_order(order)
 
                 logger.success(f'Place take-profit order for {tool}: at {take_profit} with volume {volume}')
             except Exception as e:
@@ -618,11 +615,11 @@ class BingXExc(Exchange):
             logger.critical(f'Failed to close position for {tool} by market order')
             return False, str(e)
 
-    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, Dict[str, Any]]:
+    def get_orders_for_tool(self, tool: str) -> Tuple[bool, str, dict[str, Any]]:
         """
         Gets all open orders for a trading pair.
         :param tool: The trading pair.
-        :return: Dictionary containing entry, take profit, and stop orders.
+        :return: dictionary containing entry, take profit, and stop orders.
         """
         try:
             orders = self.client.trade.get_open_orders(tool)['orders']
@@ -643,7 +640,7 @@ class BingXExc(Exchange):
             logger.warning(f'Failed to get orders for {tool}')
             return False, str(e), {}
 
-    def get_current_positions_info(self) -> Tuple[bool, str, List[Dict[str, Any]]]:
+    def get_current_positions_info(self) -> Tuple[bool, str, List[dict[str, Any]]]:
         """
         Gets information about all current positions.
         :return: List of dictionaries containing position information.
@@ -693,7 +690,7 @@ class BingXExc(Exchange):
             logger.warning('Failed to fetch current positions info')
             return False, str(e), []
 
-    def get_pending_positions_info(self) -> List[Dict[str, Any]]:
+    def get_pending_positions_info(self) -> List[dict[str, Any]]:
         """
         Gets information about all pending positions.
         :return: List of dictionaries containing pending position information.
@@ -722,3 +719,12 @@ class BingXExc(Exchange):
                 dicts.append(d)
 
         return dicts
+
+    def get_open_orders(self) -> dict[str, Any]:
+        open_orders = self.client.trade.get_open_orders()
+
+        return open_orders
+
+
+class ByBitExc(Exchange):
+    pass
