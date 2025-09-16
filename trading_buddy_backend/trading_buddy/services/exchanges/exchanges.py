@@ -725,6 +725,11 @@ class BingXExc(Exchange):
 
         return open_orders
 
+    def get_current_positions(self) -> list[dict[str, Any]]:
+        current_positions = self.client.account.get_swap_positions()
+
+        return current_positions
+
 
 class ByBitExc(Exchange):
     pass

@@ -1,8 +1,6 @@
 import json
 from json.decoder import JSONDecodeError
 from typing import Any
-from urllib.parse import quote
-
 import requests
 
 from bingX._helpers import generate_hash, generate_timestamp

@@ -97,8 +97,8 @@ def is_running_management_command():
 
 
 # Only run if not in management command
-# if not is_running_management_command():
-#     ensure_poller_initialized()
+if not is_running_management_command():
+    ensure_poller_initialized()
 
 
 ##### AUTHORIZATION AND AUTHENTICATION #####
