@@ -163,3 +163,17 @@ class HistoryOrder(DictMixin):
     limit: int = 500
     timeStamp: int | None = None
     recvWindow: int | None = None
+
+
+@dataclass
+class HistoryPosition(DictMixin):
+    """
+    Can be used for querying multiple positions via API, but for my own use case will be used to query only single position with according positionId
+    Default
+    https://bingx-api.github.io/docs/#/en-us/swapV2/trade-api.html#Query%20Position%20History
+    """
+    symbol: str
+    positionId: int
+    recvWindow: int | None = None
+    startTs: int | None = None
+    endTs: int | None = None

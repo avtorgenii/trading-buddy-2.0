@@ -133,31 +133,32 @@ class Position(models.Model):
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
     current_volume = models.DecimalField(decimal_places=12, max_digits=20)
 
-    fill_history = ArrayField(
-        base_field=ArrayField(models.DecimalField(decimal_places=12, max_digits=20)),
-        default=list,
-        null=True
-    )  # e.g., [[101.5, 0.5], []] price and volume tuples
-
     last_status = models.CharField(max_length=50, null=True, default="NEW")
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not
 
-    pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
+    pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text='Net profit, after commissions')
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0,
                                          help_text='Trading fees, are always negative')
 
     account = models.ForeignKey('Account', related_name='positions', on_delete=models.RESTRICT)
     trade = models.OneToOneField('Trade', related_name='position', on_delete=models.CASCADE)
 
-    def close_position(self, reason=None):
+    @property
+    def start_time_unix_ms(self):
+        """Return start_time as Unix milliseconds"""
+        if self.start_time:
+            return int(self.start_time.timestamp() * 1000)
+        return None
+
+    def close_position(self, reason: str = None):
         """
         Called to transfer data to Trade when position is closed
         :return:
         """
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
-        self.trade.volume = sum(item[1] for item in self.fill_history)
-        self.trade.pnl_usd = self.pnl_usd + self.commission_usd  # commission is always with '-' sign
+        self.trade.volume = self.current_volume
+        self.trade.pnl_usd = self.pnl_usd
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
         self.trade.save()
@@ -217,8 +218,9 @@ class Trade(models.Model):
     account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 
     @classmethod
-    def create_trade(cls, side, account, tool_name, risk_percent, risk_usd, leverage, trigger_price, entry_price,
-                     stop_price, take_profits, move_stop_after, primary_volume):
+    def create_trade(cls, side: str, account: Account, tool_name: str, risk_percent: Decimal, risk_usd: Decimal,
+                     leverage: int, trigger_price: Decimal, entry_price: Decimal,
+                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, primary_volume: Decimal):
         """
         Creates trade and linked position.
         :return:

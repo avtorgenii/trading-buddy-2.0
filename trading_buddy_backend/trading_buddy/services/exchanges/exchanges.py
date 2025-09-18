@@ -1,17 +1,22 @@
+import json
 from decimal import Decimal
-import inspect
 from typing import List, Tuple, Any
 import threading
 from loguru import logger
+import time
 
 import bingX.exceptions
 from bingX.perpetual.v2 import PerpetualV2
-from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType, StopLossOrder, TakeProfitOrder)
-from bingX.exceptions import ClientError
-from ...models import Account, User, Position, Trade, Tool
+from bingX.perpetual.v2.types import (Order, OrderType, Side, PositionSide, MarginType, StopLossOrder, TakeProfitOrder,
+                                      HistoryOrder)
+from ...models import Account, User, Position, Trade
 
 from ..exchanges import math_helper as mh
-from .listeners import BingXOrderListenerManager, BingXPriceListener
+from .listeners import BingXPriceListener
+
+
+def format_dict_for_log(dict_data: dict | list) -> str:
+    return json.dumps(dict_data, indent=2).replace("{", '').replace("}", '')
 
 
 class Exchange:
@@ -69,7 +74,15 @@ class Exchange:
     def get_account_details(self) -> Tuple[bool, str, Decimal, Decimal, Decimal | None, Decimal | None]:
         raise NotImplementedError("Method not implemented")
 
-    ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH APPROPRIATE EXCHANGE SUFFIX #####
+    ##### ALL FUNCTIONS WHICH GET AS A PARAM TOOL NAME ASSUME THAT IT IS ALREADY WITH the APPROPRIATE EXCHANGE SUFFIX #####
+    def create_price_listener_in_thread(self, tool_name: str):
+        raise NotImplementedError("Method not implemented")
+
+    def restore_price_listeners(self):
+        raise NotImplementedError("Method not implemented")
+
+    def delete_price_listener(self, tool_name: str):
+        raise NotImplementedError("Method not implemented")
 
     def get_max_leverage(self, tool: str) -> Tuple[bool, str, int | None, int | None]:
         raise NotImplementedError("Method not implemented")
@@ -124,6 +137,15 @@ class Exchange:
     def get_pending_positions_info(self) -> List[dict[str, Any]]:
         raise NotImplementedError("Method not implemented")
 
+    def get_open_orders(self, position_id: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        raise NotImplementedError("Method not implemented")
+
+    def get_current_positions(self) -> list[dict[str, Any]]:
+        raise NotImplementedError("Method not implemented")
+
+    def get_position_result(self, db_pos: Position) -> dict[str, Any]:
+        raise NotImplementedError("Method not implemented")
+
 
 class BingXExc(Exchange):
     """
@@ -155,7 +177,7 @@ class BingXExc(Exchange):
         # Mark the instance as fully initialized
         self._initialized = True
 
-    def create_price_listener_in_thread(self, tool_name):
+    def create_price_listener_in_thread(self, tool_name: str):
         p_listener = BingXPriceListener(tool_name, self)
 
         price_listener_thread = threading.Thread(target=p_listener.listen_for_events)
@@ -187,29 +209,13 @@ class BingXExc(Exchange):
             if pos.last_status == "NEW":
                 self.create_price_listener_in_thread(pos.tool.name)
 
-    def delete_price_listener(self, tool_name):
+    def delete_price_listener(self, tool_name: str):
         try:
             listener, thread = self.price_listeners_and_threads[tool_name]
             listener.stop_listening()
             del self.price_listeners_and_threads[tool_name]
         except Exception as e:
             logger.warning("Price listener already deleted")
-
-    # def create_order_listener_manager_in_thread(self):
-    #     """Creates the manager and runs its loop in a background thread."""
-    #     if self.order_listener_manager is not None:
-    #         logger.info("BingX Order listener is already running.")
-    #         return
-    #
-    #     self.order_listener_manager = BingXOrderListenerManager(self)
-    #
-    #     self.order_listener_manager_thread = threading.Thread(
-    #         target=self.order_listener_manager.run
-    #     )
-    #     # Daemon threads exit automatically when the main program exits.
-    #     self.order_listener_manager_thread.daemon = True
-    #     self.order_listener_manager_thread.start()
-    #     logger.info("BingX Order listener thread started.")
 
     @classmethod
     def check_account_validity(cls, api_key, secret_key) -> bool:
@@ -424,7 +430,8 @@ class BingXExc(Exchange):
             pot_loss, _ = self.calculate_position_potential_loss_and_profit(tool, entry_p, stop_p, take_profits,
                                                                             volume)
             # Creating trade and linked position in db
-            trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, (pot_loss / deposit) * 100, pot_loss,
+            trade = Trade.create_trade(pos_side.value, self.fresh_account, tool, Decimal((pot_loss / deposit) * 100),
+                                       pot_loss,
                                        leverage,
                                        trigger_p,
                                        entry_p,
@@ -720,15 +727,65 @@ class BingXExc(Exchange):
 
         return dicts
 
-    def get_open_orders(self) -> dict[str, Any]:
-        open_orders = self.client.trade.get_open_orders()
+    def get_open_orders(self, position_id: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """
+        :return: Tuple of stop-loss order dict, and a list of take-profit order dicts
+        """
+        open_orders = self.client.trade.get_open_orders().get('orders', [])
+        if not open_orders:
+            return {}, []
 
-        return open_orders
+        position_id = int(position_id)
+
+        stop_loss_order = {}
+        take_profit_orders = []
+
+        for order in open_orders:
+            if order['positionID'] == position_id:
+                if order['type'] == 'STOP_MARKET':
+                    stop_loss_order = order
+                elif order['type'] == 'TAKE_PROFIT_MARKET':
+                    take_profit_orders.append(order)
+
+        return stop_loss_order, take_profit_orders
 
     def get_current_positions(self) -> list[dict[str, Any]]:
         current_positions = self.client.account.get_swap_positions()
 
         return current_positions
+
+    def get_position_result(self, db_pos: Position) -> tuple[Decimal, Decimal]:
+        """
+        Based on history orders bound to position via position id calculates its net profit and commission
+        :return: Net profit and commission for position
+        """
+        end_ts = int(time.time()) * 1000 + 5 * 60 * 1000  # Add 5 minutes for proper querying
+        start_ts = db_pos.start_time_unix_ms - 5 * 60 * 1000  # Subtract 5 minutes for proper querying
+
+        history_order = HistoryOrder(symbol=db_pos.tool.name, startTime=start_ts, endTime=end_ts)
+        position_id = db_pos.position_id
+
+        try:
+            orders = self.client.trade.get_orders_history(history_order).get('orders', [])
+
+            # logger.info(format_dict_for_log(orders))
+
+            profit = 0
+            commission = 0
+
+            for order in orders:
+                if str(order['positionID']) == position_id:
+                    profit += Decimal(order['profit'])
+                    commission += Decimal(order['commission'])
+                    logger.info(f'Found bound order, current profit: {profit}, commission: {commission}')
+
+            # The commission is always negative
+            net_profit = profit + commission
+
+            return net_profit, commission
+        except:
+            logger.exception(f'Failed to get orders history for {db_pos.tool.name}')
+            return Decimal(0), Decimal(0)
 
 
 class ByBitExc(Exchange):

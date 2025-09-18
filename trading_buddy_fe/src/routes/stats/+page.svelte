@@ -41,7 +41,7 @@
 	<div class="page-wrapper flex items-center flex-col my-10">
 		<div class="text-center">
 			<h2 class="text-2xl text-white mb-2">Total PnL</h2>
-			<p class="text-4xl text-green-500">${totalPnl}</p>
+			<p class="text-4xl {totalPnl >= 0 ? 'text-green-500' : 'text-red-500'}">{totalPnl < 0 ? `-$${Math.abs(totalPnl).toFixed(2)}` : `$${totalPnl.toFixed(2)}`}</p>
 		</div>
 	</div>
 </div>

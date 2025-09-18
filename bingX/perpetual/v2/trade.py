@@ -6,7 +6,7 @@ from bingX.perpetual.v2.types import (
     HistoryOrder,
     MarginType,
     Order,
-    PositionSide
+    PositionSide, HistoryPosition
 )
 
 
@@ -55,7 +55,8 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/batchOrders"
-        payload = {"batchOrders": [order.to_dict() for order in orders]} if recvWindow is None else {"batchOrders": [order.to_dict() for order in orders], "recvWindow": recvWindow}
+        payload = {"batchOrders": [order.to_dict() for order in orders]} if recvWindow is None else {
+            "batchOrders": [order.to_dict() for order in orders], "recvWindow": recvWindow}
 
         response = self.__http_manager.post(endpoint, payload)
         return response.json()["data"]
@@ -81,7 +82,9 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/order"
-        payload = {"orderId": order_id, "symbol": symbol} if recvWindow is None else {"orderId": order_id, "symbol": symbol, "recvWindow": recvWindow}
+        payload = {"orderId": order_id, "symbol": symbol} if recvWindow is None else {"orderId": order_id,
+                                                                                      "symbol": symbol,
+                                                                                      "recvWindow": recvWindow}
 
         response = self.__http_manager.delete(endpoint, payload)
         return response.json()["data"]
@@ -94,7 +97,9 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/batchOrders"
-        payload = {"orderIdList": order_ids, "symbol": symbol} if recvWindow is None else {"orderIdList": order_ids, "symbol": symbol, "recvWindow": recvWindow}
+        payload = {"orderIdList": order_ids, "symbol": symbol} if recvWindow is None else {"orderIdList": order_ids,
+                                                                                           "symbol": symbol,
+                                                                                           "recvWindow": recvWindow}
 
         response = self.__http_manager.delete(endpoint, payload)
         return response.json()["data"]
@@ -136,7 +141,9 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/order"
-        payload = {"symbol": symbol, "orderId": order_id} if recvWindow is None else {"symbol": symbol, "orderId": order_id, "recvWindow": recvWindow}
+        payload = {"symbol": symbol, "orderId": order_id} if recvWindow is None else {"symbol": symbol,
+                                                                                      "orderId": order_id,
+                                                                                      "recvWindow": recvWindow}
 
         response = self.__http_manager.get(endpoint, payload)
         return response.json()["data"]
@@ -162,12 +169,15 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/marginType"
-        payload = {"symbol": symbol, "marginType": margin_type.value} if recvWindow is None else {"symbol": symbol, "marginType": margin_type.value, "recvWindow": recvWindow}
+        payload = {"symbol": symbol, "marginType": margin_type.value} if recvWindow is None else {"symbol": symbol,
+                                                                                                  "marginType": margin_type.value,
+                                                                                                  "recvWindow": recvWindow}
 
         response = self.__http_manager.post(endpoint, payload)
         return response.json()
 
-    def change_position_mode(self, symbol: str, dual_side_position: bool, recvWindow: int | None = None) -> dict[str, Any]:
+    def change_position_mode(self, symbol: str, dual_side_position: bool, recvWindow: int | None = None) -> dict[
+        str, Any]:
         """
         Change the user's position mode on the specified symbol contract: isolated margin or cross margin.]
 
@@ -177,7 +187,9 @@ class Trade(_HTTPManager):
         endpoint = "/openApi/swap/v1/positionSide/dual"
         dualSidePosition = 'true' if dual_side_position else 'false'
 
-        payload = {"symbol": symbol, "dualSidePosition": dualSidePosition} if recvWindow is None else {"symbol": symbol, "dualSidePosition": dualSidePosition, "recvWindow": recvWindow}
+        payload = {"symbol": symbol, "dualSidePosition": dualSidePosition} if recvWindow is None else {"symbol": symbol,
+                                                                                                       "dualSidePosition": dualSidePosition,
+                                                                                                       "recvWindow": recvWindow}
 
         response = self.__http_manager.post(endpoint, payload)
         return response.json()
@@ -195,7 +207,8 @@ class Trade(_HTTPManager):
         response = self.__http_manager.get(endpoint, payload)
         return response.json()["data"]
 
-    def change_leverage(self, symbol: str, position_side: PositionSide, leverage: int, recvWindow: int | None = None) -> dict[str, Any]:
+    def change_leverage(self, symbol: str, position_side: PositionSide, leverage: int, recvWindow: int | None = None) -> \
+    dict[str, Any]:
         """
         Adjust the user's opening leverage in the specified symbol contract.
 
@@ -203,7 +216,8 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/leverage"
-        payload = {"symbol": symbol, "side": position_side.value, "leverage": leverage} if recvWindow is None else {"symbol": symbol, "side": position_side.value, "leverage": leverage, "recvWindow": recvWindow}
+        payload = {"symbol": symbol, "side": position_side.value, "leverage": leverage} if recvWindow is None else {
+            "symbol": symbol, "side": position_side.value, "leverage": leverage, "recvWindow": recvWindow}
 
         response = self.__http_manager.post(endpoint, payload)
         return response.json()
@@ -236,7 +250,23 @@ class Trade(_HTTPManager):
         response = self.__http_manager.get(endpoint, payload)
         return response.json()["data"]
 
-    def change_isolated_margin(self, symbol: str, amount: float, type: int, position_side: PositionSide = PositionSide.LONG, recvWindow: int | None = None) -> dict[str, Any]:
+    def get_position_history(self, history_position: HistoryPosition) -> dict[str, Any]:
+        """
+        Query the position history of perpetual contracts under the current account.
+        WARNING: May be huge delays on the server side before position is noted in server's history
+
+        https://bingx-api.github.io/docs/#/en-us/swapV2/trade-api.html#Query%20historical%20transaction%20details
+        """
+
+        endpoint = "/openApi/swap/v1/trade/positionHistory"
+        payload = history_position.to_dict()
+
+        response = self.__http_manager.get(endpoint, payload)
+        return response.json()["data"]
+
+    def change_isolated_margin(self, symbol: str, amount: float, type: int,
+                               position_side: PositionSide = PositionSide.LONG, recvWindow: int | None = None) -> dict[
+        str, Any]:
         """
         Adjust the isolated margin funds for the positions in the isolated position mode.
 
@@ -250,7 +280,11 @@ class Trade(_HTTPManager):
         """
 
         endpoint = "/openApi/swap/v2/trade/positionMargin"
-        payload = {"symbol": symbol, "amount": amount, "type": type, "positionSide": position_side.value} if recvWindow is None else {"symbol": symbol, "amount": amount, "type": type, "positionSide": position_side.value, "recvWindow": recvWindow}
+        payload = {"symbol": symbol, "amount": amount, "type": type,
+                   "positionSide": position_side.value} if recvWindow is None else {"symbol": symbol, "amount": amount,
+                                                                                    "type": type,
+                                                                                    "positionSide": position_side.value,
+                                                                                    "recvWindow": recvWindow}
 
         response = self.__http_manager.post(endpoint, payload)
         return response.json()

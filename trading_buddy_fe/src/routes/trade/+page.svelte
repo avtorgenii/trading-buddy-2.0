@@ -444,7 +444,7 @@
 
 			<button
 				class="mt-5 bg-blue-800 hover:bg-blue-700 py-3 rounded-xl w-full text-lg
-            transition-colors duration-200 max-w-xs mx-auto"
+            transition-colors duration-200 max-w-xs mx-auto cursor-pointer"
 				disabled={isSubmitting || isLong === null}
 				onclick={handleOpenTrade}
 			>
