@@ -9,9 +9,9 @@ from bingX.exceptions import ClientError, InvalidMethodException, ServerError
 
 class _HTTPManager:
     __BASE_URL = "https://open-api.bingx.com"
+
     # URL for demo trading
     # __BASE_URL = "https://open-api-vst.bingx.com"
-
 
     def __init__(self, api_key: str, secret_key: str) -> None:
         self.__secret_key = secret_key
@@ -29,19 +29,6 @@ class _HTTPManager:
         hmac = generate_hash(self.__secret_key, query_string)
         signature = hmac.hexdigest()
         return signature
-
-    # def _generate_query_string(self, payload: dict[str, Any] = {}) -> str:
-    #     """
-    #     It takes a payload and returns a query string
-    #
-    #     :param payload: The payload that you want to convert to a query string
-    #     :return: A string of the query string
-    #     """
-    #
-    #     payload["timestamp"] = generate_timestamp()
-    #     query_string = '&'.join(f'{k}={v}' for k, v in payload.items() if v)
-    #     query_string += f"&signature={self._generate_signature(query_string)}"
-    #     return query_string
 
     def _generate_query_string(self, payload: dict[str, Any] = {}) -> str:
         """
@@ -83,7 +70,8 @@ class _HTTPManager:
         final_query_string = f"{query_string}&signature={signature}"
         return final_query_string
 
-    def _request(self, method: str, endpoint: str, payload: dict[str, Any] = {}, headers: dict[str, Any] = {}) -> requests.Response:
+    def _request(self, method: str, endpoint: str, payload: dict[str, Any] = {},
+                 headers: dict[str, Any] = {}) -> requests.Response:
         """
         It takes a method, endpoint, payload, and headers, and returns a response
 

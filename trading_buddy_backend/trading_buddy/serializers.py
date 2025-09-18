@@ -418,8 +418,11 @@ class CurrentPositionSerializer(serializers.Serializer):
         for field in ['avg_open', 'realized_pnl', 'margin', 'volume', 'current_pnl_risk_reward_ratio', 'current_pnl']:
             if field in data:
                 data[field] = clean_decimal_str(Decimal(data[field]))
-
-        data['open_date'] = datetime.fromisoformat(data['open_date'].replace("Z", "+00:00")).strftime("%B %d, %Y %H:%M")
+        try:
+            data['open_date'] = datetime.fromisoformat(data['open_date'].replace("Z", "+00:00")).strftime(
+                "%B %d, %Y %H:%M")
+        except:
+            data['open_date'] = ''
         data['trading_view_format'] = get_trading_view_convention(data['tool'], self.context.get('exchange'))
 
         return data
