@@ -467,11 +467,11 @@ class BingXExc(Exchange):
                       type=order_type,
                       stopPrice=stop_p)
         try:
-            # self.client.trade.create_order(order)
-            logger.success(f'Place stop-loss at {stop_p} for volume of {volume}')
+            self.client.trade.create_order(order)
+            logger.success(f'Placed stop-loss at {stop_p} for volume of {volume}')
             return True, ""
         except Exception as e:
-            logger.critical(f'Failed to place stop-loss for {pos_side} {tool} at {stop_p}')
+            logger.critical(f'Failed to place stop-loss for {pos_side} {tool} at {stop_p}: {e}')
             return False, str(e)
 
     def cancel_stop_loss_for_tool(self, tool: str) -> Tuple[bool, str]:
@@ -515,7 +515,7 @@ class BingXExc(Exchange):
 
         take_orders = orders.get('takes')
         if not take_orders:
-            logger.warning(f'No take-proft orders found for {tool}')
+            logger.warning(f'No take-profit orders found for {tool}')
             return False, "No take profit orders found."
 
         for take_order in take_orders:
@@ -526,7 +526,7 @@ class BingXExc(Exchange):
 
             try:
                 self.client.trade.cancel_order(take_order_id, tool)
-                logger.success(f'Canceled stop-loss order for {tool}')
+                logger.success(f'Canceled take-profit order for {tool}')
             except Exception as e:
                 logger.critical(f'Failed to cancel take-profit order for {tool}: {take_order}')
                 return False, str(e)
@@ -598,9 +598,9 @@ class BingXExc(Exchange):
             order = Order(symbol=tool, side=order_side, positionSide=pos_side, quantity=volume, type=order_type,
                           stopPrice=take_profit)
             try:
-                # self.client.trade.create_order(order)
+                self.client.trade.create_order(order)
 
-                logger.success(f'Place take-profit order for {tool}: at {take_profit} with volume {volume}')
+                logger.success(f'Placed take-profit order for {tool}: at {take_profit} with volume {volume}')
             except Exception as e:
                 logger.exception(f'Failed to place take-profit order for {tool}: at {take_profit} with volume {volume}')
                 return False, str(e)
@@ -735,6 +735,8 @@ class BingXExc(Exchange):
         if not open_orders:
             return {}, []
 
+        # logger.info(format_dict_for_log(open_orders))
+
         position_id = int(position_id)
 
         stop_loss_order = {}
@@ -754,6 +756,7 @@ class BingXExc(Exchange):
 
         return current_positions
 
+    # TODO: seems to be not working due to duplicate orders in order history?
     def get_position_result(self, db_pos: Position) -> tuple[Decimal, Decimal]:
         """
         Based on history orders bound to position via position id calculates its net profit and commission
@@ -775,9 +778,15 @@ class BingXExc(Exchange):
 
             for order in orders:
                 if str(order['positionID']) == position_id:
-                    profit += Decimal(order['profit'])
-                    commission += Decimal(order['commission'])
-                    logger.info(f'Found bound order, current profit: {profit}, commission: {commission}')
+                    profit_chunk = Decimal(order['profit'])
+                    commission_chunk = Decimal(order['commission'])
+
+                    profit += profit_chunk
+                    commission += commission_chunk
+
+                    if profit_chunk and commission_chunk:
+                        logger.info(
+                            f'Found bound order, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
 
             # The commission is always negative
             net_profit = profit + commission

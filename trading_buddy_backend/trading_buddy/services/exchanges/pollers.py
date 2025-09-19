@@ -57,8 +57,8 @@ class OrderPoller:
                     # If the position is on the server and its status is filled or partially filled - check for partial take-profit event
                     # No need to check for partial take-profit if position has only one take-profit
                     elif last_status in ['FILLED', 'PARTIALLY_FILLED'] and len(db_pos.take_profit_prices) > 1:
-                        self.check_for_partial_take_profit_event(exc, tool, db_pos)
-
+                        self.check_for_partial_take_profit_event(exc, tool, db_pos, server_pos)
+                        pass
                     break
             if pos_vanished_from_server:
                 self.finish_trade(exc, tool, db_pos)
@@ -95,22 +95,23 @@ class OrderPoller:
                 # Place new take-profits
                 exc.place_take_profit_orders(tool, take_profits, db_pos.current_volume, db_pos.side)
 
-    # TODO: doesn't work at all - behaves very erratically after position has been filled
-    def check_for_partial_take_profit_event(self, exc: Exchange, tool: str, db_pos: Position):
+    def check_for_partial_take_profit_event(self, exc: Exchange, tool: str, db_pos: Position, server_pos: dict):
         """
         Handles partial take-profit
         """
         self.logger.debug(f'Checking {tool} for partial take-profit event')
+
+        db_pos.current_volume = Decimal(server_pos['availableAmt'])
         stop_loss_order, take_profit_orders = exc.get_open_orders(db_pos.position_id)
 
-        self.logger.debug(format_dict_for_log(stop_loss_order))
-        self.logger.debug(format_dict_for_log(take_profit_orders))
+        # self.logger.debug(format_dict_for_log(stop_loss_order))
+        # self.logger.debug(format_dict_for_log(take_profit_orders))
 
         num_current_fully_unfilled_tps = 0
 
         # Only count fully unfilled takes
         for tp_order in take_profit_orders:
-            if tp_order['status'] == 'PENDING':
+            if tp_order['status'] == 'NEW':
                 num_current_fully_unfilled_tps += 1
 
         num_initial_tps = len(db_pos.take_profit_prices)
