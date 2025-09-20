@@ -756,7 +756,8 @@ class BingXExc(Exchange):
 
         return current_positions
 
-    # TODO: seems to be not working due to duplicate orders in order history?
+    # TODO: Doesn't work because order history is not always being instantly updated on the exchange side
+    # As a kostyl fix just add delay before querying order history
     def get_position_result(self, db_pos: Position) -> tuple[Decimal, Decimal]:
         """
         Based on history orders bound to position via position id calculates its net profit and commission
@@ -784,7 +785,7 @@ class BingXExc(Exchange):
                     profit += profit_chunk
                     commission += commission_chunk
 
-                    if profit_chunk and commission_chunk:
+                    if profit_chunk or commission_chunk:
                         logger.info(
                             f'Found bound order, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
 
