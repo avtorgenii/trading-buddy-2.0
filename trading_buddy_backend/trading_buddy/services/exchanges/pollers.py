@@ -107,15 +107,6 @@ class OrderPoller:
         # self.logger.debug(format_dict_for_log(stop_loss_order))
         # self.logger.debug(format_dict_for_log(take_profit_orders))
 
-        num_current_fully_unfilled_tps = 0
-
-        # Only count fully unfilled takes
-        for tp_order in take_profit_orders:
-            if tp_order['status'] == 'NEW':
-                num_current_fully_unfilled_tps += 1
-
-        num_initial_tps = len(db_pos.take_profit_prices)
-
         last_status = db_pos.last_status
         if last_status == 'PARTIALLY_FILLED':
             success, _ = exc.cancel_primary_order_for_tool(tool, only_cancel=True)
@@ -123,20 +114,30 @@ class OrderPoller:
                 self.logger.critical(
                     f"Failed to cancel primary order for partially filled position which reached take-profit!")
 
-        # Checks if stop-loss is ready to be moved to entry level
-        if db_pos.move_stop_after - (num_initial_tps - num_current_fully_unfilled_tps) <= 0:
-            db_pos.breakeven = True
-            db_pos.save()
+        if not db_pos.breakeven:
+            num_current_fully_unfilled_tps = 0
 
-            success, msg = exc.cancel_stop_loss_for_tool(tool)
+            # Only count fully unfilled takes
+            for tp_order in take_profit_orders:
+                if tp_order['status'] == 'NEW':
+                    num_current_fully_unfilled_tps += 1
 
-            if not success:
-                self.logger.critical(f"Failed to cancel stop loss while moving it to breakeven")
+            num_initial_tps = len(db_pos.take_profit_prices)
 
-            success, msg = exc.place_stop_loss_order(tool, db_pos.entry_price, db_pos.current_volume, db_pos.side)
+            # Checks if stop-loss is ready to be moved to entry level
+            if db_pos.move_stop_after - (num_initial_tps - num_current_fully_unfilled_tps) <= 0:
+                db_pos.breakeven = True
+                db_pos.save()
 
-            if not success:
-                self.logger.critical("Failed to place stop loss while moving it to breakeven")
+                success, msg = exc.cancel_stop_loss_for_tool(tool)
+
+                if not success:
+                    self.logger.critical(f"Failed to cancel stop loss while moving it to breakeven")
+
+                success, msg = exc.place_stop_loss_order(tool, db_pos.entry_price, db_pos.current_volume, db_pos.side)
+
+                if not success:
+                    self.logger.critical("Failed to place stop loss while moving it to breakeven")
 
     def finish_trade(self, exc: Exchange, tool: str, db_pos: Position):
         """
@@ -144,7 +145,7 @@ class OrderPoller:
         """
         self.logger.debug(f'Finishing trade for {tool}')
         net_profit, commission = exc.get_position_result(db_pos)
-        self.logger.info(f'Net profit: {net_profit}, {commission}')
+        self.logger.info(f'Net profit: {net_profit}, commission: {commission}')
 
         # Do not close position until receive data about it
         if net_profit and commission:
