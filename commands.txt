@@ -24,6 +24,16 @@ ssh root@1.1.1.1
 scp -r docker-compose.prod.yml .env.prod backup.env nginx.conf backup-configuration root@1.1.1.1:~
 -r means recursive to transfer folders
 
+# Volumes
+# Zip up volume
+docker run --rm -v trading-buddy_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_data.tar.gz -C /data .
+# Transfer to main machine
+scp volume-backup.tar.gz user@main-machine:/path/to/destination/
+
+# Import - worked only for media data, postgres data was imported manually via docker desktop GUI
+docker run --rm -v trading-buddy_media_data:/data -v $(pwd):/backup alpine tar xzf /backup/media_data.tar.gz -C /data
+
+
 
 # Notion
 docker exec -it tb-backend /bin/bash
