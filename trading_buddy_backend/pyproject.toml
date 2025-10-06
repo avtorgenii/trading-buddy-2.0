@@ -17,7 +17,6 @@ dependencies = [
     "websocket-client (>=1.8.0,<2.0.0)",
     "drf-spectacular[sidecar] (>=0.28.0,<0.29.0)",
     "django-cors-headers (>=4.7.0,<5.0.0)",
-    "psycopg2 (>=2.9.10,<3.0.0)",
     "dotenv (>=0.9.9,<0.10.0)",
     "django-allauth (>=65.9.0,<66.0.0)",
     "dj-rest-auth (>=7.0.1,<8.0.0)",
@@ -25,11 +24,9 @@ dependencies = [
     "pyjwt (>=2.4.0,<3.0.0)",
     "cryptography (>=45.0.4,<46.0.0)",
     "loguru (>=0.7.3,<0.8.0)",
-    "gunicorn (>=23.0.0,<24.0.0)"
+    "gunicorn (>=23.0.0,<24.0.0)",
+    "psycopg2-binary>=2.9.10",
 ]
 
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
-
+[tool.uv]
+package = false

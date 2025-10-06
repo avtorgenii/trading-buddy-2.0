@@ -1,5 +1,5 @@
-# Use the official Python runtime image
-FROM python:3.13
+# Use UV's official Python image
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm
 
 ### Set environment variables ###
 # No filesystem writes needed
@@ -7,25 +7,16 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Better debugging - See output in real-time during development
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y curl
-
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH="/root/.local/bin:$PATH"
-
 # Create and set the working directory
 WORKDIR /app
 
-# Copy only Poetry files first (for caching)
-COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/poetry.lock /app/
+# Copy only UV project files first (for better caching)
+COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/uv.lock* /app/
 
-# Configure Poetry to not create a virtualenv
-RUN poetry config virtualenvs.create false
+# Install dependencies with UV
+RUN uv sync --frozen --no-cache
 
-# Install dependencies
-RUN poetry install --no-root
-
+# Create media directory
 RUN mkdir -p /app/media
 
 # Copy the full project and bingX library
@@ -35,5 +26,5 @@ COPY bingX/ /app/bingX/
 # Expose Django's default port
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 1"]
-
+# Run migrations and start Gunicorn using UV
+CMD ["sh", "-c", "uv run python manage.py migrate && uv run gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 1"]
