@@ -44,7 +44,7 @@ class OrderPoller:
         for db_pos in current_positions_db:
             tool = db_pos.tool.name
             # If position doesn't yet have an id, then it could not vanish
-            pos_vanished_from_server = db_pos.position_id is not None
+            pos_vanished_from_server = db_pos.server_position_id is not None
 
             for server_pos in current_positions_server:
                 # One position per tool as in rules of usage
@@ -80,7 +80,7 @@ class OrderPoller:
         # Not sure if this would actually work for partially filled positions
         if last_status == 'NEW':
             db_pos.start_time = timezone.now()
-            db_pos.position_id = server_pos['positionId']
+            db_pos.server_position_id = server_pos['positionId']
 
         db_pos.last_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.current_volume else 'FILLED'
         db_pos.save()
@@ -102,7 +102,7 @@ class OrderPoller:
         self.logger.debug(f'Checking {tool} for partial take-profit event')
 
         db_pos.current_volume = Decimal(server_pos['availableAmt'])
-        stop_loss_order, take_profit_orders = exc.get_open_orders(db_pos.position_id)
+        stop_loss_order, take_profit_orders = exc.get_open_orders(db_pos.server_position_id)
 
         # self.logger.debug(format_dict_for_log(stop_loss_order))
         # self.logger.debug(format_dict_for_log(take_profit_orders))
