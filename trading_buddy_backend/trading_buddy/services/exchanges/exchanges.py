@@ -767,7 +767,7 @@ class BingXExc(Exchange):
         start_ts = db_pos.start_time_unix_ms - 5 * 60 * 1000  # Subtract 5 minutes for proper querying
 
         history_order = HistoryOrder(symbol=db_pos.tool.name, startTime=start_ts, endTime=end_ts)
-        position_id = db_pos.position_id
+        position_id = db_pos.server_position_id
 
         try:
             orders = self.client.trade.get_orders_history(history_order).get('orders', [])

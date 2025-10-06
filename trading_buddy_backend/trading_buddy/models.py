@@ -100,7 +100,7 @@ class Tool(models.Model):
 
 # Position is temporary, all needed data from it will be transferred to connected Trade and then Position record will be removed
 class Position(models.Model):
-    position_id = models.CharField(null=True, blank=False)
+    server_position_id = models.CharField(null=True, blank=False)
 
     tool = models.ForeignKey(Tool, on_delete=models.RESTRICT, related_name='positions')
 
