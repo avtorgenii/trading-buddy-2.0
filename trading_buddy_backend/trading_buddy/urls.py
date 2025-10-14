@@ -19,20 +19,21 @@ urlpatterns = [
     path('deposit/', views.update_deposit),  # PUT
 
     ##### ACCOUNT(S) #####
-    path('accounts/<str:account_name>/', views.set_current_account),  # POST
-    path('accounts/', views.user_accounts),  # GET, POST
+    path('accounts/api/', views.update_account_api_keys),  # PUT
     path('account/details/', views.get_deposit_and_account_details),  # GET
     path('accounts/delete/<str:account_name>/', views.delete_account),  # DELETE
     path('accounts/<str:account_name>/risk-percent/', views.update_risk_for_account),  # PUT
+    path('accounts/<str:account_name>/', views.set_current_account),  # POST
+    path('accounts/', views.user_accounts),  # GET, POST
 
     ##### STATS #####
     # All accounts
     path('stats/pnl-calendar/all/<int:year>/<int:month>/', views.pnl_calendar_all),  # GET
     path('stats/pnl/total/', views.total_pnl_all),  # GET
-    path('stats/winrate/', views.get_winrate), # GET
-    path('stats/trades/number/', views.get_num_trades), # GET
-    path('stats/tools/winrates/', views.get_tools_with_biggest_win_rates), # GET
-    path('stats/pnl/progression/', views.get_pnl_progression_over_days), # GET
+    path('stats/winrate/', views.get_winrate),  # GET
+    path('stats/trades/number/', views.get_num_trades),  # GET
+    path('stats/tools/winrates/', views.get_tools_with_biggest_win_rates),  # GET
+    path('stats/pnl/progression/', views.get_pnl_progression_over_days),  # GET
 
     # Specific account
     path('stats/pnl-calendar/<int:year>/<int:month>/', views.pnl_calendar),  # GET

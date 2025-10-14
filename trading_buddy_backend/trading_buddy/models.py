@@ -196,8 +196,8 @@ class Account(models.Model):
     name = models.CharField(max_length=120)
     risk_percent = models.DecimalField(decimal_places=5, default=3.00, max_digits=10)
     exchange = models.CharField(max_length=120, choices=EXCHANGE_CHOICES)
-    api_key = models.TextField()
-    secret_key = models.TextField()
+    api_key = models.CharField()
+    secret_key = models.CharField()
     user = ForeignKey('User', related_name='accounts', on_delete=models.CASCADE)
 
     class Meta:

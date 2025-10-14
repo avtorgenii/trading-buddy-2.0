@@ -4,6 +4,7 @@
 	import { showSuccessToast, showErrorToast } from '$lib/toasts.js';
 	import { csrfToken } from '$lib/stores.js';
 	import AccountRiskModal from '$lib/components/modals/AccountRiskModal.svelte';
+	import EditAPIKeysDialog from '$lib/components/modals/EditAPIKeysDialog.svelte';
 
 	let accounts = $state([]);
 	let isLoading = $state(true);
@@ -19,6 +20,14 @@
 
 	let deposit = $state(null);
 	let depositDebounceTimer;
+
+	let showAPIKeysDialog = $state(false);
+	let selectedAccount = $state({
+		id: null,
+		name: '',
+		apiKey: '',
+		secretKey: ''
+	});
 
 	async function loadData() {
 		isLoading = true;
@@ -213,6 +222,21 @@
 		settingsSaveStatus = 'success';
 		setTimeout(() => settingsSaveStatus = 'idle', 3000);
 	}
+
+	function openAPIKeysDialog(account) {
+		selectedAccount = {
+			id: account.id,
+			name: account.name,
+			apiKey: account.api_key || '',
+			secretKey: account.secret_key || ''
+		};
+		showAPIKeysDialog = true;
+	}
+
+	function handleAPIKeysSaved(event) {
+		console.log('API keys updated:', event.detail);
+		loadData();
+	}
 </script>
 
 <div class="page-wrapper flex items-center flex-col">
@@ -268,6 +292,10 @@
 										<button type="button" onclick={() => openRiskDialog(account.name, account.risk)}
 														class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-blue-900/50 border-2 border-blue-900/80 hover:border-blue-800 transition-colors">
 											Risk
+										</button>
+										<button type="button" onclick={() => openAPIKeysDialog(account)}
+														class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-zinc-900/50 border-2 border-zinc-900/80 hover:border-zinc-800 transition-colors">
+											API keys
 										</button>
 										<button type="button" onclick={() => deleteAccount(account.id)}
 														class="py-2 px-4 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
@@ -336,14 +364,21 @@
 </div>
 
 <!-- Dialogs -->
-{#if showRiskDialog}
-	<AccountRiskModal
-		initialValue={initialRisk}
-		accountName={currentAccountName}
-		bind:open={showRiskDialog}
-		on:saved={handleRiskSaved}
-	/>
-{/if}
+<AccountRiskModal
+	initialValue={initialRisk}
+	accountName={currentAccountName}
+	bind:open={showRiskDialog}
+	on:saved={handleRiskSaved}
+/>
+
+<EditAPIKeysDialog
+	accountId={selectedAccount.id}
+	accountName={selectedAccount.name}
+	initialApiKey={selectedAccount.apiKey}
+	initialSecretKey={selectedAccount.secretKey}
+	bind:open={showAPIKeysDialog}
+	on:saved={handleAPIKeysSaved}
+/>
 
 <style>
     .deposit-input::-webkit-inner-spin-button,
