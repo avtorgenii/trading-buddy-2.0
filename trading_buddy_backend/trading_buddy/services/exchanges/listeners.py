@@ -163,7 +163,7 @@ class BingXOrderListener(BingXListener):
         self.logger.success(f'Primary order for {tool} is fully filled')
 
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        left_volume_to_fill, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.last_status, pos.fill_history
+        left_volume_to_fill, last_status, fill_history = pos.primary_volume - pos.max_held_volume, pos.last_status, pos.fill_history
 
         if last_status == "PARTIALLY_FILLED":
             # If order was previously partially filled - call partial fill func once again
@@ -175,7 +175,7 @@ class BingXOrderListener(BingXListener):
 
             pos.entry_price = avg_price  # ABSOLUTELY CRUCIAL FOR MOVING STOP-LOSS TO BREAK-EVEN
             pos.last_status = "FILLED"
-            pos.current_volume = volume
+            pos.max_held_volume = volume
             pos.commission_usd += new_commission
             pos.start_time = timezone.now()
             pos.fill_history = fill_history
@@ -185,13 +185,13 @@ class BingXOrderListener(BingXListener):
 
     def on_partial_fill_primary_order(self, tool, avg_price, volume, new_commission):
         pos = Position.objects.filter(account=self.fresh_account, tool__name=tool).first()
-        left_volume_to_fill, current_volume, commission, last_status, fill_history = pos.primary_volume - pos.current_volume, pos.current_volume, pos.commission_usd, pos.last_status, pos.fill_history
+        left_volume_to_fill, current_volume, commission, last_status, fill_history = pos.primary_volume - pos.max_held_volume, pos.max_held_volume, pos.commission_usd, pos.last_status, pos.fill_history
 
         current_volume += volume
         left_volume_to_fill -= volume
         fill_history.append([avg_price, current_volume])
 
-        pos.current_volume = current_volume
+        pos.max_held_volume = current_volume
         pos.fill_history = fill_history
 
         if last_status == "NEW":
@@ -241,8 +241,8 @@ class BingXOrderListener(BingXListener):
 
         if not breakeven:
             # Decreasing volume for new stop-loss as take-profit already fixed some volume of position
-            volume_for_stop_loss = pos.current_volume - volume
-            pos.current_volume = volume_for_stop_loss
+            volume_for_stop_loss = pos.max_held_volume - volume
+            pos.max_held_volume = volume_for_stop_loss
 
             # If it was the last take
             if volume_for_stop_loss == 0:

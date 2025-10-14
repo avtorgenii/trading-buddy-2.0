@@ -3,6 +3,8 @@
 
 	let monthlyData = $state({});
 	let isLoading = $state(true);
+	let winrate = $state(0);
+	let numTrades = $state(0);
 
 	let currentDate = new Date();
 	let currentYear = $state(currentDate.getFullYear());
@@ -16,7 +18,6 @@
 	const enMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 	async function fetchMonthlyData(year, month) {
-		isLoading = true;
 		const apiMonth = month + 1;
 		const url = `${API_BASE_URL}/stats/pnl-calendar/all/${year}/${apiMonth}/`;
 
@@ -43,14 +44,59 @@
 		} catch (error) {
 			console.error('Error Downloading data:', error);
 			monthlyData = {};
-		} finally {
-			isLoading = false;
 		}
 	}
 
+	async function fetchMonthlyWinrate(year, month) {
+		const apiMonth = month + 1;
+		const url = `${API_BASE_URL}/stats/winrate/?year=${year}&month=${apiMonth}`;
+
+
+		try {
+			const response = await fetch(url, {
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error(`Response error: ${response.status}`);
+			}
+
+			winrate = await response.json();
+		} catch (error) {
+			console.error('Error Downloading monthly winrate:', error);
+			winrate = 0;
+		}
+	}
+
+	async function fetchMonthlyNumberOfTrades(year, month) {
+		const apiMonth = month + 1;
+		const url = `${API_BASE_URL}/stats/trades/number/?year=${year}&month=${apiMonth}`;
+
+
+		try {
+			const response = await fetch(url, {
+				credentials: 'include'
+			});
+
+			if (!response.ok) {
+				throw new Error(`Response error: ${response.status}`);
+			}
+
+			numTrades = await response.json();
+		} catch (error) {
+			console.error('Error Downloading monthly number of trades:', error);
+			numTrades = 0;
+		}
+	}
+
+
 	$effect(() => {
 		if (currentYear !== undefined && currentMonth !== undefined) {
+			isLoading = true;
 			fetchMonthlyData(currentYear, currentMonth);
+			fetchMonthlyWinrate(currentYear, currentMonth);
+			fetchMonthlyNumberOfTrades(currentYear, currentMonth);
+			isLoading = false;
 		}
 	});
 
@@ -189,6 +235,12 @@
 			<span class="text-zinc-400 text-lg md:text-xl">Winning Days %</span>
 			<span class="text-white text-lg md:text-xl font-mono">
         {winningDaysPercent.toFixed(0)}%
+      </span>
+		</div>
+		<div class="flex justify-between">
+			<span class="text-zinc-400 text-lg md:text-xl">Trades Winrate %</span>
+			<span class="text-white text-lg md:text-xl font-mono">
+        {winrate * 100}%
       </span>
 		</div>
 	</div>

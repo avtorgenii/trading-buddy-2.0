@@ -70,7 +70,7 @@ class User(AbstractUser):
 
         return total_pnl if total_pnl is not None else 0
 
-    def get_win_rate(self, year: int = None, month: int = None):
+    def get_winrate(self, year: int = None, month: int = None):
         user_accounts = self.accounts.all()
 
         if year and month:
@@ -79,8 +79,10 @@ class User(AbstractUser):
                 month = int(month)
                 start_date = datetime(year, month, 1)
                 end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
-            except ValueError:
-                return None, "Invalid year/month format. Use YYYY/MM"
+            except ValueError as e:
+                return None, f"Invalid year/month: {e}"
+
+            print(year, month)
 
             trades = Trade.objects.filter(
                 end_time__isnull=False,
@@ -92,8 +94,6 @@ class User(AbstractUser):
         else:
             trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
 
-        print(trades)
-
         if trades:
             win_trades_num = sum(1 for trade in trades if trade.pnl_usd > 0)
 
@@ -101,11 +101,32 @@ class User(AbstractUser):
         else:
             return 0
 
-    def get_tools_with_biggest_win_rates(self):
+    def get_num_trades(self, year: int, month: int):
+        user_accounts = self.accounts.all()
+
+        try:
+            year = int(year)
+            month = int(month)
+            start_date = datetime(year, month, 1)
+            end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+        except ValueError as e:
+            return None, f"Invalid year/month: {e}"
+
+        trades = Trade.objects.filter(
+            end_time__isnull=False,
+            start_time__isnull=False,
+            end_time__range=(start_date, end_date),
+            account__in=user_accounts,
+        )
+
+        return len(trades)
+
+
+    def get_tools_with_biggest_winrates(self):
         user_accounts = self.accounts.all()
         trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
 
-        # Group trades by tool and calculate win rates
+        # Group trades by tool and calculate winrates
         tool_stats = {}
 
         for trade in trades:
@@ -124,15 +145,16 @@ class User(AbstractUser):
             if trade.pnl_usd > 0:
                 tool_stats[tool_name]['winning_trades'] += 1
 
-        # Calculate win rates
+        # Calculate winrates
         for tool_name, stats in tool_stats.items():
             if stats['total_trades'] > 0:
                 stats['winrate'] = round(stats['winning_trades'] / stats['total_trades'], 2)
 
-        # Sort by win rate (descending) and return as list
+        # Sort by winrate (descending) and return as list
         sorted_tools = sorted(tool_stats.values(), key=lambda x: x['winrate'], reverse=True)
 
         return sorted_tools
+
 
     def get_pnl_progression_over_days(self):
         user_accounts = self.accounts.all()
@@ -226,7 +248,8 @@ class Position(models.Model):
     move_stop_after = models.IntegerField()
 
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
-    current_volume = models.DecimalField(decimal_places=12, max_digits=20)
+    current_volume = models.DecimalField(decimal_places=12, max_digits=20, default=0.0)
+    max_held_volume = models.DecimalField(decimal_places=12, max_digits=20)
 
     last_status = models.CharField(max_length=50, null=True, default="NEW")
     breakeven = models.BooleanField(default=False)  # True if stop-loss is moved nearby entry, False if not
@@ -252,7 +275,7 @@ class Position(models.Model):
         """
         self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
-        self.trade.volume = self.current_volume
+        self.trade.volume = self.max_held_volume
         self.trade.pnl_usd = self.pnl_usd
         self.trade.commission_usd = self.commission_usd
         self.trade.result = reason
@@ -331,7 +354,7 @@ class Trade(models.Model):
         Position.objects.create(tool=tool_obj, side=side, leverage=leverage, trigger_price=trigger_price,
                                 entry_price=entry_price,
                                 stop_price=stop_price, take_profit_prices=take_profits,
-                                move_stop_after=move_stop_after, primary_volume=primary_volume, current_volume=0,
+                                move_stop_after=move_stop_after, primary_volume=primary_volume, max_held_volume=0,
                                 account=account, trade=trade)
 
         return trade

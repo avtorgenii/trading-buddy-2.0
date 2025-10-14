@@ -133,11 +133,11 @@
 								if (!chartArea) return 'rgba(0,0,0,0)';
 								const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
 								if (value >= 0) {
-									gradient.addColorStop(0, 'rgba(34,197,94,0.3)');
-									gradient.addColorStop(1, 'rgba(34,197,94,0)');
-								} else {
 									gradient.addColorStop(0, 'rgba(239,68,68,0.3)');
 									gradient.addColorStop(1, 'rgba(239,68,68,0)');
+								} else {
+									gradient.addColorStop(0, 'rgba(34,197,94,0.3)');
+									gradient.addColorStop(1, 'rgba(34,197,94,0)');
 								}
 								return gradient;
 							}
@@ -242,17 +242,17 @@
 					</p>
 				</div>
 				<div class="bg-zinc-800 rounded-lg p-6 text-center">
-					<h2 class="text-xl text-zinc-400 mb-2">Win Rate</h2>
+					<h2 class="text-xl text-zinc-400 mb-2">Winrate</h2>
 					<p class="text-4xl font-bold text-white">
 						{(winRate * 100).toFixed(2)}%
 					</p>
 				</div>
 			</div>
 
-			<!-- Tools with Win Rates -->
+			<!-- Tools with Winrates -->
 			<div class="max-w-4xl mx-auto w-full">
 				<div class="bg-zinc-800 rounded-lg p-6">
-					<h2 class="text-2xl text-white mb-4">Top Tools by Win Rate</h2>
+					<h2 class="text-2xl text-white mb-4">Top Tools by Winrate</h2>
 					{#if toolsWithWinrates.length > 0}
 						<ul class="space-y-2 overflow-y-auto max-h-60">
 							{#each toolsWithWinrates as tool}
