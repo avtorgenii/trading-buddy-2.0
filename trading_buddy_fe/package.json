@@ -35,6 +35,8 @@
 	"dependencies": {
 		"@fullcalendar/common": "^5.11.5",
 		"@motionone/svelte": "^10.16.4",
+		"chart.js": "^4.5.1",
+		"chartjs-adapter-date-fns": "^3.0.0",
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
 		"lightweight-charts": "^5.0.7",

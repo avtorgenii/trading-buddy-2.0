@@ -213,6 +213,7 @@ class RiskSerializer(serializers.Serializer):
         return data
 
 
+##### STATS #####
 class PnLCalendarSerializer(serializers.Serializer):
     pnl_by_day = serializers.DictField(
         child=serializers.DecimalField(decimal_places=10, default=0.00, max_digits=20),
@@ -229,15 +230,22 @@ class PnLCalendarSerializer(serializers.Serializer):
         return {'pnl_by_day': cleaned_data}
 
 
-class TotalPnLSerializer(serializers.Serializer):
-    pnl = serializers.DecimalField(decimal_places=2, max_digits=12)
+class WinRateQuerySerializer(serializers.Serializer):
+    year = serializers.IntegerField(required=False, min_value=2000, max_value=2100)
+    month = serializers.IntegerField(required=False, min_value=1, max_value=12)
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
 
-        data['pnl'] = clean_decimal_str(Decimal(data['pnl']))
+class ToolsWithWinratesSerializer(serializers.Serializer):
+    tool = serializers.CharField()
+    total_trades = serializers.IntegerField()
+    winning_trades = serializers.IntegerField()
+    winrate = serializers.DecimalField(decimal_places=2, max_digits=5)
 
-        return data
+
+class PnLProgressionSerializer(serializers.Serializer):
+    day = serializers.DateField()
+    daily_pnl = serializers.DecimalField(decimal_places=2, max_digits=20)
+    cumulative_pnl = serializers.DecimalField(decimal_places=2, max_digits=20)
 
 
 ##### JOURNAL #####

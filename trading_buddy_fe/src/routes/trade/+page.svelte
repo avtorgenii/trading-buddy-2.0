@@ -272,7 +272,7 @@
 
 	onMount(async () => {
 		items = await loadTradableTickers();
-		selectedTicker = items.at(0);
+		selectedTicker = items.at(23); // WLDUSDT
 		mainAcc = await getMainAccount();
 		if (mainAcc) await loadAccountDetails();
 		screenWidth = window.innerWidth;
@@ -280,6 +280,9 @@
 			screenWidth = window.innerWidth;
 		});
 	});
+
+	$inspect(riskRewardRatio);
+	$inspect(potentialLoss);
 </script>
 
 <div class="flex items-center flex-col">

@@ -2,6 +2,7 @@ import sys
 
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
@@ -372,26 +373,55 @@ def pnl_calendar_all(request, year, month):
     return Response(serializer.data)
 
 
-@extend_schema(responses=TotalPnLSerializer)
-@api_view(['GET'])
-def total_pnl(request):
-    total_pnl = request.user.get_total_pnl(all_accounts=False)
-
-    serializer = TotalPnLSerializer({'pnl': total_pnl})
-    return Response(serializer.data)
-
-
-@extend_schema(responses=TotalPnLSerializer)
+@extend_schema(
+    responses={
+        200: OpenApiTypes.FLOAT,
+    })
 @api_view(['GET'])
 def total_pnl_all(request):
     total_pnl = request.user.get_total_pnl(all_accounts=True)
+    return Response(total_pnl)
 
-    serializer = TotalPnLSerializer({'pnl': total_pnl})
+
+@extend_schema(
+    parameters=[WinRateQuerySerializer],
+    responses={
+        200: OpenApiTypes.FLOAT,
+    }
+)
+@api_view(['GET'])
+def get_winrate(request):
+    year = request.query_params.get('year')
+    month = request.query_params.get('month')
+
+    if year:
+        year = int(year)
+    if month:
+        month = int(month)
+
+    user = request.user
+    win_rate = user.get_win_rate(year=year, month=month)
+    return Response(win_rate)
+
+
+@extend_schema(responses=ToolsWithWinratesSerializer(many=True))
+@api_view(['GET'])
+def get_tools_with_biggest_win_rates(request):
+    user = request.user
+    tools_data = user.get_tools_with_biggest_win_rates()
+    serializer = ToolsWithWinratesSerializer(tools_data, many=True)
     return Response(serializer.data)
 
 
-##### TOOLS #####
-# Add new tool and get all tools under specific account
+@extend_schema(responses=PnLProgressionSerializer(many=True))
+@api_view(['GET'])
+def get_pnl_progression_over_days(request):  # Fixed function name
+    user = request.user
+    progression_data = user.get_pnl_progression_over_days()
+    serializer = PnLProgressionSerializer(progression_data, many=True)
+    return Response(serializer.data)
+
+
 # TODO IMPORTANT: ADD HINT FOR SUFFIX STYLE FOR ADD TOOL MODAL
 @extend_schema(
     request=ToolSerializer,
