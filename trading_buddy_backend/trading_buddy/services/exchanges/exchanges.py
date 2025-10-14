@@ -612,7 +612,7 @@ class BingXExc(Exchange):
         pos = Position.objects.filter(pk=trade.position.pk).first()
 
         order_side = Side.SELL if pos.side == "LONG" else Side.BUY
-        order = Order(symbol=tool, side=order_side, positionSide=pos.side, quantity=pos.current_volume)
+        order = Order(symbol=tool, side=order_side, positionSide=pos.side, quantity=pos.max_held_volume)
 
         try:
             self.client.trade.close_order(order)
@@ -756,8 +756,6 @@ class BingXExc(Exchange):
 
         return current_positions
 
-    # TODO: Doesn't work because order history is not always being instantly updated on the exchange side
-    # As a kostyl fix just add delay before querying order history
     def get_position_result(self, db_pos: Position) -> tuple[Decimal, Decimal]:
         """
         Based on history orders bound to position via position id calculates its net profit and commission
@@ -772,15 +770,21 @@ class BingXExc(Exchange):
         try:
             orders = self.client.trade.get_orders_history(history_order).get('orders', [])
 
-            # logger.info(format_dict_for_log(orders))
+            logger.info(format_dict_for_log(orders))
 
             profit = Decimal(0)
             commission = Decimal(0)
+
+            executed_qty = 0
 
             for order in orders:
                 if str(order['positionID']) == position_id:
                     profit_chunk = Decimal(order['profit'])
                     commission_chunk = Decimal(order['commission'])
+
+                    # Don't count entry order volume
+                    if order['type'] != 'LIMIT':
+                        executed_qty += Decimal(order['executedQty'])
 
                     profit += profit_chunk
                     commission += commission_chunk
@@ -789,10 +793,15 @@ class BingXExc(Exchange):
                         logger.info(
                             f'Found bound order, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
 
-            # The commission is always negative
-            net_profit = profit + commission
+            print(executed_qty, db_pos.max_held_volume)
+            if executed_qty == db_pos.max_held_volume:
+                # The commission is always negative
+                net_profit = profit + commission
 
-            return net_profit, commission
+                return net_profit, commission
+            else:
+                logger.info(f'Orders history is not yet fully processed by BingX side {db_pos.tool.name}')
+                return Decimal(0), Decimal(0)
         except:
             logger.exception(f'Failed to get orders history for {db_pos.tool.name}')
             return Decimal(0), Decimal(0)

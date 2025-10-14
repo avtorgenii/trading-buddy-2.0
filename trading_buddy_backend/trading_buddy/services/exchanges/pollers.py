@@ -75,14 +75,14 @@ class OrderPoller:
     def check_for_fill_event(self, exc: Exchange, tool: str, db_pos: Position, server_pos: dict, last_status: str):
         self.logger.debug(f'Checking {tool} for fill event')
         exc.delete_price_listener(tool)
-        db_pos.current_volume = Decimal(server_pos['availableAmt'])
+        db_pos.max_held_volume = Decimal(server_pos['availableAmt'])
 
         # Not sure if this would actually work for partially filled positions
         if last_status == 'NEW':
             db_pos.start_time = timezone.now()
             db_pos.server_position_id = server_pos['positionId']
 
-        db_pos.last_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.current_volume else 'FILLED'
+        db_pos.last_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.max_held_volume else 'FILLED'
         db_pos.save()
         # Replace take-profits only if positions status has been changed
         if db_pos.last_status != last_status:
@@ -93,7 +93,7 @@ class OrderPoller:
                 # Cancel initial take-profit
                 exc.cancel_take_profits_for_tool(tool)
                 # Place new take-profits
-                exc.place_take_profit_orders(tool, take_profits, db_pos.current_volume, db_pos.side)
+                exc.place_take_profit_orders(tool, take_profits, db_pos.max_held_volume, db_pos.side)
 
     def check_for_partial_take_profit_event(self, exc: Exchange, tool: str, db_pos: Position, server_pos: dict):
         """
@@ -126,18 +126,19 @@ class OrderPoller:
 
             # Checks if stop-loss is ready to be moved to entry level
             if db_pos.move_stop_after - (num_initial_tps - num_current_fully_unfilled_tps) <= 0:
-                db_pos.breakeven = True
-                db_pos.save()
-
                 success, msg = exc.cancel_stop_loss_for_tool(tool)
 
                 if not success:
                     self.logger.critical(f"Failed to cancel stop loss while moving it to breakeven")
 
-                success, msg = exc.place_stop_loss_order(tool, db_pos.entry_price, db_pos.current_volume, db_pos.side)
+                    success, msg = exc.place_stop_loss_order(tool, db_pos.entry_price, db_pos.current_volume,
+                                                             db_pos.side)
 
-                if not success:
-                    self.logger.critical("Failed to place stop loss while moving it to breakeven")
+                    if not success:
+                        self.logger.critical("Failed to place stop loss while moving it to breakeven")
+                    else:
+                        db_pos.breakeven = True
+                        db_pos.save()
 
     def finish_trade(self, exc: Exchange, tool: str, db_pos: Position):
         """

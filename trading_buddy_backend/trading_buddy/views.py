@@ -384,7 +384,7 @@ def total_pnl_all(request):
 
 
 @extend_schema(
-    parameters=[WinRateQuerySerializer],
+    parameters=[YearMonthQuerySerializer],
     responses={
         200: OpenApiTypes.FLOAT,
     }
@@ -400,15 +400,37 @@ def get_winrate(request):
         month = int(month)
 
     user = request.user
-    win_rate = user.get_win_rate(year=year, month=month)
+    win_rate = user.get_winrate(year=year, month=month)
     return Response(win_rate)
+
+
+@extend_schema(
+    parameters=[YearMonthQuerySerializer],
+    responses={
+        200: OpenApiTypes.INT,
+    }
+)
+@api_view(['GET'])
+def get_num_trades(request):
+    year = request.query_params.get('year')
+    month = request.query_params.get('month')
+
+    if year and month:
+        year = int(year)
+        month = int(month)
+
+        user = request.user
+        num_trades = user.get_num_trades(year=year, month=month)
+        return Response(num_trades)
+    else:
+        return Response({"error": "Year/month value are invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(responses=ToolsWithWinratesSerializer(many=True))
 @api_view(['GET'])
 def get_tools_with_biggest_win_rates(request):
     user = request.user
-    tools_data = user.get_tools_with_biggest_win_rates()
+    tools_data = user.get_tools_with_biggest_winrates()
     serializer = ToolsWithWinratesSerializer(tools_data, many=True)
     return Response(serializer.data)
 

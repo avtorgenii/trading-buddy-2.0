@@ -230,7 +230,7 @@ class PnLCalendarSerializer(serializers.Serializer):
         return {'pnl_by_day': cleaned_data}
 
 
-class WinRateQuerySerializer(serializers.Serializer):
+class YearMonthQuerySerializer(serializers.Serializer):
     year = serializers.IntegerField(required=False, min_value=2000, max_value=2100)
     month = serializers.IntegerField(required=False, min_value=1, max_value=12)
 
