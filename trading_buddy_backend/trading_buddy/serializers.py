@@ -109,6 +109,12 @@ class AccountSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class AccountAPISerializer(serializers.Serializer):
+    account_id = serializers.IntegerField()
+    api_key = serializers.CharField()
+    secret_key = serializers.CharField()
+
+
 class DepositAndAccountDataSerializer(serializers.Serializer):
     deposit = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
     risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10)
@@ -288,7 +294,10 @@ class ShowTradeSerializer(serializers.ModelSerializer):
         del data['tool']
         del data['account']
 
-        data['pnl_risk_ratio'] = instance.pnl_usd / instance.risk_usd
+        if instance.risk_usd and instance.risk_usd != 0:
+            data['pnl_risk_ratio'] = instance.pnl_usd / instance.risk_usd
+        else:
+            data['pnl_risk_ratio'] = 0
 
         for field in ['risk_usd', 'risk_percent', 'commission_usd', 'pnl_usd', 'pnl_risk_ratio']:
             if field in data:
