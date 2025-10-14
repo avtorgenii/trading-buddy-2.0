@@ -3,6 +3,7 @@ import uuid
 from calendar import monthrange
 from datetime import datetime
 from decimal import Decimal
+from itertools import accumulate
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -65,9 +66,103 @@ class User(AbstractUser):
                 return None, "No account is chosen as current"
             trades = trades.filter(account=self.current_account)
 
-        total_pnl = trades.aggregate(total_pnl=Sum('pnl_usd'))['total_pnl']
+        total_pnl = round(trades.aggregate(total_pnl=Sum('pnl_usd'))['total_pnl'], 2)
 
         return total_pnl if total_pnl is not None else 0
+
+    def get_win_rate(self, year: int = None, month: int = None):
+        user_accounts = self.accounts.all()
+
+        if year and month:
+            try:
+                year = int(year)
+                month = int(month)
+                start_date = datetime(year, month, 1)
+                end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
+            except ValueError:
+                return None, "Invalid year/month format. Use YYYY/MM"
+
+            trades = Trade.objects.filter(
+                end_time__isnull=False,
+                start_time__isnull=False,
+                end_time__range=(start_date, end_date),
+                account__in=user_accounts,
+            )
+
+        else:
+            trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
+
+        print(trades)
+
+        if trades:
+            win_trades_num = sum(1 for trade in trades if trade.pnl_usd > 0)
+
+            return round(win_trades_num / len(trades), 2)
+        else:
+            return 0
+
+    def get_tools_with_biggest_win_rates(self):
+        user_accounts = self.accounts.all()
+        trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
+
+        # Group trades by tool and calculate win rates
+        tool_stats = {}
+
+        for trade in trades:
+            tool_name = trade.tool.name
+
+            if tool_name not in tool_stats:
+                tool_stats[tool_name] = {
+                    'tool': tool_name,
+                    # needed here too for convenience to return sorted dicts with tool already in dict
+                    'total_trades': 0,
+                    'winning_trades': 0,
+                    'winrate': 0
+                }
+
+            tool_stats[tool_name]['total_trades'] += 1
+            if trade.pnl_usd > 0:
+                tool_stats[tool_name]['winning_trades'] += 1
+
+        # Calculate win rates
+        for tool_name, stats in tool_stats.items():
+            if stats['total_trades'] > 0:
+                stats['winrate'] = round(stats['winning_trades'] / stats['total_trades'], 2)
+
+        # Sort by win rate (descending) and return as list
+        sorted_tools = sorted(tool_stats.values(), key=lambda x: x['winrate'], reverse=True)
+
+        return sorted_tools
+
+    def get_pnl_progression_over_days(self):
+        user_accounts = self.accounts.all()
+        trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
+
+        # Aggregate PnL by day
+        daily_pnl = (
+            trades
+            .annotate(day=TruncDate('end_time'))
+            .values('day')
+            .annotate(pnl=Sum('pnl_usd'))
+            .order_by('day')
+        )
+
+        # Calculate cumulative PnL
+        days = [entry['day'] for entry in daily_pnl]
+        pnl_values = [entry['pnl'] or 0 for entry in daily_pnl]
+        cumulative_pnl = list(accumulate(pnl_values))
+
+        # Combine into result
+        progression = [
+            {
+                'day': day.strftime('%Y-%m-%d'),
+                'daily_pnl': round(float(pnl), 2),
+                'cumulative_pnl': round(float(cum_pnl), 2)
+            }
+            for day, pnl, cum_pnl in zip(days, pnl_values, cumulative_pnl)
+        ]
+
+        return progression
 
 
 # Exchange account

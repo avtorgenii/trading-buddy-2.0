@@ -28,11 +28,14 @@ urlpatterns = [
     ##### STATS #####
     # All accounts
     path('stats/pnl-calendar/all/<int:year>/<int:month>/', views.pnl_calendar_all),  # GET
-    path('stats/total-pnl/all/', views.total_pnl_all),  # GET
+    path('stats/pnl/total/', views.total_pnl_all),  # GET
+    path('stats/winrate/', views.get_winrate), # GET
+    path('stats/tools/winrates/', views.get_tools_with_biggest_win_rates), # GET
+    path('stats/pnl/progression/', views.get_pnl_progression_over_days), # GET
 
     # Specific account
     path('stats/pnl-calendar/<int:year>/<int:month>/', views.pnl_calendar),  # GET
-    path('stats/total-pnl/', views.total_pnl),  # GET
+    # path('stats/total-pnl/', views.total_pnl),  # GET
 
     ##### JOURNAL #####
     # api/v1/stats/trades/all/?page=2&page_size=5

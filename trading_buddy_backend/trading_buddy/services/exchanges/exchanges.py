@@ -774,8 +774,8 @@ class BingXExc(Exchange):
 
             # logger.info(format_dict_for_log(orders))
 
-            profit = 0
-            commission = 0
+            profit = Decimal(0)
+            commission = Decimal(0)
 
             for order in orders:
                 if str(order['positionID']) == position_id:
