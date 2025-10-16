@@ -412,7 +412,7 @@ class BingXPriceListener(BingXListener):
                                                                 reason="Овербай или цена подошла слишком близко к тейку")
 
         except Exception as e:
-            self.logger.debug('Tried to check price for order cancelling')
+            self.logger.exception('Tried to check price for order cancelling')
 
     def on_open(self, ws):
         super().on_open(ws)
@@ -432,7 +432,7 @@ class BingXPriceListener(BingXListener):
                 if price is not None:
                     self.check_price_for_order_cancellation(price)
             except:
-                self.logger.warning(f'Failed to retrieve price data for {self.tool} from dict data sent by BingX')
+                self.logger.debug(f'Failed to retrieve price data for {self.tool} from dict data sent by BingX')
 
     def listen_for_events(self):
         self.ws = websocket.WebSocketApp(
