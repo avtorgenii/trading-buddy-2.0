@@ -161,7 +161,7 @@ class BingXExc(Exchange):
         super().__init__(account, *args, **kwargs)
 
         # Reinitialize if account's api key has been changed
-        if self._initialized and self._account.api_key == self.API_KEY and self._account.secret_key == self.SECRET_KEY:
+        if self._initialized and self.fresh_account.api_key == self.API_KEY and self.fresh_account.secret_key == self.SECRET_KEY:
             return
 
         self.client = PerpetualV2(api_key=self.API_KEY, secret_key=self.SECRET_KEY)
@@ -201,10 +201,10 @@ class BingXExc(Exchange):
             except Exception as e:
                 logger.warning("Price listener already deleted")
 
-        # Create new ones for each tool
+        # Create new ones for each pending position
         positions = self.fresh_account.positions.all()
 
-        # Recreate price listener only if position os still pending
+        # Recreate price listener only if position is still pending
         for pos in positions:
             if pos.last_status == "NEW":
                 self.create_price_listener_in_thread(pos.tool.name)
@@ -215,7 +215,7 @@ class BingXExc(Exchange):
             listener.stop_listening()
             del self.price_listeners_and_threads[tool_name]
         except Exception as e:
-            logger.warning("Price listener already deleted")
+            logger.warning("Price listener was already deleted")
 
     @classmethod
     def check_account_validity(cls, api_key, secret_key) -> bool:
@@ -762,7 +762,8 @@ class BingXExc(Exchange):
         :return: Net profit and commission for position
         """
         end_ts = int(time.time()) * 1000 + 5 * 60 * 1000  # Add 5 minutes for proper querying
-        start_ts = db_pos.start_time_unix_ms - 5 * 60 * 1000  # Subtract 5 minutes for proper querying
+        start_time_ms = int(db_pos.start_time.timestamp()) * 1000
+        start_ts = start_time_ms - 5 * 60 * 1000  # Subtract 5 minutes for proper querying
 
         history_order = HistoryOrder(symbol=db_pos.tool.name, startTime=start_ts, endTime=end_ts)
         position_id = db_pos.server_position_id
@@ -793,7 +794,7 @@ class BingXExc(Exchange):
                         logger.info(
                             f'Found bound order, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
 
-            print(executed_qty, db_pos.max_held_volume)
+            # print(executed_qty, db_pos.max_held_volume)
             if executed_qty == db_pos.max_held_volume:
                 # The commission is always negative
                 net_profit = profit + commission

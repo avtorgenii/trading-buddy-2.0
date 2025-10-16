@@ -244,7 +244,6 @@ class Position(models.Model):
     )
 
     start_time = models.DateTimeField(null=True)
-
     move_stop_after = models.IntegerField()
 
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)

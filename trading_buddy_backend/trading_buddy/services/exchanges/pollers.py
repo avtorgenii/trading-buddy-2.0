@@ -74,7 +74,6 @@ class OrderPoller:
     ##### ORDER MANAGEMENT STUFF #####
     def check_for_fill_event(self, exc: Exchange, tool: str, db_pos: Position, server_pos: dict, last_status: str):
         self.logger.debug(f'Checking {tool} for fill event')
-        exc.delete_price_listener(tool)
         db_pos.max_held_volume = Decimal(server_pos['availableAmt'])
 
         # Not sure if this would actually work for partially filled positions
@@ -82,8 +81,15 @@ class OrderPoller:
             db_pos.start_time = timezone.now()
             db_pos.server_position_id = server_pos['positionId']
 
-        db_pos.last_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.max_held_volume else 'FILLED'
+        new_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.max_held_volume else 'FILLED'
+        db_pos.last_status = new_status
         db_pos.save()
+
+        # TODO not the best solution because it will try to delete price listener every time position is partially filled
+        # Delete price listener if position was already filled
+        if new_status != 'NEW':
+            exc.delete_price_listener(tool)
+
         # Replace take-profits only if positions status has been changed
         if db_pos.last_status != last_status:
             # No need to replace existing stop-loss in any case because after it was placed along with primary order, BingX manages its size by itself
@@ -154,6 +160,8 @@ class OrderPoller:
             db_pos.commission_usd = commission
             db_pos.close_position()
             self.logger.debug(f'Finished trade for {tool}')
+        else:
+            self.logger.warning(f'No bound orders were found for {tool}, trade has not been finished')
 
 
 def init_poller() -> OrderPoller:
