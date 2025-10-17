@@ -32,7 +32,10 @@ class OrderPoller:
     def run(self):
         # Blocking call
         while True:
-            self.scheduler.run_pending()
+            try:
+                self.scheduler.run_pending()
+            except:
+                self.logger.exception('Uncaught exception in order poller cycle')
             time.sleep(1)
 
     def check_position_statuses_for_account(self, account: Account):
