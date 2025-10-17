@@ -43,3 +43,14 @@ python manage.py shell_plus
 import trading_buddy.services.utils.notion_to_database
 
 docker compose -f docker-compose.prod.yml --env-file .env.prod exec db psql -U avtorpetrovich -d postgres -c "TRUNCATE TABLE trading_buddy_tool RESTART IDENTITY CASCADE;"
+
+
+# Manually fix a trade
+from datetime import datetime
+from decimal import Decimal
+
+pos = Positions.objects.first()
+pos.tool.name
+pos.delete()
+trade = Trade.objects.last()
+
