@@ -2,6 +2,9 @@ import json
 import time
 
 from django.utils import timezone
+from django.db import connection
+from django.db.utils import OperationalError
+
 from schedule import Scheduler
 
 from decimal import Decimal
@@ -30,12 +33,27 @@ class OrderPoller:
         self.logger = logger.bind(class_name=self.__class__.__name__)
 
     def run(self):
-        # Blocking call
+        consecutive_errors = 0
+
         while True:
             try:
+                # Always close stale connections before attempting work,
+                # because Django doesn't automatically update connections for threads - one thread - one connection
+                connection.close()
+
                 self.scheduler.run_pending()
-            except:
-                self.logger.exception('Uncaught exception in order poller cycle')
+                consecutive_errors = 0
+
+            except OperationalError as e:
+                consecutive_errors += 1
+
+                if consecutive_errors % 60 == 1:  # Log every minute
+                    self.logger.warning(f'DB unavailable ({consecutive_errors}s): {e}')
+
+            except Exception as e:
+                self.logger.exception(f'Uncaught exception: {e}')
+                consecutive_errors = 0
+
             time.sleep(1)
 
     def check_position_statuses_for_account(self, account: Account):
@@ -81,17 +99,18 @@ class OrderPoller:
 
         # Not sure if this would actually work for partially filled positions
         if last_status == 'NEW':
-            db_pos.start_time = timezone.now()
             db_pos.server_position_id = server_pos['positionId']
 
         new_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.max_held_volume else 'FILLED'
         db_pos.last_status = new_status
-        db_pos.save()
 
-        # TODO not the best solution because it will try to delete price listener every time position is partially filled
-        # Delete price listener if position was already filled
-        if new_status != 'NEW':
+        if last_status == 'NEW' and new_status != 'NEW':
+            # Set start time of the position when its status changed from NEW to anything else
+            db_pos.start_time = timezone.now()
+            # Delete price listener if position was already filled
             exc.delete_price_listener(tool)
+
+        db_pos.save()
 
         # Replace take-profits only if positions status has been changed
         if db_pos.last_status != last_status:
