@@ -46,10 +46,12 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod exec db psql -U a
 
 
 # Manually fix a trade
+docker exec -it tb-backend /bin/bash
+uv run python manage.py shell_plus
 from datetime import datetime
 from decimal import Decimal
 
-pos = Positions.objects.first()
+pos = Position.objects.first()
 pos.tool.name
 pos.delete()
 trade = Trade.objects.last()

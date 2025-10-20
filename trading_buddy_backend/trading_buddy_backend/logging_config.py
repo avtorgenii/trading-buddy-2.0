@@ -6,19 +6,26 @@ from pathlib import Path
 def formatter(record):
     # Get class_name with fallback
     class_name = record["extra"].get("class_name", "")
-
-    # Format the class name part
     class_part = f":{class_name}" if class_name else ""
 
-    return (
+    # Build the base message
+    base = (
         f"<green>{record['time']:YYYY-MM-DD HH:mm:ss}</green> | "
         f"<level>{record['level'].name: <8}</level> | "
         f"<cyan>{record['name']}</cyan>"
         f"<magenta>{class_part}</magenta>:"
         f"<cyan>{record['function']}</cyan>:"
         f"<cyan>{record['line']}</cyan> - "
-        f"<level>{record['message']}</level>\n"
+        f"<level>{record['message']}</level>"
     )
+
+    # Add traceback if exception
+    if record["exception"]:
+        return base + "\n{exception}\n"
+
+    return base + "\n"
+
+
 def setup_loguru():
     """Configure Loguru for Django application"""
 
@@ -70,7 +77,6 @@ def ensure_logs_directory():
 
 # Initialize on import
 ensure_logs_directory()
-
 
 if __name__ == '__main__':
     logger = setup_loguru()

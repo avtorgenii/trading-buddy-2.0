@@ -71,6 +71,9 @@ class User(AbstractUser):
         return total_pnl if total_pnl is not None else 0
 
     def get_winrate(self, year: int = None, month: int = None):
+        """
+        :return: Winrate - number from 0 to 1
+        """
         user_accounts = self.accounts.all()
 
         if year and month:
@@ -81,8 +84,6 @@ class User(AbstractUser):
                 end_date = datetime(year, month, monthrange(year, month)[1], 23, 59, 59)
             except ValueError as e:
                 return None, f"Invalid year/month: {e}"
-
-            print(year, month)
 
             trades = Trade.objects.filter(
                 end_time__isnull=False,
@@ -97,7 +98,7 @@ class User(AbstractUser):
         if trades:
             win_trades_num = sum(1 for trade in trades if trade.pnl_usd > 0)
 
-            return round(win_trades_num / len(trades), 2)
+            return round(win_trades_num / len(trades), 4)
         else:
             return 0
 
@@ -121,7 +122,6 @@ class User(AbstractUser):
 
         return len(trades)
 
-
     def get_tools_with_biggest_winrates(self):
         user_accounts = self.accounts.all()
         trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
@@ -134,8 +134,8 @@ class User(AbstractUser):
 
             if tool_name not in tool_stats:
                 tool_stats[tool_name] = {
-                    'tool': tool_name,
                     # needed here too for convenience to return sorted dicts with tool already in dict
+                    'tool': tool_name,
                     'total_trades': 0,
                     'winning_trades': 0,
                     'winrate': 0
@@ -154,7 +154,6 @@ class User(AbstractUser):
         sorted_tools = sorted(tool_stats.values(), key=lambda x: x['winrate'], reverse=True)
 
         return sorted_tools
-
 
     def get_pnl_progression_over_days(self):
         user_accounts = self.accounts.all()
