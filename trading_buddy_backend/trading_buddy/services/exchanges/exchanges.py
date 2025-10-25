@@ -2,6 +2,8 @@ import json
 from decimal import Decimal
 from typing import List, Tuple, Any
 import threading
+
+from django.utils import timezone
 from loguru import logger
 import time
 
@@ -186,12 +188,14 @@ class BingXExc(Exchange):
         price_listener_thread.start()
 
         self.price_listeners_and_threads[tool_name] = [p_listener, price_listener_thread]
+        logger.info(f"Created price listener for {tool_name}")
 
     def restore_price_listeners(self):
         """
         After crash of the server, it will still be able to restore all listeners.
         :return:
         """
+        logger.info("Restoring price listeners")
         # Delete all exising price listeners
         for listener, thread in self.price_listeners_and_threads:
             try:
@@ -435,7 +439,7 @@ class BingXExc(Exchange):
                                        leverage,
                                        trigger_p,
                                        entry_p,
-                                       stop_p, take_profits, move_stop_after, volume)
+                                       stop_p, take_profits, move_stop_after, volume, timezone.now())
 
             success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, take_profits[0], pos_side,
                                                      volume)

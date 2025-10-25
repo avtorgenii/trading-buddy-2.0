@@ -7,12 +7,12 @@ from rest_framework.status import HTTP_400_BAD_REQUEST
 from trading_buddy.serializers import MaxLeveragesSerializer, PositionToOpenSerializer, \
     ProcessedPositionToOpenSerializer, CancelLevelsSerializer, ToolExchangeFormatSerializer, PendingPositionSerializer, \
     CurrentPositionSerializer
-from trading_buddy.services.exchanges.exchanges import BingXExc
+from trading_buddy.services.exchanges.exchanges import BingXExc, ByBitExc
 
 # Exchanges map
 exc_map = {
     "BingX": BingXExc,
-    # "ByBit": ByBitExc
+    "ByBit": ByBitExc
 }
 
 @extend_schema(

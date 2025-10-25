@@ -242,7 +242,7 @@ class Position(models.Model):
         default=list
     )
 
-    start_time = models.DateTimeField(null=True)
+    start_time = models.DateTimeField(null=True, help_text='The moment primary order of position was placed')
     move_stop_after = models.IntegerField()
 
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
@@ -271,7 +271,6 @@ class Position(models.Model):
         Called to transfer data to Trade when position is closed
         :return:
         """
-        self.trade.start_time = self.start_time
         self.trade.end_time = timezone.now()
         self.trade.volume = self.max_held_volume
         self.trade.pnl_usd = self.pnl_usd
@@ -302,7 +301,7 @@ class Trade(models.Model):
     tool = models.ForeignKey(Tool, on_delete=models.RESTRICT, related_name='trades')
 
     # All datetimes are in utc
-    start_time = models.DateTimeField(null=True)
+    start_time = models.DateTimeField(null=True, help_text='The moment primary order of position was placed')
     end_time = models.DateTimeField(null=True)
 
     risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
@@ -336,7 +335,8 @@ class Trade(models.Model):
     @classmethod
     def create_trade(cls, side: str, account: Account, tool_name: str, risk_percent: Decimal, risk_usd: Decimal,
                      leverage: int, trigger_price: Decimal, entry_price: Decimal,
-                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, primary_volume: Decimal):
+                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, primary_volume: Decimal,
+                     start_time: datetime):
         """
         Creates trade and linked position.
         :return:
@@ -347,12 +347,12 @@ class Trade(models.Model):
             tool_obj = Tool.objects.create(account=account, name=tool_name)
 
         trade = cls.objects.create(side=side, tool=tool_obj, risk_percent=risk_percent, risk_usd=risk_usd,
-                                   account=account)
+                                   account=account, start_time=start_time)
 
         Position.objects.create(tool=tool_obj, side=side, leverage=leverage, trigger_price=trigger_price,
                                 entry_price=entry_price,
                                 stop_price=stop_price, take_profit_prices=take_profits,
                                 move_stop_after=move_stop_after, primary_volume=primary_volume, max_held_volume=0,
-                                account=account, trade=trade)
+                                account=account, trade=trade, start_time=start_time)
 
         return trade
