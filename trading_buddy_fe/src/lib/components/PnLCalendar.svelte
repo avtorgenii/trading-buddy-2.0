@@ -240,7 +240,7 @@
 		<div class="flex justify-between">
 			<span class="text-zinc-400 text-lg md:text-xl">Trades Winrate %</span>
 			<span class="text-white text-lg md:text-xl font-mono">
-        {winrate * 100}%
+        {(winrate * 100).toFixed(2)}%
       </span>
 		</div>
 	</div>

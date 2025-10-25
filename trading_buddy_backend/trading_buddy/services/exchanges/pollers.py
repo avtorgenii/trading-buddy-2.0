@@ -31,18 +31,20 @@ class OrderPoller:
         self.scheduler.every(interval_seconds).seconds.do(self.poll_accounts_for_position_statuses)
 
         self.logger = logger.bind(class_name=self.__class__.__name__)
+        self.runs = 0
 
     def run(self):
         consecutive_errors = 0
+        self.logger.info("Poller started running")
 
         while True:
             try:
                 # Always close stale connections before attempting work,
                 # because Django doesn't automatically update connections for threads - one thread - one connection
                 connection.close()
-
                 self.scheduler.run_pending()
                 consecutive_errors = 0
+
 
             except OperationalError as e:
                 consecutive_errors += 1
@@ -87,10 +89,13 @@ class OrderPoller:
     def poll_accounts_for_position_statuses(self):
         accounts = Account.objects.all()
 
-        self.logger.info('Starting polling accounts for position statuses...')
+        if self.runs % 60 == 0:
+            self.logger.info('Starting polling accounts for position statuses...')
 
         for account in accounts:
             self.check_position_statuses_for_account(account)
+
+        self.runs += 1
 
     ##### ORDER MANAGEMENT STUFF #####
     def check_for_fill_event(self, exc: Exchange, tool: str, db_pos: Position, server_pos: dict, last_status: str):
@@ -105,8 +110,6 @@ class OrderPoller:
         db_pos.last_status = new_status
 
         if last_status == 'NEW' and new_status != 'NEW':
-            # Set start time of the position when its status changed from NEW to anything else
-            db_pos.start_time = timezone.now()
             # Delete price listener if position was already filled
             exc.delete_price_listener(tool)
 
