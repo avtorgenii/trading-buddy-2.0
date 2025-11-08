@@ -1,5 +1,6 @@
 # Intro
 Trading buddy is a web client for trading with reliable, convenient and automatic position management and tracking 
+
 For more details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-07-trading-buddy-2.0/)
 
 # Running
