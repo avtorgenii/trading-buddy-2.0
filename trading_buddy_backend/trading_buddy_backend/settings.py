@@ -204,8 +204,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'  # “Use a big integer as 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
-            'client_id': os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
-            'secret': os.getenv("GOOGLE_OAUTH_SECRET")
+            'client_id': os.getenv("GOOGLE_OAUTH_CLIENT_ID", ''),
+            'secret': os.getenv("GOOGLE_OAUTH_SECRET", '')
         },
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
@@ -215,4 +215,4 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
-LOGIN_REDIRECT_URL = os.getenv("LOGIN_REDIRECT_URL", '/')  # SHOULD BE SOME ROUTE ON FRONTEND
+LOGIN_REDIRECT_URL = os.getenv("LOGIN_REDIRECT_URL", '/trading')  # SHOULD BE SOME ROUTE ON FRONTEND
