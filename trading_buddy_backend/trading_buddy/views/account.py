@@ -239,7 +239,7 @@ def get_preset_tools(request):
     suffix = '-USDT'
     tool_names_bingx_format = ['BTC', 'XLM', 'GMT', 'ADA', 'TRU', 'LTC', 'POL', 'NEAR', 'TWT', 'FIL', 'LINK', 'APT',
                                'ATOM', 'UNI', 'TAO', 'ONDO', 'RENDER', 'DOGE', 'TIA', 'OP', 'DOT', 'BNB', 'DUCK', 'WLD',
-                               'AVAX', 'VET', 'IOTA', 'KAS', 'ENA']
+                               'AVAX', 'VET', 'IOTA', 'KAS', 'ENA', 'ASTER', 'ZEC', 'ETH', 'DASH', 'STRK', 'AAVE', 'HYPE']
 
     tool_names_bingx_format = [tool + suffix for tool in tool_names_bingx_format]
 
