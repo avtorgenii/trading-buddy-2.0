@@ -788,7 +788,7 @@ class BingXExc(Exchange):
                     commission_chunk = Decimal(order['commission'])
 
                     # Don't count entry order volume
-                    if order['type'] != 'LIMIT':
+                    if order['type'] != 'LIMIT' and order['type'] != 'TRIGGER_LIMIT':
                         executed_qty += Decimal(order['executedQty'])
 
                     profit += profit_chunk
@@ -796,7 +796,7 @@ class BingXExc(Exchange):
 
                     if profit_chunk or commission_chunk:
                         logger.info(
-                            f'Found bound order, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
+                            f'Found bound order, type: {order['type']}, profit: {Decimal(order['profit'])}, commission: {Decimal(order['commission'])}\n{format_dict_for_log(order)}')
 
             # print(executed_qty, db_pos.max_held_volume)
             if executed_qty == db_pos.max_held_volume:
