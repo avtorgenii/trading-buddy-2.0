@@ -1,28 +1,34 @@
-# Allows communication via container name, but with db host is still service name
+name: trading-buddy
+
 networks:
-  dev:
+  back-net:
+  front-net:
+
+
+volumes:
+  postgres_data:
+  media_data:
+
 
 services:
   nginx:
     image: nginx:stable-alpine
-    container_name: nginx-proxy
     ports:
       - "80:80"      # For HTTP traffic
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
       - './nginx.conf:/etc/nginx/nginx.conf'
+      # Portal from nginx to media data in django container
       - media_data:/app/media
     depends_on:
       - backend
       - frontend
     networks:
-      - dev
+      - back-net
+      - front-net
 
   backend:
-    build:
-      context: .
-      dockerfile: trading_buddy_backend/Dockerfile
-    container_name: tb-backend
+    build: trading_buddy_backend/
     env_file:
       - .env.prod
     depends_on:
@@ -31,29 +37,25 @@ services:
     volumes:
       - media_data:/app/media
     networks:
-      - dev
+      - back-net
+      - front-net
 
   frontend:
     build:
       context: trading_buddy_fe/
-      dockerfile: Dockerfile
       args:
-        # This syntax reads the variable from the .env file
-        # and passes it AS A BUILD ARGUMENT to the Dockerfile, because dumb vite doesn't read them at runtime
         - VITE_API_BASE_URL=${VITE_API_BASE_URL}
         - VITE_API_SUFFIX=${VITE_API_SUFFIX}
         - VITE_API_BE_BASE_URL=${VITE_API_BE_BASE_URL}
-    container_name: tb-frontend
     env_file:
       - .env.prod
     depends_on:
       - backend
     networks:
-      - dev
+      - front-net
 
   db:
     image: postgres:17.0
-    container_name: tb-postgres-db
     ports:
       - "5432:5432"
     environment:
@@ -66,12 +68,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      # Named volume. Path inside the container where the volume is mounted.
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - dev
+      - back-net
 
-# Still will be created by docker, but better to be declared here
-volumes:
-  postgres_data:
-  media_data:

@@ -1,0 +1,9 @@
+# 1. Сначала игнорируем ВООБЩЕ ВСЁ
+*
+
+# 2. Разрешаем (через восклицательный знак) только то, что нужно
+!requirements.txt
+!bingX/
+!manage.py
+!trading_buddy/
+!trading_buddy_backend/

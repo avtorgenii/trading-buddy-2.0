@@ -1,10 +1,16 @@
+name: trading-buddy
+
 networks:
-  dev:
+  back-net:
+  front-net:
+
+volumes:
+  postgres_data:
+  media_data:
 
 services:
   nginx:
     image: nginx:stable-alpine
-    container_name: nginx-proxy
     restart: unless-stopped
     ports:
       - "80:80"      # For HTTP traffic
@@ -16,11 +22,11 @@ services:
       - backend
       - frontend
     networks:
-      - dev
+      - back-net
+      - front-net
 
   backend:
     image: avtopetrovich/tb-backend:1.0
-    container_name: tb-backend
     restart: unless-stopped
     env_file:
       - .env.prod
@@ -30,22 +36,21 @@ services:
     volumes:
       - media_data:/app/media
     networks:
-      - dev
+      - back-net
+      - front-net
 
   frontend:
     image: avtopetrovich/tb-frontend:1.0
-    container_name: tb-frontend
     restart: unless-stopped
     env_file:
       - .env.prod
     depends_on:
       - backend
     networks:
-      - dev
+      - front-net
 
   db:
     image: postgres:17.0
-    container_name: tb-postgres-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
@@ -62,14 +67,16 @@ services:
     labels:
       - docker-volume-backup.stop-during-backup=true
     networks:
-      - dev
+      - back-net
 
   backup:
     image: offen/docker-volume-backup:v2.43.4
-    container_name: tb-backup
     restart: unless-stopped # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
     env_file:
       - ./backup.env
+    depends_on:
+      - db
+      - backend
     volumes:
       # Volume with no name. "Take folder /backup-configuration from host and plug to /etc/dockervolumebackup/conf.d"
       - ./backup-configuration:/etc/dockervolumebackup/conf.d
@@ -78,11 +85,4 @@ services:
       - postgres_data:/backup/postgres-data-backup:ro
       - media_data:/backup/media-data-backup:ro
     networks:
-      - dev
-
-
-
-# Still will be created by docker, but better to be declared here. Volumes are created by docker in /var/lib/docker/volumes
-volumes:
-  postgres_data:
-  media_data:
+      - back-net

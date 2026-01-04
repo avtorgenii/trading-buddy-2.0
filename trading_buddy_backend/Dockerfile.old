@@ -1,0 +1,32 @@
+# Use UV's official Python image
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm
+
+### Set environment variables ###
+# No filesystem writes needed
+ENV PYTHONDONTWRITEBYTECODE=1
+# Better debugging - See output in real-time during development
+ENV PYTHONUNBUFFERED=1
+
+# Create and set the working directory
+WORKDIR /app
+
+# Copy only UV project files first (for better caching)
+COPY trading_buddy_backend/pyproject.toml trading_buddy_backend/uv.lock* /app/
+
+# Create media directory
+RUN mkdir -p /app/media
+
+# Copy the full project and bingX library
+COPY trading_buddy_backend/ /app/
+COPY bingX/ /app/bingX/
+
+# Expose Django's default port
+EXPOSE 8000
+
+# Install dependencies with UV
+RUN uv sync --frozen --no-cache
+
+
+
+# Run migrations and start Gunicorn using UV
+CMD ["sh", "-c", "uv run python manage.py migrate && uv run gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 1"]

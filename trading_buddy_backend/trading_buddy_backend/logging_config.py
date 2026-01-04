@@ -68,16 +68,6 @@ def setup_loguru():
     return logger
 
 
-# Create logs directory
-def ensure_logs_directory():
-    # On the same level as manage.py
-    logs_dir = Path("../logs")
-    logs_dir.mkdir(exist_ok=True)
-
-
-# Initialize on import
-ensure_logs_directory()
-
 if __name__ == '__main__':
     logger = setup_loguru()
 

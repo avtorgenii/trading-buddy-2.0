@@ -29,7 +29,9 @@ warnings.filterwarnings(
 DEBUG = os.environ.get("DEBUG", "1").lower() in ("1", "true", "yes")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# BASE_DIR = trading-buddy-2.0/trading_buddy_backend
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 load_dotenv(dotenv_path=BASE_DIR.parent / ('.env.dev' if DEBUG else '.env.prod'))
 
 PROJECT_ROOT_DIR = os.path.dirname(BASE_DIR)
