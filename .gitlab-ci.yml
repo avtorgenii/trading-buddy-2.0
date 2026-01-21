@@ -55,7 +55,7 @@ deploy_job:
         - ssh-keyscan -H "$DROPLET_IP" >> ~/.ssh/known_hosts
     script:
         - ssh "root@$DROPLET_IP" "echo '$DOCKER_HUB_PASS' | docker login -u '$DOCKER_HUB_USER' --password-stdin"
-        - echo "$DOT_ENV_FILE" > .env.prod
+        - cp "$DOT_ENV_FILE" .env.prod
         - export DOCKER_HOST="ssh://root@$DROPLET_IP"
         - make compose-prod
         - docker system prune -a -f
