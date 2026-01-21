@@ -9,11 +9,13 @@ prep-back:
 	docker build -t avtopetrovich/tb-backend:1.0 ./trading_buddy_backend/
 	docker push avtopetrovich/tb-backend:1.0
 
-prep-proxy:
+prep-nginx:
 	docker build -t avtopetrovich/tb-nginx:1.0 -f nginx.Dockerfile .
+	docker push avtopetrovich/tb-nginx:1.0
 
 prep-backup:
 	docker build -t avtopetrovich/tb-backup:1.0 -f backup.Dockerfile .
+	docker push avtopetrovich/tb-backup:1.0
 
 prep-all: prep-back prep-front prep-proxy prep-backup
 
@@ -24,6 +26,10 @@ compose-dev:
 
 # Prod commands
 compose-prod:
+	docker pull avtopetrovich/tb-backend:1.0
+	docker pull avtopetrovich/tb-frontend:1.0
+	docker pull avtopetrovich/tb-backup:1.0
+	docker pull avtopetrovich/tb-nginx:1.0
 	docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
 stop-prod:

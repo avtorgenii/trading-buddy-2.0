@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN adduser -D -u 1000 appuser
+USER appuser
+
+# Adding dir where pip, ran from appuser, puts binaries into PATH variable
+ENV PATH="/home/appuser/.local/bin:$PATH"
 
 WORKDIR /app
 
@@ -21,7 +25,6 @@ COPY --chown=appuser:appuser bingX/ /app/bingX/
 COPY --chown=appuser:appuser trading_buddy_backend/ /app/trading_buddy_backend
 COPY --chown=appuser:appuser trading_buddy/ /app/trading_buddy
 
-USER appuser
 
 EXPOSE 8000
 
