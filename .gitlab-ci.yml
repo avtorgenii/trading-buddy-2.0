@@ -1,8 +1,61 @@
 stages:
     - build
+    - deploy
 
+image: docker:latest
+services:
+    - docker:dind
 
-build_job:
+default:
+    before_script:
+        - apk add --no-cache make
+        - echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+
+build_front_job:
     stage: build
+    rules:
+        - changes:
+            - "trading_buddy_fe/**/*"
+            - "docker-compose.prod.yml"
     script:
-        - echo $DOT_ENV_FILE
+        - make prep-front
+
+build_back_job:
+    stage: build
+    rules:
+        - changes:
+            - "trading_buddy_backend/**/*"
+            - "docker-compose.prod.yml"
+    script:
+        - make prep-back
+
+
+build_proxy_job:
+    stage: build
+    rules:
+        - changes:
+            - "nginx.Dockerfile"
+            - "nginx.conf"
+            - "docker-compose.prod.yml"
+    script:
+        - make prep-proxy
+
+
+deploy_job:
+    stage: deploy
+    before_script:
+        - apk add --no-cache make openssh-client
+
+        - eval $(ssh-agent -s)
+        - echo "$SSH_PRIV_KEY" | ssh-add -
+
+        - mkdir -p ~/.ssh
+        - chmod 700 ~/.ssh
+
+        - ssh-keyscan -H "$DROPLET_IP" >> ~/.ssh/known_hosts
+    script:
+        - ssh "root@$DROPLET_IP" "echo '$DOCKER_HUB_PASS' | docker login -u '$DOCKER_HUB_USER' --password-stdin"
+        - echo "$DOT_ENV_FILE" > .env.prod
+        - export DOCKER_HOST="ssh://root@$DROPLET_IP"
+        - make compose-prod
+        - docker system prune -a -f

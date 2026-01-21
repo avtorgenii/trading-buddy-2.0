@@ -10,13 +10,11 @@ volumes:
 
 services:
   nginx:
-    image: nginx:stable-alpine
+    image: avtopetrovich/tb-nginx:1.0
     restart: unless-stopped
     ports:
       - "80:80"      # For HTTP traffic
     volumes:
-      # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
-      - './nginx.conf:/etc/nginx/nginx.conf'
       - media_data:/app/media
     depends_on:
       - backend
@@ -70,7 +68,7 @@ services:
       - back-net
 
   backup:
-    image: offen/docker-volume-backup:v2.43.4
+    image: avtopetrovich/tb-backup:1.0
     restart: unless-stopped # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
     env_file:
       - ./backup.env
@@ -78,8 +76,6 @@ services:
       - db
       - backend
     volumes:
-      # Volume with no name. "Take folder /backup-configuration from host and plug to /etc/dockervolumebackup/conf.d"
-      - ./backup-configuration:/etc/dockervolumebackup/conf.d
       # Giving this container permissions to pause containers, get list of containers and their statuses and execute docker commands from within containers
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - postgres_data:/backup/postgres-data-backup:ro

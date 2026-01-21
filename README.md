@@ -104,7 +104,7 @@ For running from IDE you need to complete steps below:
     cd trading-buddy-2.0/trading_buddy_backend
     uv sync
     ```
-    If you don't have ```uv``` yet here is the [installation guide](https://docs.astral.sh/uv/getting-started/installation/
+    If you don't have ```uv``` yet here is the [installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 3. Setup ```.env.prod``` and ```.env.dev``` as shown in section above
 

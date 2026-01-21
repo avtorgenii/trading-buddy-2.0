@@ -118,10 +118,14 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
+# Trust the headers set by Nginx, required for work with SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1").split(",")
-CORS_ALLOWED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
-CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "").split(",")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "http://localhost").split(",")
+CSRF_TRUSTED_ORIGINS = os.environ.get("CORS_CSRF_ALLOWED_ORIGINS", "http://localhost").split(",")
 
 ROOT_URLCONF = 'trading_buddy_backend.urls'
 
