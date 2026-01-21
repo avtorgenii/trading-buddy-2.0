@@ -2,10 +2,6 @@ stages:
     - build
     - deploy
 
-workflow:
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-
 image: docker:latest
 services:
     - docker:dind
@@ -34,7 +30,7 @@ build_back_job:
         - make prep-back
 
 
-build_proxy_job:
+build_nginx_job:
     stage: build
     rules:
         - changes:
@@ -42,7 +38,7 @@ build_proxy_job:
             - "nginx.conf"
             - "docker-compose.prod.yml"
     script:
-        - make prep-proxy
+        - make prep-nginx
 
 
 deploy_job:
