@@ -10,7 +10,7 @@ volumes:
 
 services:
   nginx:
-    image: avtopetrovich/tb-nginx:1.0
+    image: avtopetrovich/tb-nginx:${TAG:-latest} # Если TAG не задан, будет latest
     restart: unless-stopped
     ports:
       - "80:80"      # For HTTP traffic
@@ -24,7 +24,7 @@ services:
       - front-net
 
   backend:
-    image: avtopetrovich/tb-backend:1.0
+    image: avtopetrovich/tb-backend:${TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env.prod
@@ -38,7 +38,7 @@ services:
       - front-net
 
   frontend:
-    image: avtopetrovich/tb-frontend:1.0
+    image: avtopetrovich/tb-frontend:${TAG:-latest}
     restart: unless-stopped
     env_file:
       - .env.prod
@@ -68,7 +68,7 @@ services:
       - back-net
 
   backup:
-    image: avtopetrovich/tb-backup:1.0
+    image: avtopetrovich/tb-backup:${TAG:-latest}
     restart: unless-stopped # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
     env_file:
       - ./backup.env
