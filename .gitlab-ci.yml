@@ -13,31 +13,13 @@ workflow:
     rules:
         - if: $CI_COMMIT_BRANCH == "main"
 
-default:
+build_all_job:
+    stage: build
     before_script:
         - apk add --no-cache make
         - echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
-
-build_front_job:
-    stage: build
     script:
-        - make prep-front TAG=$TAG
-
-build_back_job:
-    stage: build
-    script:
-        - make prep-back TAG=$TAG
-
-
-build_nginx_job:
-    stage: build
-    script:
-        - make prep-nginx TAG=$TAG
-
-build_backup_job:
-    stage: build
-    script:
-        - make prep-backup TAG=$TAG
+        - make prep-all TAG=$TAG
 
 
 deploy_job:
