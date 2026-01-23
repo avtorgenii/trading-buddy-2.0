@@ -1,0 +1,56 @@
+name: Build and deploy trading-buddy-2.0 Docker Compose App
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
+  DOCKER_HUB_PASS: ${{ secrets.DOCKER_HUB_PASS }}
+  SSH_PRIV_KEY: ${{ secrets.SSH_PRIV_KEY }}
+  DROPLET_IP: ${{ secrets.DROPLET_IP }}
+  DOT_ENV_FILE: ${{ secrets.DOT_ENV_FILE }}
+  BACKUP_ENV_FILE: ${{ secrets.BACKUP_ENV_FILE }}
+  TAG: ${{ github.sha }}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Get repo code
+        uses: actions/checkout@v6
+
+      - name: Build and push all images to Dockerhub
+        run: | 
+          echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+          make prep-all TAG=${{ env.TAG }}
+        
+  deploy:
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Create env files
+        run: |
+          echo "${{ env.DOT_ENV_FILE }}" > ".env.prod"
+          echo "${{ env.BACKUP_ENV_FILE }}" > "backup.env"
+
+      - name: Get repo code for Makefile
+        uses: actions/checkout@v6
+      
+      - name: Setup SSH and Launch Docker Compose on remote droplet
+        run: |
+          # SSH part
+          eval $(ssh-agent -s)
+          echo "$SSH_PRIV_KEY" | ssh-add -
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          ssh-keyscan "$DROPLET_IP" >> ~/.ssh/known_hosts
+
+          # Docker part
+          export DOCKER_HOST="ssh://root@${{ env.DROPLET_IP }}"
+          make compose-prod TAG=${{ env.TAG }}
+          docker system prune -a -f
+  
