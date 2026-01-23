@@ -30,13 +30,13 @@ jobs:
     runs-on: ubuntu-22.04
     needs: build
     steps:
+      - name: Get repo code for Makefile
+        uses: actions/checkout@v6
+
       - name: Create env files
         run: |
           echo "${{ env.DOT_ENV_FILE }}" > ".env.prod"
           echo "${{ env.BACKUP_ENV_FILE }}" > "backup.env"
-
-      - name: Get repo code for Makefile
-        uses: actions/checkout@v6
       
       - name: Setup SSH and Launch Docker Compose on remote droplet
         run: |
