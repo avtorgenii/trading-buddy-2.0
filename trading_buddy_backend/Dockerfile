@@ -27,7 +27,7 @@ COPY --chown=appuser:appuser trading_buddy/ /app/trading_buddy
 
 EXPOSE 8000
 
-# Run migrations and start Gunicorn using UV
-CMD ["sh", "-c", "python manage.py migrate && gunicorn trading_buddy_backend.wsgi:application --bind 0.0.0.0:8000 --workers 1"]
+# Start Gunicorn using UV - this is command for main backend, override this for run_poller and run_listeners
+CMD ["gunicorn", "trading_buddy_backend.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
 
 

@@ -305,7 +305,7 @@ class Trade(models.Model):
     end_time = models.DateTimeField(null=True)
 
     risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
-    risk_usd = models.DecimalField(decimal_places=2, max_digits=20, default=0)
+    risk_usd = models.DecimalField(decimal_places=5, max_digits=20, default=0)
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text="Net profit, after commissions")
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 

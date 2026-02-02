@@ -28,11 +28,25 @@ services:
       - back-net
       - front-net
 
+  # ----- BACKEND AND WORKERS -----
+  migrator:
+    build: trading_buddy_backend/
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    env_file: .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - back-net
+
   backend:
     build: trading_buddy_backend/
     env_file:
       - .env.prod
+    restart: unless-stopped
     depends_on:
+      migrator:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
     volumes:
@@ -40,6 +54,34 @@ services:
     networks:
       - back-net
       - front-net
+
+  backend-poller:
+    build: trading_buddy_backend/
+    env_file:
+      - .env.prod
+    command: ["python", "manage.py", "run_poller"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - media_data:/app/media
+    networks:
+      - back-net
+
+  backend-listeners:
+    build: trading_buddy_backend/
+    env_file:
+      - .env.prod
+    command: ["python", "manage.py", "run_listeners"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - media_data:/app/media
+    networks:
+      - back-net
 
   frontend:
     build:
@@ -50,6 +92,7 @@ services:
         - VITE_API_BE_BASE_URL=${VITE_API_BE_BASE_URL}
     env_file:
       - .env.prod
+    restart: unless-stopped
     depends_on:
       - backend
     networks:
@@ -68,6 +111,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
