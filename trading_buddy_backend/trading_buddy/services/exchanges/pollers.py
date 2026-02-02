@@ -1,7 +1,6 @@
 import json
 import time
 
-from django.utils import timezone
 from django.db import connection
 from django.db.utils import OperationalError
 
@@ -45,7 +44,6 @@ class OrderPoller:
                 self.scheduler.run_pending()
                 consecutive_errors = 0
 
-
             except OperationalError as e:
                 consecutive_errors += 1
 
@@ -77,12 +75,12 @@ class OrderPoller:
                     # If the position is on the server and its status is not filled, check for fill event
                     if last_status in ['NEW', 'PARTIALLY_FILLED']:
                         self.check_for_fill_event(exc, tool, db_pos, server_pos, last_status)
+
                     # If the position is on the server and its status is filled or partially filled - check for partial take-profit event
                     # No need to check for partial take-profit if position has only one take-profit
-                    elif last_status in ['FILLED', 'PARTIALLY_FILLED'] and len(db_pos.take_profit_prices) > 1:
+                    if last_status in ['FILLED', 'PARTIALLY_FILLED'] and len(db_pos.take_profit_prices) > 1:
                         self.check_for_partial_take_profit_event(exc, tool, db_pos, server_pos)
-                        pass
-                    break
+
             if pos_vanished_from_server:
                 self.finish_trade(exc, tool, db_pos)
 
@@ -109,9 +107,10 @@ class OrderPoller:
         new_status = 'PARTIALLY_FILLED' if db_pos.primary_volume != db_pos.max_held_volume else 'FILLED'
         db_pos.last_status = new_status
 
-        if last_status == 'NEW' and new_status != 'NEW':
-            # Delete price listener if position was already filled
-            exc.delete_price_listener(tool)
+        # Not needed as this logic is dealt by run_listeners.py
+        # if last_status == 'NEW' and new_status != 'NEW':
+        #     # Delete price listener if position was already filled
+        #     exc.delete_price_listener(tool)
 
         db_pos.save()
 
@@ -139,11 +138,6 @@ class OrderPoller:
         # self.logger.debug(format_dict_for_log(take_profit_orders))
 
         last_status = db_pos.last_status
-        if last_status == 'PARTIALLY_FILLED':
-            success, _ = exc.cancel_primary_order_for_tool(tool, only_cancel=True)
-            if not success:
-                self.logger.critical(
-                    f"Failed to cancel primary order for partially filled position which reached take-profit!")
 
         if not db_pos.breakeven:
             num_current_fully_unfilled_tps = 0
@@ -154,6 +148,13 @@ class OrderPoller:
                     num_current_fully_unfilled_tps += 1
 
             num_initial_tps = len(db_pos.take_profit_prices)
+
+            # Cancel primary order if partially filled position already reached its first take-profit
+            if last_status == 'PARTIALLY_FILLED' and num_initial_tps - num_current_fully_unfilled_tps >= 1:
+                success, _ = exc.cancel_primary_order_for_tool(tool, only_cancel=True)
+                if not success:
+                    self.logger.critical(
+                        f"Failed to cancel primary order for partially filled position which reached take-profit!")
 
             # Checks if stop-loss is ready to be moved to entry level
             if db_pos.move_stop_after - (num_initial_tps - num_current_fully_unfilled_tps) <= 0:

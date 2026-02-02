@@ -173,8 +173,8 @@ class BingXExc(Exchange):
         self.order_listener_manager = None
         self.order_listener_manager_thread = None
 
-        self.restore_price_listeners()
-        # self.create_order_listener_manager_in_thread()
+        # Not needed as this logic is dealt by run_listeners.py
+        # self.restore_price_listeners()
 
         # Mark the instance as fully initialized
         self._initialized = True
@@ -446,7 +446,9 @@ class BingXExc(Exchange):
 
             if success:
                 logger.success(f'Primary order for {tool} placed successfully')
-                self.create_price_listener_in_thread(tool)
+
+                # Not needed as this logic is dealt by run_listeners.py
+                # self.create_price_listener_in_thread(tool)
 
                 return True, "Primary order placed"
             else:
@@ -572,7 +574,8 @@ class BingXExc(Exchange):
                 # For manual cancellation of position, data doesn't go to db
                 trade.delete()  # position will be auto deleted, see models.py for this
 
-        self.delete_price_listener(tool)
+        # Not needed as this logic is dealt by run_listeners.py
+        # self.delete_price_listener(tool)
         return True, ""
 
     def place_take_profit_orders(self, tool: str, take_profits: List[Decimal], cum_volume: Decimal,
@@ -698,7 +701,7 @@ class BingXExc(Exchange):
 
             return True, "Successfully retrieved current positions", dicts
         except Exception as e:
-            logger.warning('Failed to fetch current positions info')
+            logger.warning(f'Failed to fetch current positions info: {e}')
             return False, str(e), []
 
     def get_pending_positions_info(self) -> List[dict[str, Any]]:

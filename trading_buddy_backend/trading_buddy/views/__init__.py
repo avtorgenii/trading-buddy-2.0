@@ -24,9 +24,9 @@ def is_running_management_command():
     return len(sys.argv) >= 2 and sys.argv[1] in ['shell', 'shell_plus', 'makemigrations', 'migrate', 'test']
 
 
-# Only run if not in management command
-if not is_running_management_command():
-    ensure_poller_initialized()
+# # Only run if not in management command
+# if not is_running_management_command():
+#     ensure_poller_initialized()
 
 # Sample data for API testing
 """
