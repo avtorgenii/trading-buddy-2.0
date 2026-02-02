@@ -6,17 +6,16 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN adduser -D -u 1000 appuser
+
+WORKDIR /app
+
+RUN mkdir -p /app/media /app/logs && \
+    chown -R appuser:appuser /app/media /app/logs
+
 USER appuser
 
 # Adding dir where pip, ran from appuser, puts binaries into PATH variable
 ENV PATH="/home/appuser/.local/bin:$PATH"
-
-WORKDIR /app
-
-RUN chown -R appuser:appuser /app
-
-RUN mkdir -p /app/media /app/logs && \
-    chown -R appuser:appuser /app/media /app/logs
 
 RUN --mount=type=bind,source=requirements.txt,target=/app/requirements.txt pip install --no-cache-dir -r requirements.txt
 
