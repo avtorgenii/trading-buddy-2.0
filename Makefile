@@ -13,12 +13,12 @@ prep-back:
 	docker push avtopetrovich/tb-backend:$(TAG)
 
 prep-backup:
-	docker build -t avtopetrovich/tb-backup:$(TAG) ./infra/tools/backup/
+	docker build -t avtopetrovich/tb-backup:$(TAG) ./infra/vps-docker/backup/
 	docker push avtopetrovich/tb-backup:$(TAG)
 
 prep-monitoring:
-	docker build -t avtopetrovich/tb-alloy:$(TAG) ./infra/monitoring/alloy/
-	docker build -t avtopetrovich/tb-loki:$(TAG) ./infra/monitoring/loki/
+	docker build -t avtopetrovich/tb-alloy:$(TAG) ./infra/vps-docker/monitoring/alloy/
+	docker build -t avtopetrovich/tb-loki:$(TAG) ./infra/vps-docker/monitoring/loki/
 	docker push avtopetrovich/tb-alloy:$(TAG)
 	docker push avtopetrovich/tb-loki:$(TAG)
 

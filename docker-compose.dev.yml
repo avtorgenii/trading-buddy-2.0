@@ -14,7 +14,7 @@ volumes:
 
 secrets:
   users:
-    file: ./infra/monitoring/dozzle/users.yml
+    file: ./infra/vps-docker/monitoring/dozzle/users.yml
 
 services:
   nginx:
@@ -23,7 +23,7 @@ services:
       - 80:80 # For HTTP traffic
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
-      - "./nginx/nginx.dev.conf:/etc/nginx/nginx.conf"
+      - "./infra/vps-docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf"
       # Portal from nginx to media data in django container
       - media_data:/app/media
     depends_on:
@@ -149,7 +149,7 @@ services:
   #   ports:
   #     - 3100:3100
   #   volumes:
-  #     - ./infra/monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
+  #     - ./infra/vps-docker/monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
   #   command: -config.file=/etc/loki/local-config.yaml
   #   networks:
   #     - back-net
@@ -224,7 +224,7 @@ services:
   #   networks:
   #     - back-net
   #   volumes:
-  #     - ./infra/monitoring/alloy/config.alloy:/etc/alloy/config.alloy
+  #     - ./infra/vps-docker/monitoring/alloy/config.alloy:/etc/alloy/config.alloy
   #     - alloy_data:/var/lib/alloy/data
   #     - /:/rootfs:ro
   #     - /run:/run:ro

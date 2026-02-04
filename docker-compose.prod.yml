@@ -132,7 +132,7 @@ services:
     image: avtopetrovich/tb-backup:${TAG:-latest}
     restart: unless-stopped # Restart the container automatically if it exits, crashes, or Docker restarts (like on server reboot).
     env_file:
-      - ./backup.env
+      - backup.env
     depends_on:
       - db
       - backend
