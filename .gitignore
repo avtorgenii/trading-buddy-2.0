@@ -3,3 +3,5 @@
 backup.env
 trading_buddy_backend/media
 .idea
+infra/monitoring/dozzle/users.yml
+.vscode/

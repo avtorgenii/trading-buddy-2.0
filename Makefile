@@ -1,7 +1,7 @@
 # Default version unless TAG was specified when running make command
 TAG ?= latest
 
-.PHONY: prep-front prep-back prep-nginx prep-backup prep-all
+.PHONY: prep-front prep-back prep-backup prep-monitoring prep-all
 
 # Dev commands
 prep-front:
@@ -12,15 +12,18 @@ prep-back:
 	docker build -t avtopetrovich/tb-backend:$(TAG) ./trading_buddy_backend/
 	docker push avtopetrovich/tb-backend:$(TAG)
 
-prep-nginx:
-	docker build -t avtopetrovich/tb-nginx:$(TAG) -f nginx.Dockerfile .
-	docker push avtopetrovich/tb-nginx:$(TAG)
-
 prep-backup:
-	docker build -t avtopetrovich/tb-backup:$(TAG) -f backup.Dockerfile .
+	docker build -t avtopetrovich/tb-backup:$(TAG) ./infra/tools/backup/
 	docker push avtopetrovich/tb-backup:$(TAG)
 
-prep-all: prep-back prep-front prep-nginx prep-backup
+prep-monitoring:
+	docker build -t avtopetrovich/tb-alloy:$(TAG) ./infra/monitoring/alloy/
+	docker build -t avtopetrovich/tb-loki:$(TAG) ./infra/monitoring/loki/
+	docker push avtopetrovich/tb-alloy:$(TAG)
+	docker push avtopetrovich/tb-loki:$(TAG)
+
+
+prep-all: prep-back prep-front prep-backup prep-monitoring
 
 
 compose-dev:

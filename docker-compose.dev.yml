@@ -7,18 +7,23 @@ networks:
 volumes:
   postgres_data:
   media_data:
+  dozzle_data:
   alloy_data:
   grafana_data:
   vm_data:
 
+secrets:
+  users:
+    file: ./infra/monitoring/dozzle/users.yml
+
 services:
   nginx:
-    image: nginx:stable-alpine
+    image: nginx:stable-alpine3.23-perl
     ports:
       - 80:80 # For HTTP traffic
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
-      - "./nginx.conf:/etc/nginx/nginx.conf"
+      - "./nginx/nginx.dev.conf:/etc/nginx/nginx.conf"
       # Portal from nginx to media data in django container
       - media_data:/app/media
     depends_on:
@@ -118,102 +123,121 @@ services:
       - back-net
 
   # ----- MONITORING -----
-  loki:
-    image: grafana/loki:3.5.2
-    environment:
-      - GOGC=25
-    ports:
-      - 3100:3100
-    volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      - back-net
-
-  victoria-metrics:
-    image: victoriametrics/victoria-metrics:v1.101.0
-    environment:
-      - GOGC=25
-    command:
-      - "-storageDataPath=/storage" # Где хранить данные
-      - "-retentionPeriod=7d" # Хранить 7 дней (аналог retention.time)
-    ports:
-      - "8428:8428"
-    networks:
-      - back-net
-    volumes:
-      - vm_data:/storage
+  # --- LIGHT ---
+  dozzle:
+    image: amir20/dozzle:v9.0.3
     restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:12.0.2
     environment:
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_BASIC_ENABLED=false
-      - GOGC=25
+      - DOZZLE_BASE=/logs
+      - DOZZLE_AUTH_PROVIDER=simple
+    secrets:
+      - source: users
+        target: /data/users.yml
+    expose:
+      - 8080
     volumes:
-      - grafana_data:/var/lib/grafana
-    ports:
-      - 3000:3000/tcp
-    networks:
-      - back-net
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy
-          orgId: 1
-          url: http://loki:3100
-          basicAuth: false
-          isDefault: false
-          version: 1
-          editable: false
-        - name: Victoria-metrics
-          type: prometheus
-          orgId: 1
-          url: http://victoria-metrics:8428
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: false
-        EOF
-        /run.sh
-
-  alloy:
-    image: grafana/alloy:v1.10.0
-    environment:
-      - GOGC=25
-    privileged: true
-    hostname: machine
-    pid: "host"
-    ports:
-      - 12345:12345
-      - 4317:4317
-      - 4318:4318
-    networks:
-      - back-net
-    volumes:
-      - ./config.alloy:/etc/alloy/config.alloy
-      - alloy_data:/var/lib/alloy/data
-      - /:/rootfs:ro
-      - /run:/run:ro
-      - /var/log:/var/log:ro
-      - /sys:/sys:ro
-      - /run/udev/data:/run/udev/data:ro
-
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /var/run:/var/run:rw
-      - /dev/disk/:/dev/disk:ro
-    command:
-      - run
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --storage.path=/var/lib/alloy/data
-      - /etc/alloy/config.alloy
+      - dozzle_data:/data
+    networks:
+      - back-net
+
+  # --- HEAVY ---
+  # loki:
+  #   image: grafana/loki:3.5.2
+  #   environment:
+  #     - GOGC=25
+  #   ports:
+  #     - 3100:3100
+  #   volumes:
+  #     - ./infra/monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   networks:
+  #     - back-net
+
+  # victoria-metrics:
+  #   image: victoriametrics/victoria-metrics:v1.101.0
+  #   environment:
+  #     - GOGC=25
+  #   command:
+  #     - "-storageDataPath=/storage" # Где хранить данные
+  #     - "-retentionPeriod=7d" # Хранить 7 дней (аналог retention.time)
+  #   ports:
+  #     - "8428:8428"
+  #   networks:
+  #     - back-net
+  #   volumes:
+  #     - vm_data:/storage
+  #   restart: unless-stopped
+
+  # grafana:
+  #   image: grafana/grafana:12.0.2
+  #   environment:
+  #     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  #     - GF_AUTH_ANONYMOUS_ENABLED=true
+  #     - GF_AUTH_BASIC_ENABLED=false
+  #     - GOGC=25
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   ports:
+  #     - 3000:3000/tcp
+  #   networks:
+  #     - back-net
+  #   entrypoint:
+  #     - sh
+  #     - -euc
+  #     - |
+  #       mkdir -p /etc/grafana/provisioning/datasources
+  #       cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+  #       apiVersion: 1
+  #       datasources:
+  #       - name: Loki
+  #         type: loki
+  #         access: proxy
+  #         orgId: 1
+  #         url: http://loki:3100
+  #         basicAuth: false
+  #         isDefault: false
+  #         version: 1
+  #         editable: false
+  #       - name: Victoria-metrics
+  #         type: prometheus
+  #         orgId: 1
+  #         url: http://victoria-metrics:8428
+  #         basicAuth: false
+  #         isDefault: true
+  #         version: 1
+  #         editable: false
+  #       EOF
+  #       /run.sh
+
+  # alloy:
+  #   image: grafana/alloy:v1.10.0
+  #   environment:
+  #     - GOGC=25
+  #   privileged: true
+  #   hostname: machine
+  #   pid: "host"
+  #   ports:
+  #     - 12345:12345
+  #     - 4317:4317
+  #     - 4318:4318
+  #   networks:
+  #     - back-net
+  #   volumes:
+  #     - ./infra/monitoring/alloy/config.alloy:/etc/alloy/config.alloy
+  #     - alloy_data:/var/lib/alloy/data
+  #     - /:/rootfs:ro
+  #     - /run:/run:ro
+  #     - /var/log:/var/log:ro
+  #     - /sys:/sys:ro
+  #     - /run/udev/data:/run/udev/data:ro
+
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - /var/lib/docker/:/var/lib/docker:ro
+  #     - /var/run:/var/run:rw
+  #     - /dev/disk/:/dev/disk:ro
+  #   command:
+  #     - run
+  #     - --server.http.listen-addr=0.0.0.0:12345
+  #     - --storage.path=/var/lib/alloy/data
+  #     - /etc/alloy/config.alloy

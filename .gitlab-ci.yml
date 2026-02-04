@@ -21,7 +21,6 @@ build_all_job:
     script:
         - make prep-all TAG=$TAG
 
-
 deploy_job:
     stage: deploy
     before_script:
@@ -35,10 +34,14 @@ deploy_job:
 
         - ssh-keyscan "$DROPLET_IP" >> ~/.ssh/known_hosts
     script:
-        - ssh "root@$DROPLET_IP" "echo '$DOCKER_HUB_PASS' | docker login -u '$DOCKER_HUB_USER' --password-stdin"
-
         - cp "$DOT_ENV_FILE" .env.prod
         - cp "$BACKUP_ENV_FILE" backup.env
+
+        - echo "$DOZZLE_USERS_FILE" > users.yml
+        - ssh "root@$DROPLET_IP" "mkdir -p /root/dozzle"
+        - scp users.yml "root@$DROPLET_IP:/root/dozzle/users.yml"
+
+        - scp nginx.conf "root@$DROPLET_IP:/root/nginx.conf"
 
         - export DOCKER_HOST="ssh://root@$DROPLET_IP"
         - make compose-prod TAG=$TAG

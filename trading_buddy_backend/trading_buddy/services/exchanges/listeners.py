@@ -6,6 +6,7 @@ import websocket
 import gzip
 import io
 import schedule
+from django.db import connection, OperationalError
 from django.utils import timezone
 
 from bingX.perpetual.v2.other import Other
@@ -85,7 +86,7 @@ class BingXListener(Listener):
         super().__init__(exchange.fresh_user, exchange.fresh_account)
         self.logger = self.logger.bind(class_name=self.__class__.__name__)
 
-        print("HAI")
+        self.consecutive_errors = 0
 
         self.ws_url = "wss://open-api-swap.bingx.com/swap-market"
         self.exchange = exchange
@@ -100,25 +101,46 @@ class BingXPriceListener(BingXListener):
         self.logger = self.logger.bind(class_name=self.__class__.__name__)
 
     def check_price_for_order_cancellation(self, price):
-        pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
-
-        # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
-        over_and_take, pos_side = pos.cancel_levels, pos.side
-
         try:
-            over, take = over_and_take
+            # Always close stale connections before attempting work,
+            # because Django doesn't automatically update connections for threads - one thread - one connection
+            connection.close()
 
-            if pos_side == "LONG":
-                if (over is not None and price <= over) or (take is not None and price >= take):
-                    self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                reason="Оверлой или цена подошла слишком близко к тейку")
-            else:
-                if (over is not None and price >= over) or (take is not None and price <= take):
-                    self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                reason="Овербай или цена подошла слишком близко к тейку")
+            pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
+
+            # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
+            over_and_take, pos_side = pos.cancel_levels, pos.side
+
+            try:
+                over, take = over_and_take
+
+                if pos_side == "LONG":
+                    if (over is not None and price <= over) or (take is not None and price >= take):
+                        self.exchange.cancel_primary_order_for_tool(self.tool, True,
+                                                                    reason="Оверлой или цена подошла слишком близко к тейку")
+                else:
+                    if (over is not None and price >= over) or (take is not None and price <= take):
+                        self.exchange.cancel_primary_order_for_tool(self.tool, True,
+                                                                    reason="Овербай или цена подошла слишком близко к тейку")
+
+            except Exception as e:
+                self.logger.exception(f'Tried to check price for order cancelling: {e}')
+
+            self.consecutive_errors = 0
+
+        except OperationalError as e:
+            self.consecutive_errors += 1
+
+            if self.consecutive_errors % 60 == 1:  # Log every minute
+                logger.warning(f'DB unavailable ({self.consecutive_errors}s): {e}')
 
         except Exception as e:
-            self.logger.exception('Tried to check price for order cancelling')
+            logger.exception(f'Uncaught exception: {e}')
+            self.consecutive_errors = 0
+
+        time.sleep(5)
+
+
 
     def on_open(self, ws):
         super().on_open(ws)

@@ -33,6 +33,10 @@ scp volume-backup.tar.gz user@main-machine:/path/to/destination/
 # Import - worked only for media data, postgres data was imported manually via docker desktop GUI
 docker run --rm -v trading-buddy_media_data:/data -v $(pwd):/backup alpine tar xzf /backup/media_data.tar.gz -C /data
 
+# Certbot certificates renew
+SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}')
+
+echo "0 0,12 * * * root sleep $SLEEPTIME && docker run --rm --name certbot-renewer -v /root/certbot/conf:/etc/letsencrypt -v /root/certbot/www:/var/www/certbot certbot/certbot:v5.2.2 renew -q && docker exec trading-buddy-nginx-1 nginx -s reload" | sudo tee -a /etc/crontab
 
 
 # Notion

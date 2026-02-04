@@ -10,7 +10,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info('Initializing order poller...')
 
-        # Thread тут больше не нужен, так как этот скрипт будет главным процессом в контейнере.
         poller = OrderPoller()
         poller.run()
 

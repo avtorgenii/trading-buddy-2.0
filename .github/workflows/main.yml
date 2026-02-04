@@ -12,6 +12,7 @@ env:
   DROPLET_IP: ${{ secrets.DROPLET_IP }}
   DOT_ENV_FILE: ${{ secrets.DOT_ENV_FILE }}
   BACKUP_ENV_FILE: ${{ secrets.BACKUP_ENV_FILE }}
+  DOZZLE_USERS_FILE: ${{ secrets.DOZZLE_USERS_FILE }}
   TAG: ${{ github.sha }}
 
 jobs:
@@ -22,10 +23,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Build and push all images to Dockerhub
-        run: | 
+        run: |
           echo "$DOCKER_HUB_PASS" | docker login -u "$DOCKER_HUB_USER" --password-stdin
-          make prep-all TAG=${{ env.TAG }}
-        
+          make prep-all TAG="$TAG"
+
   deploy:
     runs-on: ubuntu-22.04
     needs: build
@@ -35,9 +36,9 @@ jobs:
 
       - name: Create env files
         run: |
-          echo "${{ env.DOT_ENV_FILE }}" > ".env.prod"
-          echo "${{ env.BACKUP_ENV_FILE }}" > "backup.env"
-      
+          echo "$DOT_ENV_FILE" > ".env.prod"
+          echo "$BACKUP_ENV_FILE" > "backup.env"
+
       - name: Setup SSH and Launch Docker Compose on remote droplet
         run: |
           # SSH part
@@ -49,8 +50,13 @@ jobs:
 
           ssh-keyscan "$DROPLET_IP" >> ~/.ssh/known_hosts
 
+          echo "$DOZZLE_USERS_FILE" > users.yml
+          ssh "root@$DROPLET_IP" "mkdir -p /root/dozzle"
+          scp users.yml "root@$DROPLET_IP:/root/dozzle/users.yml"
+
+          scp nginx.conf "root@$DROPLET_IP:/root/nginx.conf"
+
           # Docker part
-          export DOCKER_HOST="ssh://root@${{ env.DROPLET_IP }}"
-          make compose-prod TAG=${{ env.TAG }}
+          export DOCKER_HOST="ssh://root@$DROPLET_IP"
+          make compose-prod TAG="$TAG"
           docker system prune -a -f
-  

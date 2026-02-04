@@ -7,21 +7,52 @@ networks:
 volumes:
   postgres_data:
   media_data:
+  dozzle_data:
+  alloy_data:
+  grafana_data:
+  vm_data:
+
+secrets:
+  users:
+    file: /root/dozzle/users.yml
 
 services:
+  # ----- INET -----
   nginx:
-    image: avtopetrovich/tb-nginx:${TAG:-latest} # Если TAG не задан, будет latest
+    image: nginx:stable-alpine3.23-perl
     restart: unless-stopped
     ports:
-      - "80:80" # For HTTP traffic
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
     volumes:
       - media_data:/app/media
+      - /root/nginx.conf:/etc/nginx/nginx.conf
+      - /root/certbot/conf:/etc/letsencrypt
+      - /root/certbot/www:/var/www/certbot
     depends_on:
       - backend
       - frontend
     networks:
       - back-net
       - front-net
+
+  # ----- BACKEND AND WORKERS -----
+  # Transfer ownership of media_data volume to appuser with UID = 1000 so backend service could put images here
+  init-perms:
+    image: busybox
+    command: sh -c "chown -R 1000:1000 /data"
+    volumes:
+      - media_data:/data
+
+  migrator:
+    image: avtopetrovich/tb-backend:${TAG:-latest}
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    env_file: .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - back-net
 
   backend:
     image: avtopetrovich/tb-backend:${TAG:-latest}
@@ -37,13 +68,35 @@ services:
       - back-net
       - front-net
 
-  # Transfer ownership of media_data volume to appuser with UID = 1000 so backend service could put images here
-  init-perms:
-    image: busybox
-    command: sh -c "chown -R 1000:1000 /data"
+  backend-poller:
+    image: avtopetrovich/tb-backend:${TAG:-latest}
+    env_file:
+      - .env.prod
+    command: ["python", "manage.py", "run_poller"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
     volumes:
-      - media_data:/data
+      - media_data:/app/media
+    networks:
+      - back-net
 
+  backend-listeners:
+    image: avtopetrovich/tb-backend:${TAG:-latest}
+    env_file:
+      - .env.prod
+    command: ["python", "manage.py", "run_listeners"]
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - media_data:/app/media
+    networks:
+      - back-net
+
+  # ----- FRONTEND -----
   frontend:
     image: avtopetrovich/tb-frontend:${TAG:-latest}
     restart: unless-stopped
@@ -54,6 +107,7 @@ services:
     networks:
       - front-net
 
+  # ----- DATA -----
   db:
     image: postgres:17.0
     restart: unless-stopped
@@ -89,3 +143,117 @@ services:
       - media_data:/backup/media-data-backup:ro
     networks:
       - back-net
+
+  # ----- MONITORING -----
+  # --- LIGHT ---
+  dozzle:
+    image: amir20/dozzle:v9.0.3
+    restart: unless-stopped
+    environment:
+      - DOZZLE_AUTH_PROVIDER=simple
+    secrets:
+      - source: users
+        target: /data/users.yml
+    expose:
+      - 8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dozzle_data:/data
+    networks:
+      - back-net
+
+  # --- HEAVY ---
+  loki:
+    image: avtopetrovich/tb-loki:${TAG:-latest}
+    environment:
+      - GOGC=25
+    expose:
+      - 3100
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - back-net
+
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.101.0
+    environment:
+      - GOGC=25
+    command:
+      - "-storageDataPath=/storage" # Где хранить данные
+      - "-retentionPeriod=7d" # Хранить 7 дней (аналог retention.time)
+    expose:
+      - 8428
+    networks:
+      - back-net
+    volumes:
+      - vm_data:/storage
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    environment:
+      - GF_AUTH_BASIC_ENABLED=true
+      - GOGC=25
+    volumes:
+      - grafana_data:/var/lib/grafana
+    expose:
+      - 3000
+    networks:
+      - back-net
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: false
+          version: 1
+          editable: false
+        - name: Victoria-metrics
+          type: prometheus
+          orgId: 1
+          url: http://victoria-metrics:8428
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh
+
+  alloy:
+    image: avtopetrovich/tb-alloy:${TAG:-latest}
+    environment:
+      - GOGC=25
+    privileged: true
+    hostname: machine
+    pid: "host"
+    expose:
+      - 12345
+      - 4317
+      - 4318
+    networks:
+      - back-net
+    volumes:
+      - alloy_data:/var/lib/alloy/data
+      - /:/rootfs:ro
+      - /run:/run:ro
+      - /var/log:/var/log:ro
+      - /sys:/sys:ro
+      - /run/udev/data:/run/udev/data:ro
+
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /var/run:/var/run:rw
+      - /dev/disk/:/dev/disk:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
