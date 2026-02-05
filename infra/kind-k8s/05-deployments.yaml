@@ -7,7 +7,7 @@ spec:
   selector:
     matchLabels:
       app: frontend-pod
-
+  replicas: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
