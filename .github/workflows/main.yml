@@ -54,7 +54,7 @@ jobs:
           ssh "root@$DROPLET_IP" "mkdir -p /root/dozzle"
           scp users.yml "root@$DROPLET_IP:/root/dozzle/users.yml"
 
-          scp nginx.conf "root@$DROPLET_IP:/root/nginx.conf"
+          scp ./infra/vps-docker/nginx/nginx.conf "root@$DROPLET_IP:/root/nginx.conf"
 
           # Docker part
           export DOCKER_HOST="ssh://root@$DROPLET_IP"
