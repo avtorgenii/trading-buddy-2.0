@@ -49,13 +49,13 @@ prep-all-k8s: prep-back prep-front-k8s
 
 
 compose-dev:
-	TAG=$(TAG) docker compose -f docker-compose.dev.yml --env-file .env.dev up --build -d
+	TAG=$(TAG) docker compose -f docker-compose.dev.yml --env-file .env.dev up --build -d --force-recreate
 
 
 # Prod commands
 compose-prod:
 	TAG=$(TAG) docker compose -f docker-compose.prod.yml pull
-	TAG=$(TAG) docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+	TAG=$(TAG) docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate
 
 stop-prod:
 	TAG=$(TAG) docker compose -f docker-compose.prod.yml --env-file .env.prod down
