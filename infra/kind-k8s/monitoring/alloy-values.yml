@@ -13,6 +13,7 @@ clusterEvents:
   namespaces:
     - monitoring
     - default
+    - argocd
 
 nodeLogs:
   enabled: false
@@ -39,6 +40,7 @@ podLogs:
   namespaces:
     - monitoring
     - default
+    - argocd
 
 # Collectors
 alloy-singleton:
