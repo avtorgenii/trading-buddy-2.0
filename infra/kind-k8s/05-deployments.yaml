@@ -1,0 +1,167 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  selector:
+    matchLabels:
+      app: frontend-pod
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+
+  template:
+    metadata:
+      labels:
+        app: frontend-pod
+    spec:
+      containers:
+        - image: avtopetrovich/tb-frontend:k8sv1.0
+          name: tb-frontend
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  selector:
+    matchLabels:
+      app: backend-pod
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+
+  template:
+    metadata:
+      labels:
+        app: backend-pod
+    spec:
+      containers:
+        - image: avtopetrovich/tb-backend:k8s
+          name: tb-backend
+          imagePullPolicy: Always
+
+          envFrom:
+            - secretRef:
+                name: backend-secrets
+
+          ports:
+            - containerPort: 8000
+
+          volumeMounts:
+            - name: media-data
+              mountPath: /app/media
+
+          resources:
+            requests:
+              cpu: 200m
+              memory: 200Mi
+            limits:
+              cpu: 300m
+              memory: 400Mi
+
+      volumes:
+        - name: media-data
+          persistentVolumeClaim:
+            claimName: backend-shared-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-poller-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-poller-pod
+
+  strategy:
+    type: Recreate
+
+  template:
+    metadata:
+      labels:
+        app: backend-poller-pod
+    spec:
+      containers:
+        - image: avtopetrovich/tb-backend:k8s
+          imagePullPolicy: Always
+
+          envFrom:
+            - secretRef:
+                name: backend-secrets
+
+          name: tb-backend-poller
+
+          command: ["python", "manage.py", "run_poller"]
+
+          ports:
+            - containerPort: 8000
+
+          # QoS = Guaranteed, I don't want these pods to be frequentrly killed
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 100m
+              memory: 200Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-listeners-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend-listeners-pod
+
+  strategy:
+    type: Recreate
+
+  template:
+    metadata:
+      labels:
+        app: backend-listeners-pod
+    spec:
+      containers:
+        - image: avtopetrovich/tb-backend:k8s
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: backend-secrets
+
+          name: tb-backend-listeners
+
+          command: ["python", "manage.py", "run_listeners"]
+
+          ports:
+            - containerPort: 8000
+
+          # QoS = Guaranteed, I don't want these pods to be frequentrly killed
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 100m
+              memory: 200Mi

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-shared-pvc
+  namespace: default
+spec:
+  storageClassName: nfs # <--- Важно! Используем новый класс
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi

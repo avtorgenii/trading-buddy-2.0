@@ -1,0 +1,62 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  number: 3000
+
+          - pathType: Prefix
+            path: "/api/"
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  number: 8000
+
+          - pathType: Prefix
+            path: "/accounts/"
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  number: 8000
+
+          - pathType: Prefix
+            path: "/media/" # static files are served by backend locally :(
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring # namespace where grafana is
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.localhost
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: vmks-grafana
+                port:
+                  number: 80

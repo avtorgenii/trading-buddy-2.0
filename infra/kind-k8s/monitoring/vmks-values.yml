@@ -1,0 +1,18 @@
+defaultDatasources:
+  extra:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc.cluster.local/
+      uid: Loki
+      access: proxy
+      version: 1
+      orgId: 1
+      isDefault: false
+      editable: false
+      jsonData:
+        httpMethod: GET
+grafana:
+  plugins:
+    - loki
+  persistence:
+    enabled: true

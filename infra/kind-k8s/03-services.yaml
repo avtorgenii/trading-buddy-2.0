@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+spec:
+  ports:
+    - port: 8000 # service port
+      targetPort: 8000 # pods port
+  selector:
+    app: backend-pod # selector for pods
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-poller-svc
+spec:
+  ports:
+    - port: 8000 # service port
+      targetPort: 8000 # pods port
+  selector:
+    app: backend-poller-pod # selector for pods
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-listeners-svc
+spec:
+  ports:
+    - port: 8000 # service port
+      targetPort: 8000 # pods port
+  selector:
+    app: backend-listeners-pod # selector for pods
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-svc
+spec:
+  ports:
+    - port: 3000 # service port
+      targetPort: 3000 # pods port
+  selector:
+    app: frontend-pod # selector for pods
+  type: ClusterIP
+---
+###### For access to db in container outside cluster ######
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# 2. Указываем, куда этот сервис ведет (IP адрес)
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: db # Должно совпадать с именем сервиса!
+subsets:
+  - addresses:
+      - ip: 172.17.0.1 # <--- СЮДА ВСТАВЬ IP из Шага 2 (обычно 172.17.0.1 на Linux)
+    ports:
+      - port: 5432

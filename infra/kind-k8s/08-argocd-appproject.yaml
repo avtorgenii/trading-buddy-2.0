@@ -1,0 +1,19 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: trading-buddy
+  namespace: argocd
+  # Finalizer that ensures that project is not deleted until it is not referenced by any application
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Trading Buddy in K8s
+  sourceRepos: # откуда приложения могу брать код
+    - "*"
+  destinations:
+    - namespace: "*" # в какие неймспейсы они смогут устанвливать
+      server: "*" # на какие сервера? так как из одно арго можно устанавливать в несколько кластеров
+  clusterResourceWhitelist: # какие ресурсы кластерного уровня могут создавать приложения
+    - group: "*" # Любая API-группа (rbac, storage, networking и т.д.)
+      kind: "*" # Любой тип ресурса

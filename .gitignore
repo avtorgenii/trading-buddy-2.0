@@ -5,3 +5,9 @@ trading_buddy_backend/media
 .idea
 infra/vps-docker/monitoring/dozzle/users.yml
 .vscode/
+
+terraform.tfstate
+.terraform.lock.hcl
+.terraform/
+
+04-secret.yaml

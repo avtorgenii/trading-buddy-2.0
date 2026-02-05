@@ -1,0 +1,41 @@
+---
+##### For Trading-Buddy #####
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kuber
+  namespace: argocd
+
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: trading-buddy
+  source:
+    repoURL: https://github.com/avtorgenii/trading-buddy-2.0.git
+    targetRevision: dev
+    path: infra/kind-k8s
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+    # # For Victoria Metrics
+    # ignoreDifferences:
+    #   - group: ""
+    #     kind: Secret
+    #     name: vmks-victoria-metrics-operator-validation
+    #     namespace: monitoring
+    #     jsonPointers:
+    #       - /data
+    #   - group: admissionregistration.k8s.io
+    #     kind: ValidatingWebhookConfiguration
+    #     name: vmks-victoria-metrics-operator-admission
+    #     jqPathExpressions:
+    #       - ".webhooks[]?.clientConfig.caBundle"
