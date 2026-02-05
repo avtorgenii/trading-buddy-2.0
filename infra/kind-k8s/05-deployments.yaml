@@ -19,7 +19,7 @@ spec:
         app: frontend-pod
     spec:
       containers:
-        - image: avtopetrovich/tb-frontend:k8sv1.0
+        - image: avtopetrovich/tb-frontend-k8s:v1.0
           name: tb-frontend
           imagePullPolicy: Always
           ports:
@@ -54,7 +54,7 @@ spec:
         app: backend-pod
     spec:
       containers:
-        - image: avtopetrovich/tb-backend:k8s
+        - image: avtopetrovich/tb-backend:latest
           name: tb-backend
           imagePullPolicy: Always
 
@@ -101,7 +101,7 @@ spec:
         app: backend-poller-pod
     spec:
       containers:
-        - image: avtopetrovich/tb-backend:k8s
+        - image: avtopetrovich/tb-backend:latest
           imagePullPolicy: Always
 
           envFrom:
@@ -143,7 +143,7 @@ spec:
         app: backend-listeners-pod
     spec:
       containers:
-        - image: avtopetrovich/tb-backend:k8s
+        - image: avtopetrovich/tb-backend:latest
           imagePullPolicy: Always
           envFrom:
             - secretRef:

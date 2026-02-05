@@ -6,37 +6,45 @@ TAG ?= latest
 # Dev commands
 prep-front:
 	docker build --build-arg VITE_API_BASE_URL="http://backend:8000/api/v1" --build-arg VITE_API_SUFFIX="/api/v1" --build-arg VITE_API_BE_BASE_URL="/api/v1" -t avtopetrovich/tb-frontend:$(TAG) ./trading_buddy_fe/
-	docker push avtopetrovich/tb-frontend:$(TAG)
+	docker tag avtopetrovich/tb-frontend:$(TAG) avtopetrovich/tb-frontend:latest
 	docker push avtopetrovich/tb-frontend:latest
+	docker push avtopetrovich/tb-frontend:$(TAG)
 
 prep-front-k8s:
-	docker build --build-arg VITE_API_BASE_URL="http://backend-svc:8000/api/v1" --build-arg VITE_API_SUFFIX="/api/v1" --build-arg VITE_API_BE_BASE_URL="/api/v1" -t avtopetrovich/tb-frontend:$(TAG) ./trading_buddy_fe/
-	docker push avtopetrovich/tb-frontend:$(TAG)
-	docker push avtopetrovich/tb-frontend:latest
+	docker build --build-arg VITE_API_BASE_URL="http://backend-svc:8000/api/v1" --build-arg VITE_API_SUFFIX="/api/v1" --build-arg VITE_API_BE_BASE_URL="/api/v1" -t avtopetrovich/tb-frontend-k8s:$(TAG) ./trading_buddy_fe/
+	docker tag avtopetrovich/tb-frontend-k8s:$(TAG) avtopetrovich/tb-frontend-k8s:latest
+	docker push avtopetrovich/tb-frontend-k8s:latest
+	docker push avtopetrovich/tb-frontend-k8s:$(TAG)
 
 prep-back:
 	docker build -t avtopetrovich/tb-backend:$(TAG) ./trading_buddy_backend/
-	docker push avtopetrovich/tb-backend:$(TAG)
+	docker tag avtopetrovich/tb-backend:$(TAG) avtopetrovich/tb-backend:latest
 	docker push avtopetrovich/tb-backend:latest
+	docker push avtopetrovich/tb-backend:$(TAG)
+
 
 prep-backup:
 	docker build -t avtopetrovich/tb-backup:$(TAG) ./infra/vps-docker/backup/
-	docker push avtopetrovich/tb-backup:$(TAG)
+	docker tag avtopetrovich/tb-backup:$(TAG) avtopetrovich/tb-backup:latest
 	docker push avtopetrovich/tb-backup:latest
+	docker push avtopetrovich/tb-backup:$(TAG)
+
 
 prep-monitoring:
 	docker build -t avtopetrovich/tb-alloy:$(TAG) ./infra/vps-docker/monitoring/alloy/
 	docker build -t avtopetrovich/tb-loki:$(TAG) ./infra/vps-docker/monitoring/loki/
-	docker push avtopetrovich/tb-alloy:$(TAG)
+	docker tag avtopetrovich/tb-alloy:$(TAG) avtopetrovich/tb-alloy:latest
+	docker tag avtopetrovich/tb-loki:$(TAG) avtopetrovich/tb-loki:latest
+
 	docker push avtopetrovich/tb-alloy:latest
-	docker push avtopetrovich/tb-loki:$(TAG)
 	docker push avtopetrovich/tb-loki:latest
+	docker push avtopetrovich/tb-alloy:$(TAG)
+	docker push avtopetrovich/tb-loki:$(TAG)
+
 
 
 prep-all: prep-back prep-front prep-backup prep-monitoring
 
-# When launching this command TAG is k8sv1.0
-prep-all-k8s: TAG = k8sv1.0
 prep-all-k8s: prep-back prep-front-k8s
 
 

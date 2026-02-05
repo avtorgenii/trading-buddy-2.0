@@ -26,30 +26,32 @@
 	<meta name="theme-color" content="#000000">
 
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<title>Trading Buddy</title>
+	<title>Trading Buddy 2.0</title>
 	%sveltekit.head%
 </head>
+
 <body data-sveltekit-preload-data="hover">
-<div style="display: contents">%sveltekit.body%</div>
+	<div style="display: contents">%sveltekit.body%</div>
 
 
-<script>
-	// Preventing zoom
-	document.addEventListener('gesturestart', function(e) {
-		e.preventDefault();
-		document.body.style.zoom = 0.99;
-	});
+	<script>
+		// Preventing zoom
+		document.addEventListener('gesturestart', function (e) {
+			e.preventDefault();
+			document.body.style.zoom = 0.99;
+		});
 
-	document.addEventListener('gesturechange', function(e) {
-		e.preventDefault();
+		document.addEventListener('gesturechange', function (e) {
+			e.preventDefault();
 
-		document.body.style.zoom = 0.99;
-	});
-	document.addEventListener('gestureend', function(e) {
-		e.preventDefault();
-		document.body.style.zoom = 1;
-	});
-</script>
+			document.body.style.zoom = 0.99;
+		});
+		document.addEventListener('gestureend', function (e) {
+			e.preventDefault();
+			document.body.style.zoom = 1;
+		});
+	</script>
 
 </body>
+
 </html>
