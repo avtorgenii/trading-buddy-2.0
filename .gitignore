@@ -1,5 +1,6 @@
 .env.prod
 .env.dev
+.env.k8s
 backup.env
 trading_buddy_backend/media
 .idea
