@@ -97,7 +97,7 @@
 
 {#if isMobile}
 	<div class="flex justify-between mb-8 border-b border-b-zinc-800 pb-4">
-		<h1 class="text-3xl font-bold">Trading buddy 2.0</h1>
+		<h1 class="text-3xl font-bold">Trading buddy</h1>
 		<button
 			class="border rounded px-2 py-1"
 			onclick={() => (mobileOpen = !mobileOpen)}
