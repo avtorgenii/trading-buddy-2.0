@@ -9,11 +9,11 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   description: Trading Buddy in K8s
-  sourceRepos: # откуда приложения могу брать код
+  sourceRepos:
     - "*"
   destinations:
-    - namespace: "*" # в какие неймспейсы они смогут устанвливать
-      server: "*" # на какие сервера? так как из одно арго можно устанавливать в несколько кластеров
-  clusterResourceWhitelist: # какие ресурсы кластерного уровня могут создавать приложения
-    - group: "*" # Любая API-группа (rbac, storage, networking и т.д.)
-      kind: "*" # Любой тип ресурса
+    - namespace: "*"
+      server: "*" #
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

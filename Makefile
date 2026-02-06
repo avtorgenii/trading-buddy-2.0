@@ -12,7 +12,6 @@ prep-front:
 
 prep-front-k8s:
 	docker build --build-arg VITE_API_BASE_URL="http://backend-svc:8000/api/v1" --build-arg VITE_API_SUFFIX="/api/v1" --build-arg VITE_API_BE_BASE_URL="/api/v1" -t avtopetrovich/tb-frontend-k8s:$(TAG) ./trading_buddy_fe/
-	docker tag avtopetrovich/tb-frontend-k8s:$(TAG) avtopetrovich/tb-frontend-k8s:latest
 	docker push avtopetrovich/tb-frontend-k8s:latest
 	docker push avtopetrovich/tb-frontend-k8s:$(TAG)
 
