@@ -37,6 +37,7 @@ kind: Deployment
 metadata:
   name: backend-deployment
 spec:
+  replicas: 5
   selector:
     matchLabels:
       app: backend-pod
