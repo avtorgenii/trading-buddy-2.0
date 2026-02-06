@@ -121,7 +121,6 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      # Named volume. Means: "Plug postgres_data volume to /var/lib/postgresql/data inside container"
       - postgres_data:/var/lib/postgresql/data
     labels:
       - docker-volume-backup.stop-during-backup=true
