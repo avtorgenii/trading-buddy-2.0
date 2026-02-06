@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "trading_buddy_backend/**"
+      - "trading_buddy_fe/**"
+      - "infra/**"
+      - "Makefile"
+      - ".github/workflows/**"
 
 env:
   DOCKER_HUB_USER: ${{ secrets.DOCKER_HUB_USER }}
