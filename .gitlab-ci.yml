@@ -43,7 +43,7 @@ deploy_job:
         - cp "$DOT_ENV_FILE" .env.prod
         - cp "$BACKUP_ENV_FILE" backup.env
 
-        - echo "$DOZZLE_USERS_FILE" > users.yml
+        - cp "$DOZZLE_USERS_FILE" users.yml
         - ssh "root@$DROPLET_IP" "mkdir -p /root/dozzle"
         - scp users.yml "root@$DROPLET_IP:/root/dozzle/users.yml"
 
