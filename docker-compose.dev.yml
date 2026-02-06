@@ -20,7 +20,7 @@ services:
   nginx:
     image: nginx:stable-alpine3.23-perl
     ports:
-      - 80:80 # For HTTP traffic
+      - 81:80 # For HTTP traffic
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
       - "./infra/vps-docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf"
