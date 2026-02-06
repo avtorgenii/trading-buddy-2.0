@@ -17,6 +17,8 @@ Copied from the [article](https://avtorgenii.github.io/blog/blog/2025-11-07-trad
 
 # Docker Compose
 
+<img src=".github/assets/tb-vps-architecture.png" alt="Stats" width="570"/>
+
 ## Monitoring
 Trading-Buddy features two monitoring stacks - appropriate one and overkill one:
 
@@ -36,6 +38,7 @@ For CI/CD both GitLab CI/CD and GitHub Actions could be used - both .yml files f
 # Kubernetes
 In ```infra/kind-k8s``` you can find set of k8s resources which deploy Trading-Buddy into any k8s cluster
 
+<img src=".github/assets/tb-k8s-architecture.png" alt="Stats" width="570"/>
 
 ## Monitoring
 Monitoring stack is composed from components below, all of them need to be installed as helm charts:
