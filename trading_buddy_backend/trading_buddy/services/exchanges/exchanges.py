@@ -106,7 +106,8 @@ class Exchange:
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
                          take_profits: List[Decimal],
-                         move_stop_after: int, leverage: int, volume: Decimal) -> Tuple[bool, str]:
+                         move_stop_after: int, move_stop_after_rr: Decimal, leverage: int, volume: Decimal) -> Tuple[
+        bool, str]:
         raise NotImplementedError("Method not implemented")
 
     def place_stop_loss_order(self, tool: str, stop_p: Decimal, volume: Decimal, pos_side: PositionSide) -> Tuple[
@@ -389,7 +390,7 @@ class BingXExc(Exchange):
             return False, str(e)
 
     def place_open_order(self, tool: str, trigger_p: Decimal, entry_p: Decimal, stop_p: Decimal,
-                         take_profits: List[Decimal], move_stop_after: int, leverage: int,
+                         take_profits: List[Decimal], move_stop_after: int, move_stop_after_rr: Decimal, leverage: int,
                          volume: Decimal) -> Tuple[bool, str]:
         """
         Places an open order.
@@ -399,6 +400,7 @@ class BingXExc(Exchange):
         :param stop_p: Stop-loss level
         :param take_profits: List of take-profits levels
         :param move_stop_after: After which take stop-loss will be moved to entry level
+        :param move_stop_after_rr: After which risk reward level stop-loss will be moved to entry level
         :param leverage: Leverage for trade
         :param volume: Entered via modal from frontend if needed
         :return: Status message
@@ -439,7 +441,8 @@ class BingXExc(Exchange):
                                        leverage,
                                        trigger_p,
                                        entry_p,
-                                       stop_p, take_profits, move_stop_after, volume, timezone.now())
+                                       stop_p, take_profits, move_stop_after, move_stop_after_rr, volume,
+                                       timezone.now())
 
             success, msg = self._place_primary_order(tool, trigger_p, entry_p, stop_p, take_profits[0], pos_side,
                                                      volume)

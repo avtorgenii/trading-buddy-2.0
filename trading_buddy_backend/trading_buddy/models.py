@@ -6,6 +6,7 @@ from decimal import Decimal
 from itertools import accumulate
 
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import ForeignKey, Sum
 from django.db.models.functions import TruncDate
@@ -193,7 +194,7 @@ class Account(models.Model):
         ('ByBit', 'ByBit'),
     ]
     name = models.CharField(max_length=120)
-    risk_percent = models.DecimalField(decimal_places=5, default=3.00, max_digits=10)
+    risk_percent = models.DecimalField(decimal_places=7, default=3.00, max_digits=10)
     exchange = models.CharField(max_length=120, choices=EXCHANGE_CHOICES)
     api_key = models.CharField()
     secret_key = models.CharField()
@@ -244,6 +245,8 @@ class Position(models.Model):
 
     start_time = models.DateTimeField(null=True, help_text='The moment primary order of position was placed')
     move_stop_after = models.IntegerField()
+    move_stop_after_rr = models.DecimalField(null=True, decimal_places=12, max_digits=20, validators=[MinValueValidator(1.0)],
+                                             help_text='After which risk reward level move stop-loss to entry level, this variable holds reward value from the ratio')
 
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
     current_volume = models.DecimalField(decimal_places=12, max_digits=20, default=0.0)
@@ -304,8 +307,8 @@ class Trade(models.Model):
     start_time = models.DateTimeField(null=True, help_text='The moment primary order of position was placed')
     end_time = models.DateTimeField(null=True)
 
-    risk_percent = models.DecimalField(decimal_places=5, max_digits=10, default=0)
-    risk_usd = models.DecimalField(decimal_places=5, max_digits=20, default=0)
+    risk_percent = models.DecimalField(decimal_places=7, max_digits=10, default=0)
+    risk_usd = models.DecimalField(decimal_places=7, max_digits=20, default=0)
     pnl_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0, help_text="Net profit, after commissions")
     commission_usd = models.DecimalField(decimal_places=8, max_digits=20, default=0)
 
@@ -335,7 +338,7 @@ class Trade(models.Model):
     @classmethod
     def create_trade(cls, side: str, account: Account, tool_name: str, risk_percent: Decimal, risk_usd: Decimal,
                      leverage: int, trigger_price: Decimal, entry_price: Decimal,
-                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, primary_volume: Decimal,
+                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, move_stop_after_rr: Decimal, primary_volume: Decimal,
                      start_time: datetime):
         """
         Creates trade and linked position.
@@ -352,7 +355,7 @@ class Trade(models.Model):
         Position.objects.create(tool=tool_obj, side=side, leverage=leverage, trigger_price=trigger_price,
                                 entry_price=entry_price,
                                 stop_price=stop_price, take_profit_prices=take_profits,
-                                move_stop_after=move_stop_after, primary_volume=primary_volume, max_held_volume=0,
+                                move_stop_after=move_stop_after, move_stop_after_rr=move_stop_after_rr, primary_volume=primary_volume, max_held_volume=0,
                                 account=account, trade=trade, start_time=start_time)
 
         return trade

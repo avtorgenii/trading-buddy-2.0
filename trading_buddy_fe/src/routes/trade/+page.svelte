@@ -26,7 +26,7 @@
 		{ price: null }
 	]);
 
-	let moveSLToBEIndex = $state(0);
+	let moveSLToBEIndex = $state("1:3");
 
 	let positionSize = $state(null);
 	let requiredMargin = $state(null);
@@ -171,7 +171,8 @@
 			entry_p: entryPrice,
 			stop_p: stopLoss,
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
-			move_stop_after: moveSLToBEIndex + 1 || 0,
+			move_stop_after: typeof moveSLToBEIndex === 'string' ? 0 : moveSLToBEIndex + 1,
+			move_stop_after_rr: moveSLToBEIndex === "1:3" ? 3 : null,
 			leverage: leverage,
 			volume: (positionSize ? positionSize : null)
 		};
@@ -226,10 +227,14 @@
 			entry_p: entryPrice,
 			stop_p: stopLoss,
 			take_profits: takeProfits.map(tp => tp.price).filter(p => p > 0),
-			move_stop_after: moveSLToBEIndex + 1,
+			move_stop_after: typeof moveSLToBEIndex === 'string' ? 0 : moveSLToBEIndex + 1,
+			move_stop_after_rr: moveSLToBEIndex === "1:3" ? 3 : null,
 			leverage: leverage,
 			volume: positionSize
 		};
+
+		console.log(payload);
+		console.log("HEHEHA");
 
 		try {
 			const response = await fetch(`${API_BASE_URL}/trading/positions/place/`, {
@@ -385,6 +390,20 @@
 
 			<p class="text-zinc-400 w-full text-left mb-2">Move SL to BE after:</p>
 
+			<div class="flex items-center gap-2 mb-4 flex-wrap">
+				<input
+					type="radio"
+					id="tp-be-1-3"
+					name="sl_be_after_tp"
+					class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+					bind:group={moveSLToBEIndex}
+					value="1:3"
+				/>
+				<label for="tp-be-1-3" class="text-zinc-400 text-start text-nowrap cursor-pointer">
+					1:3 RR
+				</label>
+			</div>
+
 			{#each takeProfits as tp, index (index)}
 				<div class="flex items-center gap-2 mb-4 flex-wrap">
 
@@ -392,11 +411,11 @@
 						type="radio"
 						id="tp-be-{index}"
 						name="sl_be_after_tp"
-						class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500"
+						class="form-radio h-4 w-4 bg-zinc-700 border-zinc-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
 						bind:group={moveSLToBEIndex}
 						value={index}
 					/>
-					<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap">TP {index + 1}:</label>
+					<label for="tp-be-{index}" class="text-zinc-400 w-16 text-start text-nowrap cursor-pointer">TP {index + 1}:</label>
 
 					<div class="flex-1 flex gap-2 min-w-[200px]">
 						<input
