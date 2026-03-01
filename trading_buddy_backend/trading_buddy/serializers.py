@@ -322,7 +322,16 @@ class PositionToOpenSerializer(serializers.Serializer):
     take_profits = serializers.ListField(
         child=serializers.DecimalField(decimal_places=10, max_digits=20)
     )
+
     move_stop_after = serializers.IntegerField(min_value=0, default=0, required=False)
+    move_stop_after_rr = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=12,
+        min_value=1,
+        default=None,
+        required=False
+    )
+
     leverage = serializers.IntegerField(min_value=1)
     volume = serializers.DecimalField(decimal_places=10, max_digits=20, required=False, allow_null=True)
 

@@ -113,6 +113,7 @@ def place_position(request):
         success, msg = exc.place_open_order(data['tool'], data['trigger_p'], data['entry_p'], data['stop_p'],
                                             data['take_profits'],
                                             data['move_stop_after'],
+                                            data['move_stop_after_rr'],
                                             data['leverage'], data['volume'])
 
         if success:
