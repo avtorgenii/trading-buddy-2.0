@@ -60,22 +60,34 @@ class Listener:
         return utf8_data
 
     def on_error(self, ws, error):
-        self.logger.error(error)
+        error_msg = str(error)
+
+        if "Broken pipe" in error_msg or "Connection to remote host was lost" in error_msg:
+            self.logger.warning(f"Connection closed ({error_msg}).")
+        else:
+            self.logger.error(f"Websocket error: {error_msg}")
 
     def on_close(self, ws, close_status_code, close_msg):
         self.logger.warning(
             f"Listener's connection was closed. Status code: {close_status_code}. Close message: {close_msg}")
 
     def listen_for_events(self):
-        self.ws = websocket.WebSocketApp(
-            self.ws_url,
-            on_open=self.on_open,
-            on_message=self.on_message,
-            on_error=self.on_error,
-            on_close=self.on_close,
-        )
+        while True:
+            self.logger.info(f"Launching websocket: {self.ws_url}")
 
-        self.ws.run_forever()
+            self.ws = websocket.WebSocketApp(
+                self.ws_url,
+                on_open=self.on_open,
+                on_message=self.on_message,
+                on_error=self.on_error,
+                on_close=self.on_close,
+            )
+
+            self.ws.run_forever()
+
+            # Сюда код дойдет только если сокет закрылся (из-за ошибки или по инициативе сервера)
+            self.logger.info("WebSocket closed connection. Restarting connection in 5 seconds...")
+            time.sleep(5)
 
     def stop_listening(self):
         self.ws.close()
@@ -107,6 +119,9 @@ class BingXPriceListener(BingXListener):
             connection.close()
 
             pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
+
+            if not pos:
+                return
 
             # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
             over_and_take, pos_side = pos.cancel_levels, pos.side
