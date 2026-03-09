@@ -1,7 +1,7 @@
 # Intro
 Trading buddy is a web client for trading with reliable, convenient and automatic position management and tracking 
 
-For more details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-07-trading-buddy-2.0/)
+For more details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-08-trading-buddy-2.0/)
 
 # Screenshots
 Copied from the [article](https://avtorgenii.github.io/blog/blog/2025-11-08-trading-buddy-2.0/) actually
@@ -183,7 +183,7 @@ Dockerfile for backend applies migrations for you on the build stage
 
 
 # Usage
-For more usage details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-07-trading-buddy-2.0/)
+For more usage details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-08-trading-buddy-2.0/)
 ## Rules of usage
 1. Currently restricted to open multiple trades on the same tool within one trading account, on app side you will be unable to do that, 
    but if you open it on exchange side, handling orders and positions system will **FAIL**.
