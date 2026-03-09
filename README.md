@@ -4,7 +4,7 @@ Trading buddy is a web client for trading with reliable, convenient and automati
 For more details check out [article on my blog](https://avtorgenii.github.io/blog/blog/2025-11-07-trading-buddy-2.0/)
 
 # Screenshots
-Copied from the [article](https://avtorgenii.github.io/blog/blog/2025-11-07-trading-buddy-2.0/) actually
+Copied from the [article](https://avtorgenii.github.io/blog/blog/2025-11-08-trading-buddy-2.0/) actually
 
 <img src=".github/assets/sign_in.jpg" alt="Sign in" width="570"/>
 <img src=".github/assets/set_account_as_main.jpg" alt="Trading account" width="570"/>
