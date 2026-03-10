@@ -7,7 +7,7 @@ on:
     paths:
       - "trading_buddy_backend/**"
       - "trading_buddy_fe/**"
-      - "infra/**"
+      - "infra/vps-docker/*"
       - "Makefile"
       - ".github/workflows/**"
 
