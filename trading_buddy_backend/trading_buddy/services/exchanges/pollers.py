@@ -40,7 +40,9 @@ class OrderPoller:
             try:
                 # Always close stale connections before attempting work,
                 # because Django doesn't automatically update connections for threads - one thread - one connection
-                connection.close()
+                if not connection.is_usable():
+                    connection.close()
+
                 self.scheduler.run_pending()
                 consecutive_errors = 0
 

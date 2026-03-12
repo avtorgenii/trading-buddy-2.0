@@ -5,14 +5,11 @@ from decimal import Decimal
 import websocket
 import gzip
 import io
-import schedule
 from django.db import connection, OperationalError
-from django.utils import timezone
 
-from bingX.perpetual.v2.other import Other
 from loguru import logger
 
-from ...models import User, Account, Position
+from ...models import User, Account
 
 
 def format_dict_for_log(dict_data: dict) -> str:
@@ -72,22 +69,7 @@ class Listener:
             f"Listener's connection was closed. Status code: {close_status_code}. Close message: {close_msg}")
 
     def listen_for_events(self):
-        while True:
-            self.logger.info(f"Launching websocket: {self.ws_url}")
-
-            self.ws = websocket.WebSocketApp(
-                self.ws_url,
-                on_open=self.on_open,
-                on_message=self.on_message,
-                on_error=self.on_error,
-                on_close=self.on_close,
-            )
-
-            self.ws.run_forever()
-
-            # Сюда код дойдет только если сокет закрылся (из-за ошибки или по инициативе сервера)
-            self.logger.info("WebSocket closed connection. Restarting connection in 5 seconds...")
-            time.sleep(5)
+        pass
 
     def stop_listening(self):
         self.ws.close()
@@ -107,55 +89,57 @@ class BingXListener(Listener):
 class BingXPriceListener(BingXListener):
     def __init__(self, tool, exchange):
         self.tool = tool
-        self.CHANNEL = {"id": "24dd0e35-56a4-4f7a-af8a-394c7060909c", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
+        self.CHANNEL = {"id": "e745cd6d-d0f6-4a70-8d5a-043e4c741b40", "reqType": "sub", "dataType": f"{tool}@lastPrice"}
+
+        self._last_check_time = time.monotonic()
+        self.check_interval = 1
 
         super().__init__(exchange)
         self.logger = self.logger.bind(class_name=self.__class__.__name__)
 
     def check_price_for_order_cancellation(self, price):
+        now = time.monotonic()
+        if now - self._last_check_time < self.check_interval:
+            return
+        self._last_check_time = now
+
         try:
-            # Always close stale connections before attempting work,
-            # because Django doesn't automatically update connections for threads - one thread - one connection
-            connection.close()
+            if not connection.is_usable():
+                connection.close()
 
             pos = self.fresh_account.positions.filter(tool__name=self.tool).first()
-
             if not pos:
                 return
 
-            # HERE IS WHY ORDER OF CANCEL LEVELS IS CRUCIAL
             over_and_take, pos_side = pos.cancel_levels, pos.side
 
-            try:
-                over, take = over_and_take
+            if not over_and_take or len(over_and_take) != 2:
+                self.logger.warning(f"Unexpected cancel_levels value: {over_and_take}")
+                return
 
-                if pos_side == "LONG":
-                    if (over is not None and price <= over) or (take is not None and price >= take):
-                        self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                    reason="Оверлой или цена подошла слишком близко к тейку")
-                else:
-                    if (over is not None and price >= over) or (take is not None and price <= take):
-                        self.exchange.cancel_primary_order_for_tool(self.tool, True,
-                                                                    reason="Овербай или цена подошла слишком близко к тейку")
+            over, take = over_and_take
+            should_cancel = (
+                                    pos_side == "LONG"
+                                    and ((over is not None and price <= over) or (take is not None and price >= take))
+                            ) or (
+                                    pos_side != "LONG"
+                                    and ((over is not None and price >= over) or (take is not None and price <= take))
+                            )
 
-            except Exception as e:
-                self.logger.exception(f'Tried to check price for order cancelling: {e}')
+            if should_cancel:
+                reason = "Оверлой или цена подошла слишком близко к тейку" if pos_side == "LONG" else "Овербай или цена подошла слишком близко к тейку"
+                self.exchange.cancel_primary_order_for_tool(self.tool, True, reason=reason)
 
             self.consecutive_errors = 0
 
         except OperationalError as e:
             self.consecutive_errors += 1
-
-            if self.consecutive_errors % 60 == 1:  # Log every minute
-                logger.warning(f'DB unavailable ({self.consecutive_errors}s): {e}')
+            if self.consecutive_errors % 60 == 1:
+                self.logger.warning(f'DB unavailable ({self.consecutive_errors}s): {e}')
 
         except Exception as e:
-            logger.exception(f'Uncaught exception: {e}')
+            self.logger.exception(f'Uncaught exception: {e}')
             self.consecutive_errors = 0
-
-        time.sleep(5)
-
-
 
     def on_open(self, ws):
         super().on_open(ws)
@@ -174,18 +158,26 @@ class BingXPriceListener(BingXListener):
 
                 if price is not None:
                     self.check_price_for_order_cancellation(price)
-            except:
+            except Exception as e:
                 self.logger.debug(f'Failed to retrieve price data for {self.tool} from dict data sent by BingX')
 
     def listen_for_events(self):
-        self.ws = websocket.WebSocketApp(
-            self.ws_url,
-            on_open=self.on_open,
-            on_message=self.on_message,
-            on_error=self.on_error,
-            on_close=self.on_close,
-        )
-        self.ws.run_forever()
+        while True:
+            self.logger.info(f"Launching websocket: {self.ws_url}")
+
+            self.ws = websocket.WebSocketApp(
+                self.ws_url,
+                on_open=self.on_open,
+                on_message=self.on_message,
+                on_error=self.on_error,
+                on_close=self.on_close,
+            )
+
+            self.ws.run_forever()
+
+            # Сюда код дойдет только если сокет закрылся (из-за ошибки или по инициативе сервера)
+            self.logger.info("WebSocket closed connection. Restarting connection in 5 seconds...")
+            time.sleep(5)
 
 
 """DEBUG"""

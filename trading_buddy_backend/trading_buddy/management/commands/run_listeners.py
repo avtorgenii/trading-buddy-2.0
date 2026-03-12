@@ -23,7 +23,8 @@ class Command(BaseCommand):
             try:
                 # Always close stale connections before attempting work,
                 # because Django doesn't automatically update connections for threads - one thread - one connection
-                connection.close()
+                if not connection.is_usable():
+                    connection.close()
 
                 lookup_positions_and_handle_listeners(active_listeners)
 
