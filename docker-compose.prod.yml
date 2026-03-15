@@ -66,7 +66,6 @@ services:
       - media_data:/app/media
     networks:
       - back-net
-      - front-net
 
   backend-poller:
     image: avtopetrovich/tb-backend:${TAG:-latest}

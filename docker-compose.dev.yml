@@ -20,7 +20,7 @@ services:
   nginx:
     image: nginx:stable-alpine3.23-perl
     ports:
-      - 81:80 # For HTTP traffic
+      - 80:80 # For HTTP traffic
     volumes:
       # This maps a specific file or directory from your host (./nginx.conf) into the container at /etc/nginx/nginx.conf.
       - "./infra/vps-docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf"
@@ -58,7 +58,6 @@ services:
       - media_data:/app/media
     networks:
       - back-net
-      - front-net
 
   backend-poller:
     build: trading_buddy_backend/
