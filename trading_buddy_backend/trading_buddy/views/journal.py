@@ -59,6 +59,31 @@ def get_filtered_trades(request):
     return Response(serializer.data)
 
 
+@extend_schema(responses=ShowTradeSerializer(many=True))
+@api_view(['GET'])
+def get_all_investments(request):
+    trades = (
+        Trade.objects.filter(account__user=request.user, account__exchange='Investing')
+        .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
+        .order_by('-pk')
+    )
+    paginator = TradesResultsSetPagination()
+    result_page = paginator.paginate_queryset(trades, request)
+    serializer = ShowTradeSerializer(result_page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['GET'])
+def get_filtered_investments(request):
+    filters = TradeFilters.from_request(request)
+    trades = (
+        request.user.get_filtered_trades(filters, investing=True)
+        .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
+    )
+    serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
+    return Response(serializer.data)
+
+
 @extend_schema(
     request=UpdateTradeSerializer
 )
