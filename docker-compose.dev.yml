@@ -2,7 +2,8 @@ name: trading-buddy
 
 networks:
   back-net:
-  front-net:
+  mid-net:
+    # frontend-backend bridge, no db here
 
 volumes:
   postgres_data:
@@ -30,13 +31,12 @@ services:
       - backend
       - frontend
     networks:
-      - back-net
-      - front-net
+      - mid-net
 
   # ----- BACKEND AND WORKERS -----
   migrator:
     build: trading_buddy_backend/
-    command: ["python", "manage.py", "migrate", "--noinput"]
+    command: [ "python", "manage.py", "migrate", "--noinput" ]
     env_file: .env.prod
     depends_on:
       db:
@@ -58,12 +58,13 @@ services:
       - media_data:/app/media
     networks:
       - back-net
+      - mid-net
 
   backend-poller:
     build: trading_buddy_backend/
     env_file:
       - .env.prod
-    command: ["python", "manage.py", "run_poller"]
+    command: [ "python", "manage.py", "run_poller" ]
     restart: unless-stopped
     depends_on:
       backend:
@@ -77,7 +78,7 @@ services:
     build: trading_buddy_backend/
     env_file:
       - .env.prod
-    command: ["python", "manage.py", "run_listeners"]
+    command: [ "python", "manage.py", "run_listeners" ]
     restart: unless-stopped
     depends_on:
       backend:
@@ -100,7 +101,7 @@ services:
     depends_on:
       - backend
     networks:
-      - front-net
+      - mid-net
 
   db:
     image: postgres:17.0
@@ -111,7 +112,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${DB_USER}"]
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${DB_USER}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -138,8 +139,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - dozzle_data:/data
     networks:
-      - back-net
-
+      - mid-net
   # --- HEAVY ---
   # loki:
   #   image: grafana/loki:3.5.2

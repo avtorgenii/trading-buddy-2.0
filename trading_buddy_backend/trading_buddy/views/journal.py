@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view
 
 from trading_buddy.filters import TradeFilters
 from trading_buddy.models import Trade
-from trading_buddy.serializers import ShowTradeSerializer, UpdateTradeSerializer
+from trading_buddy.serializers import ShowTradeSerializer, UpdateTradeSerializer, CreateInvestmentSerializer
 
 
 class TradesResultsSetPagination(PageNumberPagination):
@@ -111,3 +111,12 @@ def journal_trade(request, trade_id):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+@extend_schema(request=CreateInvestmentSerializer)
+@api_view(['POST'])
+def create_investment(request):
+    serializer = CreateInvestmentSerializer(data=request.data)
+    if serializer.is_valid():
+        trade = serializer.save()
+        return Response({'id': trade.id}, status=status.HTTP_201_CREATED)
+    return Response({'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

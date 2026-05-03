@@ -50,6 +50,8 @@ urlpatterns = [
     path('journal/investments/', views.get_all_investments),
     path('journal/investments/filtered/', views.get_filtered_investments),  # GET
 
+    path('journal/investments/create/', views.create_investment),  # POST
+
     ##### TOOLS #####
     # Preset list of tools
     path('trading/tools/', views.get_preset_tools),  # GET

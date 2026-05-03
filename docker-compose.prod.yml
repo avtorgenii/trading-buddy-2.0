@@ -2,7 +2,7 @@ name: trading-buddy
 
 networks:
   back-net:
-  front-net:
+  mid-net:
 
 volumes:
   postgres_data:
@@ -33,8 +33,7 @@ services:
       - backend
       - frontend
     networks:
-      - back-net
-      - front-net
+      - mid-net
 
   # ----- BACKEND AND WORKERS -----
   # Transfer ownership of media_data volume to appuser with UID = 1000 so backend service could put images here
@@ -46,7 +45,7 @@ services:
 
   migrator:
     image: avtopetrovich/tb-backend:${TAG:-latest}
-    command: ["python", "manage.py", "migrate", "--noinput"]
+    command: [ "python", "manage.py", "migrate", "--noinput" ]
     env_file: .env.prod
     depends_on:
       db:
@@ -66,12 +65,13 @@ services:
       - media_data:/app/media
     networks:
       - back-net
+      - mid-net
 
   backend-poller:
     image: avtopetrovich/tb-backend:${TAG:-latest}
     env_file:
       - .env.prod
-    command: ["python", "manage.py", "run_poller"]
+    command: [ "python", "manage.py", "run_poller" ]
     restart: unless-stopped
     depends_on:
       backend:
@@ -85,7 +85,7 @@ services:
     image: avtopetrovich/tb-backend:${TAG:-latest}
     env_file:
       - .env.prod
-    command: ["python", "manage.py", "run_listeners"]
+    command: [ "python", "manage.py", "run_listeners" ]
     restart: unless-stopped
     depends_on:
       backend:
@@ -104,7 +104,7 @@ services:
     depends_on:
       - backend
     networks:
-      - front-net
+      - mid-net
 
   # ----- DATA -----
   db:
@@ -115,7 +115,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${DB_USER}"]
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "${DB_USER}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -158,8 +158,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - dozzle_data:/data
     networks:
-      - back-net
-
+      - mid-net
   # --- HEAVY ---
   # loki:
   #   image: avtopetrovich/tb-loki:${TAG:-latest}

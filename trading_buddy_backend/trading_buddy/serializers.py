@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_email
 from rest_framework import serializers
-from .models import Account, Trade
+from .models import Account, Trade, Tool
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 """
@@ -313,6 +313,25 @@ class UpdateTradeSerializer(serializers.ModelSerializer):
         model = Trade
         fields = ('screenshot', 'description', 'result', 'timeframe')
 
+class CreateInvestmentSerializer(serializers.ModelSerializer):
+    tool_name = serializers.CharField(write_only=True)
+    account_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Trade
+        fields = (
+            'tool_name', 'account_id', 'side', 'start_time', 'end_time',
+            'risk_percent', 'risk_usd', 'pnl_usd', 'commission_usd',
+            'timeframe', 'description', 'result', 'trade_setup', 'tags'
+        )
+
+    def create(self, validated_data):
+        tool_name = validated_data.pop('tool_name')
+        account_id = validated_data.pop('account_id')
+        account = Account.objects.get(id=account_id)
+
+        tool, _ = Tool.objects.get_or_create(account=account, name=tool_name)
+        return Trade.objects.create(tool=tool, account=account, **validated_data)
 
 ##### TRADING #####
 class PositionToOpenSerializer(serializers.Serializer):

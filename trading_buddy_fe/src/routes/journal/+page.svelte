@@ -2,14 +2,22 @@
 	import { API_BASE_URL } from '$lib/config.js';
 	import { showErrorToast, showSuccessToast } from '$lib/toasts.js';
 	import JournalCard from '$lib/components/JournalCard.svelte';
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { csrfToken } from '$lib/stores.js';
+	import AddInvestmentModal from '$lib/components/modals/AddInvestmentModal.svelte';
 
+	let addModalOpen = $state(false);
+	let investingAccounts = $state([]);
+
+
+	let mode = $state('trading'); // 'trading' | 'investing'
 	let tradesAmount = $state(0);
 	let trades = $state([]);
 	let isLoading = $state(true);
 	let loadedPages = $state(1);
 	let pageSize = 10;
+
+	let allLoaded = $derived(trades.length >= tradesAmount);
 
 	let isFiltered = $state(false);
 	let filters = $state({
@@ -54,6 +62,7 @@
 
 	$effect(async () => {
 		loadedPages;
+		mode; // track mode changes too
 		if (isFiltered) return;
 		isLoading = true;
 		const newTrades = await getJournalTrades();
@@ -64,7 +73,8 @@
 	});
 
 	async function getJournalTrades() {
-		const url = `${API_BASE_URL}/journal/trades/?page=${loadedPages}&page_size=${pageSize}`;
+		const endpoint = mode === 'investing' ? 'investments' : 'trades';
+		const url = `${API_BASE_URL}/journal/${endpoint}/?page=${loadedPages}&page_size=${pageSize}`;
 		try {
 			const response = await fetch(url, { credentials: 'include' });
 			if (!response.ok) throw new Error('Failed to fetch journal trades.');
@@ -81,6 +91,7 @@
 		isLoading = true;
 		isFiltered = true;
 
+		const endpoint = mode === 'investing' ? 'investments' : 'trades';
 		const params = new URLSearchParams();
 		if (filters.date_from) params.set('date_from', filters.date_from);
 		if (filters.date_to) params.set('date_to', filters.date_to);
@@ -91,7 +102,7 @@
 		filters.trade_setup.forEach(s => params.append('trade_setup', s));
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/journal/trades/filtered/?${params}`, { credentials: 'include' });
+			const response = await fetch(`${API_BASE_URL}/journal/${endpoint}/filtered/?${params}`, { credentials: 'include' });
 			if (!response.ok) throw new Error('Failed to fetch filtered trades.');
 			const result = await response.json();
 			trades = result;
@@ -103,6 +114,15 @@
 		isLoading = false;
 	}
 
+	function switchMode(newMode) {
+		if (mode === newMode) return;
+		trades = [];
+		tradesAmount = 0;
+		isFiltered = false;
+		loadedPages = 1;
+		mode = newMode; // this triggers the effect since mode is now tracked
+	}
+
 	function resetFilters() {
 		filters = {
 			date_from: '', date_to: '',
@@ -110,8 +130,18 @@
 			side: '', tool_name: '', timeframe: ''
 		};
 		trades = [];
-		loadedPages = 1;
 		isFiltered = false;
+
+		if (loadedPages === 1) {
+			// loadedPages didn't change so effect won't fire, reload manually
+			isLoading = true;
+			getJournalTrades().then(newTrades => {
+				trades = newTrades;
+				isLoading = false;
+			});
+		} else {
+			loadedPages = 1; // this will trigger the effect
+		}
 	}
 
 	async function deleteTrade(trade_id) {
@@ -143,18 +173,61 @@
 			trades = trades.filter(t => t.id !== tradeId);
 		}
 	}
+
+	async function loadInvestingAccounts() {
+		const resp = await fetch(`${API_BASE_URL}/accounts/`, { credentials: 'include' });
+		if (resp.ok) {
+			const all = await resp.json();
+			investingAccounts = all.filter(a => a.exchange === 'Investing');
+		}
+	}
+
+	onMount(() => {
+		loadInvestingAccounts();
+	});
+
+	function handleInvestmentCreated() {
+		// reload the list
+		trades = [];
+		tradesAmount = 0;
+		getJournalTrades().then(t => {
+			trades = t;
+		});
+	}
+
 </script>
 
-<!-- Filter Panel -->
+<!-- Mode Toggle -->
+<div class="w-full max-w-7xl mx-auto px-4 pt-4 flex justify-center items-center gap-3">
+	<div class="flex bg-zinc-900 border border-zinc-800 rounded-xl p-1 w-fit">
+		<button onclick={() => switchMode('trading')}
+						class="cursor-pointer px-5 py-2 rounded-lg text-sm font-semibold transition-all {mode === 'trading' ? 'bg-blue-700 text-white' : 'text-zinc-400 hover:text-white'}">
+			Trading
+		</button>
+		<button onclick={() => switchMode('investing')}
+						class="cursor-pointer px-5 py-2 rounded-lg text-sm font-semibold transition-all {mode === 'investing' ? 'bg-blue-700 text-white' : 'text-zinc-400 hover:text-white'}">
+			Investing
+		</button>
+	</div>
+	{#if mode === 'investing'}
+		<button onclick={() => addModalOpen = true}
+						class="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold transition-all cursor-pointer">
+			+ Add
+		</button>
+	{/if}
+</div>
+
+<AddInvestmentModal bind:open={addModalOpen} accounts={investingAccounts} on:created={handleInvestmentCreated} />
+
 <!-- Filter Panel -->
 <div class="w-full max-w-7xl mx-auto px-4 py-4">
 	<div class="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
 
 		<button
 			onclick={() => filtersOpen = !filtersOpen}
-			class="w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all"
+			class="cursor-pointer w-full flex items-center justify-between px-5 py-3 text-sm font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition-all"
 		>
-			<span>Фильтры {isFiltered ? '· активны' : ''}</span>
+			<span>Filters {isFiltered ? '· active' : ''}</span>
 			<span class="transition-transform duration-200 {filtersOpen ? 'rotate-180' : ''}">▼</span>
 		</button>
 
@@ -222,14 +295,14 @@
 					</select>
 				</div>
 
-				<div class="flex gap-3">
+				<div class="flex gap-3 justify-center">
 					<button onclick={applyFilters}
-									class="px-5 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold transition-all">
-						Применить
+									class="cursor-pointer px-5 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold transition-all">
+						Apply
 					</button>
 					<button onclick={resetFilters}
-									class="px-5 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold transition-all">
-						Сбросить
+									class="cursor-pointer px-5 py-2 rounded-lg bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold transition-all">
+						Clear
 					</button>
 				</div>
 			</div>
@@ -243,11 +316,13 @@
 	<div class="grid w-full max-w-7xl grid-cols-1 md:grid-cols-2 gap-6">
 		{#each trades as trade}
 			<JournalCard {trade} on:deleted={() => handleDelete(trade.id)} />
+		{:else}
+			<p class="text-zinc-500 col-span-2 text-center py-12">No trades yet</p>
 		{/each}
 	</div>
 </div>
 
-{#if !isFiltered}
+{#if !isFiltered && trades.length > 0 && !allLoaded}
 	<div class="flex justify-center mt-8">
 		<button onclick={() => loadedPages++}
 						class="px-6 py-3 rounded-xl bg-blue-700 text-white font-semibold shadow-lg hover:bg-blue-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer">
