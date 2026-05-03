@@ -258,6 +258,7 @@ class PnLProgressionSerializer(serializers.Serializer):
 class ShowTradeSerializer(serializers.ModelSerializer):
     # DRF automatically calls get_screenshot_url before to_representation to set this param
     screenshot_url = serializers.SerializerMethodField()
+    trade_number = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Trade

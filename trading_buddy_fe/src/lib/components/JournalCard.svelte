@@ -102,15 +102,15 @@
 		isSubmitting = false;
 	}
 
-	const sideColor = trade.side === 'LONG' ? 'text-green-400' : 'text-red-400';
-	const sideBg = trade.side === 'LONG' ? 'bg-green-900/40' : 'bg-red-900/40';
+	let sideColor = $derived(trade.side === 'LONG' ? 'text-green-400' : 'text-red-400');
+	let sideBg = $derived(trade.side === 'LONG' ? 'bg-green-900/40' : 'bg-red-900/40');
 </script>
 
 <div class="bg-zinc-900 p-6 rounded-2xl shadow-lg shadow-white/10 flex flex-col space-y-4 min-h-[420px]">
 	<!-- Header row -->
 	<div class="flex items-baseline justify-between flex-wrap gap-2">
 		<h3 class="text-xl font-bold text-white whitespace-nowrap">
-			{trade.tradeNumber}. {trade.tool_name}
+			{trade.trade_number}. {trade.tool_name}
 			<button onclick={() => openEdit('timeframe')}><span
 				class="cursor-pointer hover:text-blue-400 transition">
 			{trade.timeframe}

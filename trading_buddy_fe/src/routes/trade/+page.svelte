@@ -277,7 +277,7 @@
 
 	onMount(async () => {
 		items = await loadTradableTickers();
-		selectedTicker = items.at(23); // WLDUSDT
+		selectedTicker = items.at(7); // WLDUSDT
 		mainAcc = await getMainAccount();
 		if (mainAcc) await loadAccountDetails();
 		screenWidth = window.innerWidth;

@@ -1,6 +1,7 @@
 import os
 import uuid
 from calendar import monthrange
+
 from datetime import datetime
 from decimal import Decimal
 from itertools import accumulate
@@ -8,10 +9,12 @@ from itertools import accumulate
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import ForeignKey, Sum
+from django.db.models import ForeignKey, Sum, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.contrib.postgres.fields import ArrayField
+
+from trading_buddy.filters import TradeFilters
 
 
 class User(AbstractUser):
@@ -186,16 +189,46 @@ class User(AbstractUser):
 
         return progression
 
+    def get_filtered_trades(self, filters: TradeFilters = None):
+        trades = Trade.objects.filter(account__user=self)
+
+        if not filters:
+            return trades.order_by('-pk')
+
+        conditions = Q()
+
+        if filters.date_from:
+            conditions &= Q(end_time__gte=filters.date_from)
+        if filters.date_to:
+            conditions &= Q(end_time__lte=filters.date_to)
+
+        if filters.trade_setup:
+            conditions &= Q(trade_setup__in=filters.trade_setup)
+
+        if filters.profitable is not None:
+            conditions &= Q(pnl_usd__gt=0) if filters.profitable else Q(pnl_usd__lte=0)
+
+        if filters.side:
+            conditions &= Q(side=filters.side)
+
+        if filters.tool_name:
+            conditions &= Q(tool__name__in=filters.tool_name)
+
+        if filters.timeframe:
+            conditions &= Q(timeframe__in=filters.timeframe)
+
+        return trades.filter(conditions).order_by('-pk')
+
 
 # Exchange account
 class Account(models.Model):
-    EXCHANGE_CHOICES = [
-        ('BingX', 'BingX'),  # actual value in DB and human-readable name
-        ('ByBit', 'ByBit'),
-    ]
+    class Exchange(models.TextChoices):
+        BINGX = 'BingX', 'BingX'  # actual value in DB and human-readable name
+        BYBIT = 'ByBit', 'ByBit'
+
     name = models.CharField(max_length=120)
     risk_percent = models.DecimalField(decimal_places=7, default=3.00, max_digits=10)
-    exchange = models.CharField(max_length=120, choices=EXCHANGE_CHOICES)
+    exchange = models.CharField(max_length=120, choices=Exchange.choices)
     api_key = models.CharField()
     secret_key = models.CharField()
     user = ForeignKey('User', related_name='accounts', on_delete=models.CASCADE)
@@ -221,11 +254,11 @@ class Position(models.Model):
 
     tool = models.ForeignKey(Tool, on_delete=models.RESTRICT, related_name='positions')
 
-    SIDE_CHOICES = [
-        ('LONG', 'Long'),  # actual value in DB and human-readable name
-        ('SHORT', 'Short'),
-    ]
-    side = models.CharField(max_length=5, choices=SIDE_CHOICES, null=True)
+    class Side(models.TextChoices):
+        LONG = 'LONG', 'Long'
+        SHORT = 'SHORT', 'Short'
+
+    side = models.CharField(max_length=5, choices=Side.choices, null=True)
 
     leverage = models.IntegerField()
 
@@ -245,7 +278,8 @@ class Position(models.Model):
 
     start_time = models.DateTimeField(null=True, help_text='The moment primary order of position was placed')
     move_stop_after = models.IntegerField()
-    move_stop_after_rr = models.DecimalField(null=True, decimal_places=12, max_digits=20, validators=[MinValueValidator(1.0)],
+    move_stop_after_rr = models.DecimalField(null=True, decimal_places=12, max_digits=20,
+                                             validators=[MinValueValidator(1.0)],
                                              help_text='After which risk reward level move stop-loss to entry level, this variable holds reward value from the ratio')
 
     primary_volume = models.DecimalField(decimal_places=12, max_digits=20)
@@ -295,11 +329,47 @@ class Position(models.Model):
 
 
 class Trade(models.Model):
-    SIDE_CHOICES = [
-        ('LONG', 'Long'),  # actual value in DB and human-readable name
-        ('SHORT', 'Short'),
-    ]
-    side = models.CharField(max_length=5, choices=SIDE_CHOICES)
+    class Side(models.TextChoices):
+        LONG = 'LONG', 'Long'
+        SHORT = 'SHORT', 'Short'
+
+    class TradeSetup(models.TextChoices):
+        # (Ре)накопление
+        ACC_BORDER_BREAKTHROUGH = 'ACC_BORDER_BREAKTHROUGH', '(Ре)накопление - Пробой верхней границы'
+        ACC_BORDER_RETEST = 'ACC_BORDER_RETEST', '(Ре)накопление - Ретест верхней границы'
+        ACC_CREEK_BREAKTHROUGH = 'ACC_CREEK_BREAKTHROUGH', '(Ре)накопление - Пробой крика'
+        ACC_CREEK_RETEST = 'ACC_CREEK_RETEST', '(Ре)накопление - Ретест крика'
+        ACC_SPRING = 'ACC_SPRING', '(Ре)накопление - Спринг'
+
+        # (Ре)дистрибьюция
+        DISTR_BORDER_RETEST = 'DISTR_BORDER_RETEST', '(Ре)дистрибьюция - Ретест нижней границы'
+        DISTR_ICE_RETEST = 'DISTR_ICE_RETEST', '(Ре)дистрибьюция - Ретест льда'
+        DISTR_UPTHRUST = 'DISTR_UPTHRUST', '(Ре)дистрибьюция - Аптраст'
+
+        # Вульф
+        BEAR_WOLFE = 'BEAR_WOLFE', 'Медвежий Вульф'
+        BULL_WOLFE = 'BULL_WOLFE', 'Бычий Вульф'
+
+        # Клинья
+        DOWN_WEDGE_BREAKTHROUGH = 'DOWN_WEDGE_BREAKTHROUGH', 'Нисходящий клин - пробой верхней границы'
+        DOWN_WEDGE_RETEST = 'DOWN_WEDGE_RETEST', 'Нисходящий клин - ретест верхней границы'
+        UP_WEDGE_BREAKTHROUGH = 'UP_WEDGE_BREAKTHROUGH', 'Восходящий клин - пробой нижней границы'
+        UP_WEDGE_RETEST = 'UP_WEDGE_RETEST', 'Восходящий клин - ретест нижней границы'
+
+        # Каналы
+        DOWN_CHANNEL_REBOUND = 'DOWN_CHANNEL_REBOUND', 'Нисходящий канал - отбой вниз от верхней границы'
+        DOWN_CHANNEL_BREAKTHROUGH = 'DOWN_CHANNEL_BREAKTHROUGH', 'Нисходящий канал - пробой верхней границы'
+        DOWN_CHANNEL_RETEST = 'DOWN_CHANNEL_RETEST', 'Нисходящий канал - ретест верхней границы'
+        UP_CHANNEL_REBOUND = 'UP_CHANNEL_REBOUND', 'Восходящий канал - пробой нижней границы'
+        UP_CHANNEL_BREAKTHROUGH = 'UP_CHANNEL_BREAKTHROUGH', 'Восходящий канал - ретест нижней границы'
+        UP_CHANNEL_RETEST = 'UP_CHANNEL_RETEST', 'Восходящий канал - отбой вверх от нижней границы'
+
+        # Трендовые
+        SECANT_RETEST = 'SECANT_RETEST', 'Ретест секущей в шорт'
+        DOWN_TRENDLINE_REBOUND = 'DOWN_TRENDLINE_REBOUND', 'Отбой вниз от нисходящей трендовой'
+        UP_TRENDLINE_REBOUND = 'UP_TRENDLINE_REBOUND', 'Отбой вверх от восходящей трендовой'
+
+    side = models.CharField(max_length=5, choices=Side.choices)
 
     tool = models.ForeignKey(Tool, on_delete=models.RESTRICT, related_name='trades')
 
@@ -315,6 +385,13 @@ class Trade(models.Model):
     timeframe = models.CharField(max_length=10, default='M15', null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     result = models.TextField(null=True, blank=True)
+
+    trade_setup = models.CharField(null=True, blank=True, choices=TradeSetup.choices, max_length=100)
+    tags = ArrayField(
+        base_field=models.CharField(max_length=30),
+        default=list,
+        blank=True,
+    )
 
     def screenshot_upload_path(self, filename):
         account_id = self.account.id if self.account else 'unknown'
@@ -338,7 +415,8 @@ class Trade(models.Model):
     @classmethod
     def create_trade(cls, side: str, account: Account, tool_name: str, risk_percent: Decimal, risk_usd: Decimal,
                      leverage: int, trigger_price: Decimal, entry_price: Decimal,
-                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int, move_stop_after_rr: Decimal, primary_volume: Decimal,
+                     stop_price: Decimal, take_profits: list[Decimal], move_stop_after: int,
+                     move_stop_after_rr: Decimal, primary_volume: Decimal,
                      start_time: datetime):
         """
         Creates trade and linked position.
@@ -355,7 +433,8 @@ class Trade(models.Model):
         Position.objects.create(tool=tool_obj, side=side, leverage=leverage, trigger_price=trigger_price,
                                 entry_price=entry_price,
                                 stop_price=stop_price, take_profit_prices=take_profits,
-                                move_stop_after=move_stop_after, move_stop_after_rr=move_stop_after_rr, primary_volume=primary_volume, max_held_volume=0,
+                                move_stop_after=move_stop_after, move_stop_after_rr=move_stop_after_rr,
+                                primary_volume=primary_volume, max_held_volume=0,
                                 account=account, trade=trade, start_time=start_time)
 
         return trade

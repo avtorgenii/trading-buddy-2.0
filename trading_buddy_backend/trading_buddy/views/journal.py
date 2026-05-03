@@ -1,3 +1,6 @@
+from django.db import models
+from django.db.models import Window, OuterRef, Count, Subquery
+from django.db.models.functions import RowNumber
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -5,6 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
+from trading_buddy.filters import TradeFilters
 from trading_buddy.models import Trade
 from trading_buddy.serializers import ShowTradeSerializer, UpdateTradeSerializer
 
@@ -16,19 +20,43 @@ class TradesResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 
-@extend_schema(
-    responses=ShowTradeSerializer(many=True),
-)
+def get_trade_number_subquery(user):
+    """Returns a subquery that counts how many trades this user had before this trade (by pk)"""
+    return (
+        Trade.objects.filter(
+            account__user=user,
+            pk__lte=OuterRef('pk')
+        )
+        .order_by()
+        .values('account__user')
+        .annotate(cnt=Count('pk'))
+        .values('cnt')
+    )
+
+
+@extend_schema(responses=ShowTradeSerializer(many=True))
 @api_view(['GET'])
 def get_all_trades(request):
-    user = request.user
-
-    trades = Trade.objects.filter(account__user=user).order_by('-pk')
+    trades = (
+        Trade.objects.filter(account__user=request.user)
+        .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
+        .order_by('-pk')
+    )
     paginator = TradesResultsSetPagination()
-    # Returns subset of trades for current page and page_size
     result_page = paginator.paginate_queryset(trades, request)
     serializer = ShowTradeSerializer(result_page, many=True, context={'request': request})
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['GET'])
+def get_filtered_trades(request):
+    filters = TradeFilters.from_request(request)
+    trades = (
+        request.user.get_filtered_trades(filters)
+        .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
+    )
+    serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
+    return Response(serializer.data)
 
 
 @extend_schema(

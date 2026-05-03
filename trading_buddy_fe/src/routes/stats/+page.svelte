@@ -188,9 +188,8 @@
 									});
 								},
 								label: function(tooltipItem) {
-									const index = tooltipItem.dataIndex;
-									const dailyPnl = pnlProgression[index].daily_pnl;
-									return `Daily PnL: ${dailyPnl >= 0 ? '+' : ''}${dailyPnl.toFixed(2)}`;
+									const value = tooltipItem.raw;
+									return `Cumulative PnL: ${value >= 0 ? '+' : ''}$${value.toFixed(2)}`;
 								}
 							}
 						}
