@@ -23,7 +23,14 @@ class User(AbstractUser):
     current_account = models.OneToOneField('Account', related_name='+', on_delete=models.SET_NULL, null=True,
                                            blank=True)
 
-    def get_pnl_calendar_data(self, year, month, all_accounts=False):
+    def _get_accounts(self, investing=False):
+        if investing:
+            return self.accounts.filter(exchange=Account.Exchange.INVESTING)
+        return self.accounts.exclude(exchange=Account.Exchange.INVESTING)
+
+    # All accounts means all 'trading' accounts, if investing trades are required specify 'all_accounts=True' and 'investing=True'
+    # `all_accounts=False` means that only trades from current selected account will be fetched
+    def get_pnl_calendar_data(self, year, month, all_accounts=False, investing=False):
         try:
             year = int(year)
             month = int(month)
@@ -38,7 +45,7 @@ class User(AbstractUser):
         )
 
         if all_accounts:
-            user_accounts = self.accounts.all()
+            user_accounts = self._get_accounts(investing)
             trades = trades.filter(account__in=user_accounts)
         else:
             if not self.current_account:
@@ -59,26 +66,23 @@ class User(AbstractUser):
 
         return pnl_by_day, None
 
-    def get_total_pnl(self, all_accounts=False):
-        trades = Trade.objects.all()
-
+    def get_total_pnl(self, all_accounts=False, investing=False):
         if all_accounts:
-            user_accounts = self.accounts.all()
-            trades = trades.filter(account__in=user_accounts)
+            user_accounts = self._get_accounts(investing)
+            trades = Trade.objects.filter(account__in=user_accounts)
         else:
             if not self.current_account:
                 return None, "No account is chosen as current"
-            trades = trades.filter(account=self.current_account)
+            trades = Trade.objects.filter(account=self.current_account)
 
-        total_pnl = round(trades.aggregate(total_pnl=Sum('pnl_usd'))['total_pnl'], 2)
+        total_pnl = trades.aggregate(total_pnl=Sum('pnl_usd'))['total_pnl']
+        return round(total_pnl, 2) if total_pnl is not None else 0
 
-        return total_pnl if total_pnl is not None else 0
-
-    def get_winrate(self, year: int = None, month: int = None):
+    def get_winrate(self, year: int = None, month: int = None, investing=False):
         """
         :return: Winrate - number from 0 to 1
         """
-        user_accounts = self.accounts.all()
+        user_accounts = self._get_accounts(investing)
 
         if year and month:
             try:
@@ -95,19 +99,17 @@ class User(AbstractUser):
                 end_time__range=(start_date, end_date),
                 account__in=user_accounts,
             )
-
         else:
             trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
 
         if trades:
             win_trades_num = sum(1 for trade in trades if trade.pnl_usd > 0)
-
             return round(win_trades_num / len(trades), 4)
         else:
             return 0
 
-    def get_num_trades(self, year: int, month: int):
-        user_accounts = self.accounts.all()
+    def get_num_trades(self, year: int, month: int, investing=False):
+        user_accounts = self._get_accounts(investing)
 
         try:
             year = int(year)
@@ -126,44 +128,29 @@ class User(AbstractUser):
 
         return len(trades)
 
-    def get_tools_with_biggest_winrates(self):
-        user_accounts = self.accounts.all()
+    def get_tools_with_biggest_winrates(self, investing=False):
+        user_accounts = self._get_accounts(investing)
         trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
 
-        # Group trades by tool and calculate winrates
         tool_stats = {}
-
         for trade in trades:
             tool_name = trade.tool.name
-
             if tool_name not in tool_stats:
-                tool_stats[tool_name] = {
-                    # needed here too for convenience to return sorted dicts with tool already in dict
-                    'tool': tool_name,
-                    'total_trades': 0,
-                    'winning_trades': 0,
-                    'winrate': 0
-                }
-
+                tool_stats[tool_name] = {'tool': tool_name, 'total_trades': 0, 'winning_trades': 0, 'winrate': 0}
             tool_stats[tool_name]['total_trades'] += 1
             if trade.pnl_usd > 0:
                 tool_stats[tool_name]['winning_trades'] += 1
 
-        # Calculate winrates
         for tool_name, stats in tool_stats.items():
             if stats['total_trades'] > 0:
                 stats['winrate'] = round(stats['winning_trades'] / stats['total_trades'], 2)
 
-        # Sort by winrate (descending) and return as list
-        sorted_tools = sorted(tool_stats.values(), key=lambda x: x['winrate'], reverse=True)
+        return sorted(tool_stats.values(), key=lambda x: x['winrate'], reverse=True)
 
-        return sorted_tools
-
-    def get_pnl_progression_over_days(self):
-        user_accounts = self.accounts.all()
+    def get_pnl_progression_over_days(self, investing=False):
+        user_accounts = self._get_accounts(investing)
         trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
 
-        # Aggregate PnL by day
         daily_pnl = (
             trades
             .annotate(day=TruncDate('end_time'))
@@ -172,13 +159,11 @@ class User(AbstractUser):
             .order_by('day')
         )
 
-        # Calculate cumulative PnL
         days = [entry['day'] for entry in daily_pnl]
         pnl_values = [entry['pnl'] or 0 for entry in daily_pnl]
         cumulative_pnl = list(accumulate(pnl_values))
 
-        # Combine into result
-        progression = [
+        return [
             {
                 'day': day.strftime('%Y-%m-%d'),
                 'daily_pnl': round(float(pnl), 2),
@@ -187,10 +172,9 @@ class User(AbstractUser):
             for day, pnl, cum_pnl in zip(days, pnl_values, cumulative_pnl)
         ]
 
-        return progression
-
-    def get_filtered_trades(self, filters: TradeFilters = None):
-        trades = Trade.objects.filter(account__user=self)
+    def get_filtered_trades(self, filters: TradeFilters = None, investing=False):
+        accounts = self._get_accounts(investing)
+        trades = Trade.objects.filter(account__in=accounts)
 
         if not filters:
             return trades.order_by('-pk')
@@ -201,19 +185,14 @@ class User(AbstractUser):
             conditions &= Q(end_time__gte=filters.date_from)
         if filters.date_to:
             conditions &= Q(end_time__lte=filters.date_to)
-
         if filters.trade_setup:
             conditions &= Q(trade_setup__in=filters.trade_setup)
-
         if filters.profitable is not None:
             conditions &= Q(pnl_usd__gt=0) if filters.profitable else Q(pnl_usd__lte=0)
-
         if filters.side:
             conditions &= Q(side=filters.side)
-
         if filters.tool_name:
             conditions &= Q(tool__name__in=filters.tool_name)
-
         if filters.timeframe:
             conditions &= Q(timeframe__in=filters.timeframe)
 
@@ -225,6 +204,7 @@ class Account(models.Model):
     class Exchange(models.TextChoices):
         BINGX = 'BingX', 'BingX'  # actual value in DB and human-readable name
         BYBIT = 'ByBit', 'ByBit'
+        INVESTING = 'Investing', 'Investing'
 
     name = models.CharField(max_length=120)
     risk_percent = models.DecimalField(decimal_places=7, default=3.00, max_digits=10)
@@ -393,6 +373,8 @@ class Trade(models.Model):
         blank=True,
     )
 
+    account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
+
     def screenshot_upload_path(self, filename):
         account_id = self.account.id if self.account else 'unknown'
         user_id = "unknown"
@@ -409,8 +391,6 @@ class Trade(models.Model):
     # also has relative path: .name, absolute path, .path, actual file object: .file
     screenshot = models.ImageField(upload_to=screenshot_upload_path,
                                    null=True)  # screenshots folder inside MEDIA_ROOT, check settings.py
-
-    account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 
     @classmethod
     def create_trade(cls, side: str, account: Account, tool_name: str, risk_percent: Decimal, risk_usd: Decimal,

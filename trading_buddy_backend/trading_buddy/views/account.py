@@ -41,15 +41,16 @@ def user_accounts(request):
         if serializer.is_valid():
             new_account = serializer.save()
 
-            is_valid = exc_map[new_account.exchange].check_account_validity(new_account.api_key, new_account.secret_key)
+            if new_account.exchange != 'Investing':
+                is_valid = exc_map[new_account.exchange].check_account_validity(new_account.api_key,
+                                                                                new_account.secret_key)
 
-            if not is_valid:
-                new_account.delete()
-                return Response({"error": "Invalid API credentials"}, status=status.HTTP_400_BAD_REQUEST)
+                if not is_valid:
+                    new_account.delete()
+                    return Response({"error": "Invalid API credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
             return Response({"message": "Account created successfully"}, status=201)
         return Response({"errors": serializer.errors}, status=400)
-
     return Response({"error": "User doesn't exist"}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -99,6 +100,9 @@ def delete_account(request, account_name):
 def set_current_account(request, account_name):
     user = request.user
     account = get_object_or_404(Account, name=account_name, user=user)
+
+    if account.exchange == 'Investing':
+        return Response({"error": "You cannot use investing account for trading. It is read-only."}, status=400)
 
     user.current_account = account
     user.save()

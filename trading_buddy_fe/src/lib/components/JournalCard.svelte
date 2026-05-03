@@ -140,15 +140,19 @@
 		<div class="text-white">{trade.risk_percent}% = ${trade.risk_usd}</div>
 
 		<div class="text-zinc-400">Net PnL:</div>
-		<div class="text-white">
-			{trade.pnl_usd < 0 ? `-$${Math.abs(trade.pnl_usd).toFixed(2)}` : `$${trade.pnl_usd}`}
-		</div>
+		{#if parseFloat(trade.pnl_usd) < 0}
+			<div class="text-white">-${Math.abs(parseFloat(trade.pnl_usd)).toFixed(2)}</div>
+		{:else}
+			<div class="text-white">${parseFloat(trade.pnl_usd).toFixed(2)}</div>
+		{/if}
 
 
 		<div class="text-zinc-400">Commissions:</div>
-		<div class="text-white">
-			{trade.commission_usd < 0 ? `-$${Math.abs(trade.commission_usd).toFixed(2)}` : `$${Math.abs(trade.commission_usd).toFixed(2)}`}
-		</div>
+		{#if parseFloat(trade.commission_usd) < 0}
+			<div class="text-white">-${Math.abs(parseFloat(trade.commission_usd)).toFixed(2)}</div>
+		{:else}
+			<div class="text-white">${parseFloat(trade.commission_usd).toFixed(2)}</div>
+		{/if}
 
 
 		<div class="text-zinc-400">PnL Risk Ratio:</div>

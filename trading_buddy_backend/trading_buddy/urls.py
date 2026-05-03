@@ -41,11 +41,14 @@ urlpatterns = [
 
     ##### JOURNAL #####
     # api/v1/stats/trades/all/?page=2&page_size=5
-    path('journal/trades/', views.get_all_trades),
     # GET, under all accounts, pagination query params are used, check views.py
-    path('journal/trades/filtered/', views.get_filtered_trades), # GET
+    path('journal/trades/', views.get_all_trades),
+    path('journal/trades/filtered/', views.get_filtered_trades),  # GET
 
     path('journal/trades/<int:trade_id>/', views.journal_trade),  # PUT, DELETE
+
+    path('journal/investments/', views.get_all_investments),
+    path('journal/investments/filtered/', views.get_filtered_investments),  # GET
 
     ##### TOOLS #####
     # Preset list of tools

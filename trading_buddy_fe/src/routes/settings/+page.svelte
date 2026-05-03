@@ -11,7 +11,7 @@
 	let settingsSaveStatus = $state('idle');
 	let view = $state('list');
 	let currentlyEditingAccount = $state(null);
-	const availableExchanges = ['BingX'];
+	const availableExchanges = ['BingX', 'Investing'];
 
 	let showRiskDialog = $state(false);
 	let initialRisk = $state();
@@ -150,11 +150,16 @@
 
 	async function saveAccount() {
 		if (!currentlyEditingAccount) return;
+		const isInvesting = currentlyEditingAccount.exchange === 'Investing';
+
 		const payload = {
-			name: currentlyEditingAccount.name, exchange: currentlyEditingAccount.exchange,
-			risk_percent: currentlyEditingAccount.risk, api_key: currentlyEditingAccount.apiKey,
-			secret_key: currentlyEditingAccount.secretKey
+			name: currentlyEditingAccount.name,
+			exchange: currentlyEditingAccount.exchange,
+			risk_percent: isInvesting ? 0 : currentlyEditingAccount.risk,
+			api_key: isInvesting ? 'n/a' : currentlyEditingAccount.apiKey,
+			secret_key: isInvesting ? 'n/a' : currentlyEditingAccount.secretKey
 		};
+
 		try {
 			const response = await fetch(`${API_BASE_URL}/accounts/`, {
 				method: 'POST',
@@ -283,20 +288,24 @@
 									<div class="flex items-center justify-center gap-2 flex-wrap">
 										{#if account.isMain}
 											<span class="px-3 py-2 text-xs font-bold text-green-300 bg-green-900/50 rounded-full">Main</span>
-										{:else}
+										{:else if account.exchange !== 'Investing'}
 											<button type="button" onclick={() => setMainAccount(account.id)}
 															class="text-xs px-3 py-2 bg-zinc-700 hover:bg-zinc-600 rounded-full transition-colors">Set
 												as Main
 											</button>
 										{/if}
-										<button type="button" onclick={() => openRiskDialog(account.name, account.risk)}
-														class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-blue-900/50 border-2 border-blue-900/80 hover:border-blue-800 transition-colors">
-											Risk
-										</button>
-										<button type="button" onclick={() => openAPIKeysDialog(account)}
-														class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-zinc-900/50 border-2 border-zinc-900/80 hover:border-zinc-800 transition-colors">
-											API keys
-										</button>
+
+										{#if account.exchange !== 'Investing'}
+											<button type="button" onclick={() => openRiskDialog(account.name, account.risk)}
+															class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-blue-900/50 border-2 border-blue-900/80 hover:border-blue-800 transition-colors">
+												Risk
+											</button>
+											<button type="button" onclick={() => openAPIKeysDialog(account)}
+															class="py-2 px-4 text-sm cursor-pointer rounded-xl hover:bg-zinc-900/50 border-2 border-zinc-900/80 hover:border-zinc-800 transition-colors">
+												API keys
+											</button>
+										{/if}
+
 										<button type="button" onclick={() => deleteAccount(account.id)}
 														class="py-2 px-4 text-sm cursor-pointer rounded-xl text-red-400 hover:bg-red-900/50 border-2 border-red-900/80 hover:border-red-800 transition-colors">
 											Delete
@@ -333,22 +342,24 @@
 					<input id="account-name" bind:value={currentlyEditingAccount.name}
 								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="e.g. My Main Account" required />
 				</div>
-				<div>
-					<label class="block mb-2 text-left" for="account-risk">Risk per trade (%)</label>
-					<input id="account-risk" bind:value={currentlyEditingAccount.risk}
-								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" type="number" min="0.1" max="100" step="0.1"
-								 required />
-				</div>
-				<div>
-					<label class="block mb-2 text-left" for="api-key">API Key</label>
-					<input id="api-key" bind:value={currentlyEditingAccount.apiKey}
-								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="API key" required />
-				</div>
-				<div>
-					<label class="block mb-2 text-left" for="secret-key">Secret Key</label>
-					<input id="secret-key" bind:value={currentlyEditingAccount.secretKey}
-								 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="Secret Key" required type="password" />
-				</div>
+				{#if currentlyEditingAccount.exchange !== 'Investing'}
+					<div>
+						<label class="block mb-2 text-left" for="account-risk">Risk per trade (%)</label>
+						<input id="account-risk" bind:value={currentlyEditingAccount.risk}
+									 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" type="number" min="0.1" max="100" step="0.1"
+									 required />
+					</div>
+					<div>
+						<label class="block mb-2 text-left" for="api-key">API Key</label>
+						<input id="api-key" bind:value={currentlyEditingAccount.apiKey}
+									 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="API key" required />
+					</div>
+					<div>
+						<label class="block mb-2 text-left" for="secret-key">Secret Key</label>
+						<input id="secret-key" bind:value={currentlyEditingAccount.secretKey}
+									 class="bg-zinc-800 rounded-xl px-4 py-3 w-full" placeholder="Secret Key" required type="password" />
+					</div>
+				{/if}
 				<div class="flex space-x-4 pt-6">
 					<button type="button" onclick={handleCancel}
 									class="bg-zinc-700 hover:bg-zinc-600 py-3 rounded-xl w-full transition-colors">
