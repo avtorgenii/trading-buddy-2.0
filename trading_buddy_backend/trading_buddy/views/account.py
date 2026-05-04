@@ -135,6 +135,8 @@ def get_deposit_and_account_details(request):
         if serializer.is_valid():  # needed because constructing response from raw data, not models
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
+            print(serializer.errors)
+            print("HAI")
             return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
     else:
         return Response({"error": msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

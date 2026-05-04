@@ -67,7 +67,7 @@ def login(request):
             'message': 'Logged in successfully',
             'user_id': user.id
         }, status=status.HTTP_200_OK)
-    return Response({"error": "".join(serializer.errors)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"error": list(serializer.errors.values())[0][0]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Logging Out

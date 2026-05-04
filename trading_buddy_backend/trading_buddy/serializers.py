@@ -117,7 +117,7 @@ class AccountAPISerializer(serializers.Serializer):
 
 class DepositAndAccountDataSerializer(serializers.Serializer):
     deposit = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
-    risk_percent = serializers.DecimalField(decimal_places=5, default=3.00, max_digits=10)
+    risk_percent = serializers.DecimalField(decimal_places=7, default=3.00, max_digits=10)
     available_margin = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
     pnl_usd = serializers.DecimalField(decimal_places=5, default=0.00, max_digits=20)
 

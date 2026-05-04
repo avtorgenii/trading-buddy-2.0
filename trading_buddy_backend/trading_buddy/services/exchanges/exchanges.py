@@ -256,7 +256,7 @@ class BingXExc(Exchange):
             return True, "Successfully retrieved all account details", deposit, risk, Decimal(
                 details['unrealizedProfit']), Decimal(details['availableMargin'])
         except Exception as e:
-            logger.warning("Failed to get account details")
+            logger.warning(f"Failed to get account details: {e}")
             return False, "Exchange side account details: unrealized and realized profits were unable to retrieved", deposit, risk, None, None
 
     def _get_tool_precision_info(self, tool: str) -> Tuple[bool, dict[str, int]]:
