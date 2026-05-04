@@ -40,16 +40,16 @@
 		{ value: 'DISTR_UPTHRUST', label: '(Ре)дистрибьюция - Аптраст' },
 		{ value: 'BEAR_WOLFE', label: 'Медвежий Вульф' },
 		{ value: 'BULL_WOLFE', label: 'Бычий Вульф' },
-		{ value: 'DOWN_WEDGE_BREAKTHROUGH', label: 'Нисходящий клин - пробой верхней границы' },
-		{ value: 'DOWN_WEDGE_RETEST', label: 'Нисходящий клин - ретест верхней границы' },
-		{ value: 'UP_WEDGE_BREAKTHROUGH', label: 'Восходящий клин - пробой нижней границы' },
-		{ value: 'UP_WEDGE_RETEST', label: 'Восходящий клин - ретест верхней границы' },
-		{ value: 'DOWN_CHANNEL_REBOUND', label: 'Нисходящий канал - отбой вниз от верхней границы' },
-		{ value: 'DOWN_CHANNEL_BREAKTHROUGH', label: 'Нисходящий канал - пробой верхней границы' },
-		{ value: 'DOWN_CHANNEL_RETEST', label: 'Нисходящий канал - ретест верхней границы' },
-		{ value: 'UP_CHANNEL_REBOUND', label: 'Восходящий канал - пробой нижней границы' },
-		{ value: 'UP_CHANNEL_BREAKTHROUGH', label: 'Восходящий канал - ретест нижней границы' },
-		{ value: 'UP_CHANNEL_RETEST', label: 'Восходящий канал - отбой вверх от нижней границы' },
+		{ value: 'DOWN_WEDGE_BREAKTHROUGH', label: 'Нисходящий клин - Пробой верхней границы' },
+		{ value: 'DOWN_WEDGE_RETEST', label: 'Нисходящий клин - Ретест верхней границы' },
+		{ value: 'UP_WEDGE_BREAKTHROUGH', label: 'Восходящий клин - Пробой нижней границы' },
+		{ value: 'UP_WEDGE_RETEST', label: 'Восходящий клин - Ретест нижней границы' },
+		{ value: 'DOWN_CHANNEL_REBOUND', label: 'Нисходящий канал - Отбой вниз от верхней границы' },
+		{ value: 'DOWN_CHANNEL_BREAKTHROUGH', label: 'Нисходящий канал - Пробой верхней границы' },
+		{ value: 'DOWN_CHANNEL_RETEST', label: 'Нисходящий канал - Ретест верхней границы' },
+		{ value: 'UP_CHANNEL_REBOUND', label: 'Восходящий канал - Пробой нижней границы' },
+		{ value: 'UP_CHANNEL_BREAKTHROUGH', label: 'Восходящий канал - Ретест нижней границы' },
+		{ value: 'UP_CHANNEL_RETEST', label: 'Восходящий канал - Отбой вверх от нижней границы' },
 		{ value: 'SECANT_RETEST', label: 'Ретест секущей в шорт' },
 		{ value: 'DOWN_TRENDLINE_REBOUND', label: 'Отбой вниз от нисходящей трендовой' },
 		{ value: 'UP_TRENDLINE_REBOUND', label: 'Отбой вверх от восходящей трендовой' }
@@ -183,7 +183,7 @@
 				<button onclick={() => openEdit('risk_percent')}
 								class="text-white hover:text-blue-400 transition cursor-pointer">{trade.risk_percent}%
 				</button>
-				<span class="text-zinc-600">/</span>
+				<span class="text-zinc-600"> = </span>
 				<button onclick={() => openEdit('risk_usd')} class="text-white hover:text-blue-400 transition cursor-pointer">
 					${trade.risk_usd}</button>
 			</div>
