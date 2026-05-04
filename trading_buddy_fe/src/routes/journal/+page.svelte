@@ -60,21 +60,9 @@
 
 	const TIMEFRAMES = ['M15', 'H1', 'H4'];
 
-	$effect(async () => {
-		loadedPages;
-		mode; // track mode changes too
-		if (isFiltered) return;
-		isLoading = true;
-		const newTrades = await getJournalTrades();
-		untrack(() => {
-			trades = [...trades, ...newTrades];
-		});
-		isLoading = false;
-	});
-
-	async function getJournalTrades() {
+	async function getJournalTrades(page) {
 		const endpoint = mode === 'investing' ? 'investments' : 'trades';
-		const url = `${API_BASE_URL}/journal/${endpoint}/?page=${loadedPages}&page_size=${pageSize}`;
+		const url = `${API_BASE_URL}/journal/${endpoint}/?page=${page}&page_size=${pageSize}`;
 		try {
 			const response = await fetch(url, { credentials: 'include' });
 			if (!response.ok) throw new Error('Failed to fetch journal trades.');
@@ -114,34 +102,12 @@
 		isLoading = false;
 	}
 
+
 	function switchMode(newMode) {
 		if (mode === newMode) return;
-		trades = [];
-		tradesAmount = 0;
+		mode = newMode;
 		isFiltered = false;
-		loadedPages = 1;
-		mode = newMode; // this triggers the effect since mode is now tracked
-	}
-
-	function resetFilters() {
-		filters = {
-			date_from: '', date_to: '',
-			trade_setup: [], profitable: '',
-			side: '', tool_name: '', timeframe: ''
-		};
-		trades = [];
-		isFiltered = false;
-
-		if (loadedPages === 1) {
-			// loadedPages didn't change so effect won't fire, reload manually
-			isLoading = true;
-			getJournalTrades().then(newTrades => {
-				trades = newTrades;
-				isLoading = false;
-			});
-		} else {
-			loadedPages = 1; // this will trigger the effect
-		}
+		loadPage(1);
 	}
 
 	async function deleteTrade(trade_id) {
@@ -182,17 +148,36 @@
 		}
 	}
 
+	async function loadPage(page) {
+		loadedPages = page;
+		isLoading = true;
+		const newTrades = await getJournalTrades(page);
+		if (page === 1) {
+			trades = newTrades;
+		} else {
+			trades = [...trades, ...newTrades];
+		}
+		isLoading = false;
+	}
+
 	onMount(() => {
 		loadInvestingAccounts();
+		loadPage(1);
 	});
 
+
+	function resetFilters() {
+		filters = {
+			date_from: '', date_to: '',
+			trade_setup: [], profitable: '',
+			side: '', tool_name: '', timeframe: ''
+		};
+		isFiltered = false;
+		loadPage(1);
+	}
+
 	function handleInvestmentCreated() {
-		// reload the list
-		trades = [];
-		tradesAmount = 0;
-		getJournalTrades().then(t => {
-			trades = t;
-		});
+		loadPage(1);
 	}
 
 </script>
@@ -315,7 +300,7 @@
 <div class="page-wrapper flex flex-col items-center px-4 py-8">
 	<div class="grid w-full max-w-7xl grid-cols-1 md:grid-cols-2 gap-6">
 		{#each trades as trade}
-			<JournalCard {trade} on:deleted={() => handleDelete(trade.id)} />
+			<JournalCard {trade} isInvesting={mode === 'investing'} on:deleted={() => handleDelete(trade.id)} />
 		{:else}
 			<p class="text-zinc-500 col-span-2 text-center py-12">No trades yet</p>
 		{/each}
@@ -324,7 +309,7 @@
 
 {#if !isFiltered && trades.length > 0 && !allLoaded}
 	<div class="flex justify-center mt-8">
-		<button onclick={() => loadedPages++}
+		<button onclick={() => loadPage(loadedPages + 1)}
 						class="px-6 py-3 rounded-xl bg-blue-700 text-white font-semibold shadow-lg hover:bg-blue-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer">
 			Load More
 		</button>

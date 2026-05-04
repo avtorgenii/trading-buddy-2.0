@@ -6,15 +6,16 @@
 		positionId,
 		fieldName,
 		initialValue,
-		open = $bindable()
+		open = $bindable(),
+		inputType = 'textarea',
+		options = [],
+		apiEndpoint = undefined,
 	} = $props();
 
 	const dispatch = createEventDispatcher();
 
 	function handleSaved(e) {
-		// Forward the saved event to parent
-		const { fieldName, value } = e.detail;
-		dispatch('saved', { fieldName, value });
+		dispatch('saved', e.detail);
 	}
 </script>
 
@@ -23,7 +24,9 @@
 	{fieldName}
 	{initialValue}
 	bind:open
-	inputType="textarea"
+	{inputType}
+	{options}
+	apiEndpoint={apiEndpoint ?? `/journal/trades/${positionId}/`}
 	rows="2"
 	on:saved={handleSaved}
 />

@@ -188,7 +188,7 @@ class User(AbstractUser):
         if filters.trade_setup:
             conditions &= Q(trade_setup__in=filters.trade_setup)
         if filters.profitable is not None:
-            conditions &= Q(pnl_usd__gt=0) if filters.profitable else Q(pnl_usd__lte=0)
+            conditions &= Q(pnl_usd__gt=0) if filters.profitable else Q(pnl_usd__lt=0)
         if filters.side:
             conditions &= Q(side=filters.side)
         if filters.tool_name:
@@ -367,11 +367,6 @@ class Trade(models.Model):
     result = models.TextField(null=True, blank=True)
 
     trade_setup = models.CharField(null=True, blank=True, choices=TradeSetup.choices, max_length=100)
-    tags = ArrayField(
-        base_field=models.CharField(max_length=30),
-        default=list,
-        blank=True,
-    )
 
     account = models.ForeignKey('Account', related_name='trades', null=True, on_delete=models.SET_NULL)
 

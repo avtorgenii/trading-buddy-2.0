@@ -30,10 +30,10 @@
 		{ value: 'UP_CHANNEL_RETEST', label: 'Восходящий канал - отбой вверх от нижней границы' },
 		{ value: 'SECANT_RETEST', label: 'Ретест секущей в шорт' },
 		{ value: 'DOWN_TRENDLINE_REBOUND', label: 'Отбой вниз от нисходящей трендовой' },
-		{ value: 'UP_TRENDLINE_REBOUND', label: 'Отбой вверх от восходящей трендовой' },
+		{ value: 'UP_TRENDLINE_REBOUND', label: 'Отбой вверх от восходящей трендовой' }
 	];
 
-	const TIMEFRAMES = ['M15', 'H1', 'H4'];
+	const TIMEFRAMES = ['H4', 'D', 'W'];
 
 	let isSubmitting = $state(false);
 	let form = $state({
@@ -46,11 +46,11 @@
 		risk_usd: '',
 		pnl_usd: '',
 		commission_usd: '',
-		timeframe: 'H1',
+		timeframe: 'D',
 		description: '',
 		result: '',
 		trade_setup: '',
-		tags: [],
+		tags: []
 	});
 
 	async function submit() {
@@ -60,7 +60,7 @@
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-CSRFToken': $csrfToken,
+					'X-CSRFToken': $csrfToken
 				},
 				credentials: 'include',
 				body: JSON.stringify({
@@ -71,8 +71,8 @@
 					commission_usd: form.commission_usd || 0,
 					trade_setup: form.trade_setup || null,
 					start_time: form.start_time || null,
-					end_time: form.end_time || null,
-				}),
+					end_time: form.end_time || null
+				})
 			});
 
 			if (!resp.ok) {
@@ -89,8 +89,8 @@
 		isSubmitting = false;
 	}
 
-	const inputClass = "bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-zinc-500";
-	const labelClass = "text-xs text-zinc-400 mb-1 block";
+	const inputClass = 'bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:border-zinc-500';
+	const labelClass = 'text-xs text-zinc-400 mb-1 block';
 </script>
 
 {#if open}
@@ -106,7 +106,7 @@
 			<div class="grid grid-cols-2 gap-3">
 				<div>
 					<label for="ai-tool" class={labelClass}>Instrument</label>
-					<input id="ai-tool" type="text" bind:value={form.tool_name} placeholder="BTC-USDT" class={inputClass} />
+					<input id="ai-tool" type="text" bind:value={form.tool_name} placeholder="AAPL" class={inputClass} />
 				</div>
 
 				<div>
@@ -135,15 +135,8 @@
 					</select>
 				</div>
 
-				<div>
-					<label for="ai-start" class={labelClass}>Start time</label>
-					<input id="ai-start" type="datetime-local" bind:value={form.start_time} class={inputClass} />
-				</div>
-
-				<div>
-					<label for="ai-end" class={labelClass}>End time</label>
-					<input id="ai-end" type="datetime-local" bind:value={form.end_time} class={inputClass} />
-				</div>
+				<input id="ai-start" type="date" bind:value={form.start_time} class={inputClass} />
+				<input id="ai-end" type="date" bind:value={form.end_time} class={inputClass} />
 
 				<div>
 					<label for="ai-risk-pct" class={labelClass}>Risk %</label>
@@ -201,4 +194,4 @@
 			</div>
 		</div>
 	</div>
-{/if}`
+{/if}

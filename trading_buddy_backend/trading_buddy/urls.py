@@ -49,6 +49,7 @@ urlpatterns = [
 
     path('journal/investments/', views.get_all_investments),
     path('journal/investments/filtered/', views.get_filtered_investments),  # GET
+    path('journal/investments/<int:trade_id>/', views.journal_trade),  # PUT, DELETE
 
     path('journal/investments/create/', views.create_investment),  # POST
 

@@ -11,11 +11,12 @@
 		initialValue,
 		open = $bindable(),
 		apiEndpoint = `/journal/trades/${positionId}/`,
-		inputType = 'textarea', // 'textarea' or 'input'
+		inputType = 'textarea',
 		rows = 2,
 		placeholder = `Enter ${fieldName}...`,
 		title = `Edit ${fieldName}`,
-		successMessage = `Position ${fieldName} updated.`
+		successMessage = `Position ${fieldName} updated.`,
+		options = [], // [{ value, label }] for select type
 	} = $props();
 
 	let value = $state(initialValue);
@@ -23,38 +24,29 @@
 	let inputEl = $state();
 	const dispatch = createEventDispatcher();
 
-	// Autofocus input when modal opens
 	$effect(() => {
 		if (open && inputEl) {
 			setTimeout(() => inputEl.focus(), 100);
 		}
 	});
 
-	function close() {
-		open = false;
-	}
+	function close() { open = false; }
 
 	async function handleSave(e) {
 		e.preventDefault();
 		if (isSubmitting) return;
 		isSubmitting = true;
-
 		try {
 			const res = await fetch(`${API_BASE_URL}${apiEndpoint}`, {
 				method: 'PUT',
-				headers: {
-					'Content-Type': 'application/json',
-					'X-CSRFToken': $csrfToken
-				},
+				headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $csrfToken },
 				credentials: 'include',
-				body: JSON.stringify({ [fieldName]: value })
+				body: JSON.stringify({ [fieldName]: value || null })
 			});
-
 			if (!res.ok) {
 				const text = await res.text();
 				throw new Error(text || `Failed to update ${fieldName}.`);
 			}
-
 			showSuccessToast(successMessage);
 			dispatch('saved', { fieldName, value });
 			close();
@@ -65,21 +57,11 @@
 		}
 	}
 
-	function handleBackdropClick(e) {
-		if (e.target === e.currentTarget) {
-			close();
-		}
-	}
-
-	function handleKeydown(e) {
-		if (e.key === 'Escape') {
-			close();
-		}
-	}
+	function handleBackdropClick(e) { if (e.target === e.currentTarget) close(); }
+	function handleKeydown(e) { if (e.key === 'Escape') close(); }
 </script>
 
 {#if open}
-	<!-- Backdrop -->
 	<div
 		class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
 		onmousedown={handleBackdropClick}
@@ -89,7 +71,6 @@
 		aria-label={title}
 		tabindex="-1"
 	>
-		<!-- Modal Content -->
 		<div
 			class="bg-zinc-900 w-full max-w-lg mx-4 rounded-2xl shadow-xl shadow-white/10 p-6"
 			in:fly={{y: 100, duration: 300, opacity: 0}}
@@ -100,37 +81,53 @@
 				<h2 class="text-xl font-semibold text-white mb-4 capitalize">{title}</h2>
 
 				{#if inputType === 'textarea'}
-          <textarea
+					<textarea
 						bind:this={inputEl}
 						bind:value={value}
 						{rows}
 						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 resize-y"
 						{placeholder}
 					></textarea>
+
+				{:else if inputType === 'select'}
+					<select
+						bind:this={inputEl}
+						bind:value={value}
+						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					>
+						<option value="">— None —</option>
+						{#each options as opt}
+							<option value={opt.value}>{opt.label}</option>
+						{/each}
+					</select>
+
+				{:else if inputType === 'datetime-local'}
+					<input
+						bind:this={inputEl}
+						bind:value={value}
+						type="datetime-local"
+						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600"
+					/>
+
 				{:else}
 					<input
 						bind:this={inputEl}
 						bind:value={value}
-						type="number"
+						type={inputType}
 						class="w-full bg-zinc-800 text-white rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600"
 						{placeholder}
 					/>
 				{/if}
 
 				<div class="flex justify-end mt-6 space-x-4">
-					<button
-						type="button"
-						class="py-2 px-4 rounded-xl border-2 border-zinc-600 hover:bg-zinc-800 transition-colors"
-						onclick={close}
-						disabled={isSubmitting}
-					>
+					<button type="button"
+									class="py-2 px-4 rounded-xl border-2 border-zinc-600 hover:bg-zinc-800 transition-colors"
+									onclick={close} disabled={isSubmitting}>
 						Cancel
 					</button>
-					<button
-						type="submit"
-						class="py-2 px-6 rounded-xl bg-blue-800 hover:bg-blue-700 transition-colors disabled:opacity-60"
-						disabled={isSubmitting}
-					>
+					<button type="submit"
+									class="py-2 px-6 rounded-xl bg-blue-800 hover:bg-blue-700 transition-colors disabled:opacity-60"
+									disabled={isSubmitting}>
 						{isSubmitting ? 'Saving...' : 'Save'}
 					</button>
 				</div>

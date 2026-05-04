@@ -307,11 +307,22 @@ class ShowTradeSerializer(serializers.ModelSerializer):
         return data
 
 
-# Will be used to send description and/or result and/or screenshot and/or timeframe for trade
+# Will be used to send description and/or result and/or screenshot and/or timeframe for trade, or for all fields in case of investments
 class UpdateTradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trade
-        fields = ('screenshot', 'description', 'result', 'timeframe')
+        fields = (
+            'screenshot', 'description', 'result', 'timeframe',
+            'side', 'start_time', 'end_time',
+            'risk_percent', 'risk_usd', 'pnl_usd', 'commission_usd',
+            'trade_setup',
+        )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # add before formatting
+        data['start_time_raw'] = instance.start_time.strftime('%Y-%m-%dT%H:%M') if instance.start_time else ''
+        data['end_time_raw'] = instance.end_time.strftime('%Y-%m-%dT%H:%M') if instance.end_time else ''
 
 class CreateInvestmentSerializer(serializers.ModelSerializer):
     tool_name = serializers.CharField(write_only=True)
@@ -322,7 +333,7 @@ class CreateInvestmentSerializer(serializers.ModelSerializer):
         fields = (
             'tool_name', 'account_id', 'side', 'start_time', 'end_time',
             'risk_percent', 'risk_usd', 'pnl_usd', 'commission_usd',
-            'timeframe', 'description', 'result', 'trade_setup', 'tags'
+            'timeframe', 'description', 'result', 'trade_setup'
         )
 
     def create(self, validated_data):

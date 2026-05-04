@@ -38,7 +38,7 @@ def get_trade_number_subquery(user):
 @api_view(['GET'])
 def get_all_trades(request):
     trades = (
-        Trade.objects.filter(account__user=request.user)
+        Trade.objects.filter(account__user=request.user).exclude(account__exchange='Investing')
         .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
         .order_by('-pk')
     )
