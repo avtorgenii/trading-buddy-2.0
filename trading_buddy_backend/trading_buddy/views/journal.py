@@ -42,7 +42,7 @@ def get_trade_stats(trades_qs):
         missed=Count(Case(When(pnl_usd=0, then=1), output_field=IntegerField())),
     )
     total = stats['total']
-    stats['winrate'] = round(stats['profitable'] / total, 4) if total > 0 else 0
+    stats['winrate'] = round(stats['profitable'] / (total - stats['missed']), 4) if total > 0 else 0
     return stats
 
 
@@ -125,6 +125,7 @@ def journal_trade(request, trade_id):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     return Response({"error": "Method not allowed."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 @extend_schema(request=CreateInvestmentSerializer)
 @api_view(['POST'])

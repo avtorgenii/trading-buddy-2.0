@@ -285,7 +285,7 @@
 						</div>
 
 						<div class="flex flex-col gap-1">
-							<p class="text-xs text-zinc-400">Winrate</p>
+							<p class="text-xs text-zinc-400">Winrate (excluding missed)</p>
 							<div class="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm">
             <span class="{filterStats.winrate >= 0.5 ? 'text-green-400' : 'text-red-400'}">
                 {(filterStats.winrate * 100).toFixed(1)}%

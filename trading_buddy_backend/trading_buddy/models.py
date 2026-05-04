@@ -100,7 +100,8 @@ class User(AbstractUser):
                 account__in=user_accounts,
             )
         else:
-            trades = Trade.objects.filter(account__in=user_accounts, start_time__isnull=False, end_time__isnull=False)
+            trades = Trade.objects.filter(account__in=user_accounts,
+                                          end_time__isnull=False)  # exclude yet unfinished trades
 
         if trades:
             win_trades_num = sum(1 for trade in trades if trade.pnl_usd > 0)
