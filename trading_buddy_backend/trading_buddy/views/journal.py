@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Window, OuterRef, Count, Subquery
+from django.db.models import Window, OuterRef, Count, Subquery, Case, When, IntegerField
 from django.db.models.functions import RowNumber
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -34,6 +34,18 @@ def get_trade_number_subquery(user):
     )
 
 
+def get_trade_stats(trades_qs):
+    stats = trades_qs.aggregate(
+        total=Count('id'),
+        profitable=Count(Case(When(pnl_usd__gt=0, then=1), output_field=IntegerField())),
+        losing=Count(Case(When(pnl_usd__lt=0, then=1), output_field=IntegerField())),
+        missed=Count(Case(When(pnl_usd=0, then=1), output_field=IntegerField())),
+    )
+    total = stats['total']
+    stats['winrate'] = round(stats['profitable'] / total, 4) if total > 0 else 0
+    return stats
+
+
 @extend_schema(responses=ShowTradeSerializer(many=True))
 @api_view(['GET'])
 def get_all_trades(request):
@@ -55,8 +67,9 @@ def get_filtered_trades(request):
         request.user.get_filtered_trades(filters)
         .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
     )
+    stats = get_trade_stats(trades)
     serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
-    return Response(serializer.data)
+    return Response({'trades': serializer.data, 'stats': stats})
 
 
 @extend_schema(responses=ShowTradeSerializer(many=True))
@@ -80,8 +93,9 @@ def get_filtered_investments(request):
         request.user.get_filtered_trades(filters, investing=True)
         .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
     )
+    stats = get_trade_stats(trades)
     serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
-    return Response(serializer.data)
+    return Response({'trades': serializer.data, 'stats': stats})
 
 
 @extend_schema(

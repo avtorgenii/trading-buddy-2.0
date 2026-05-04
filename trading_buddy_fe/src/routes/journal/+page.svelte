@@ -32,6 +32,8 @@
 
 	let filtersOpen = $state(false);
 
+	let filterStats = $state(null); // { total, profitable, losing, missed, winrate }
+
 	const TRADE_SETUPS = [
 		{ value: 'ACC_BORDER_BREAKTHROUGH', label: '(Ре)накопление - Пробой верхней границы' },
 		{ value: 'ACC_BORDER_RETEST', label: '(Ре)накопление - Ретест верхней границы' },
@@ -93,8 +95,9 @@
 			const response = await fetch(`${API_BASE_URL}/journal/${endpoint}/filtered/?${params}`, { credentials: 'include' });
 			if (!response.ok) throw new Error('Failed to fetch filtered trades.');
 			const result = await response.json();
-			trades = result;
-			tradesAmount = result.length;
+			trades = result.trades;
+			tradesAmount = result.trades.length;
+			filterStats = result.stats;
 		} catch (error) {
 			showErrorToast(error.message);
 		}
@@ -173,6 +176,7 @@
 			side: '', tool_name: '', timeframe: ''
 		};
 		isFiltered = false;
+		filterStats = null;
 		loadPage(1);
 	}
 
@@ -268,7 +272,30 @@
 						<input id="filter-tool" type="text" bind:value={filters.tool_name} placeholder="BTC-USDT"
 									 class="bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm placeholder-zinc-500 focus:outline-none focus:border-zinc-500" />
 					</div>
+					{#if isFiltered && filterStats}
+						<div class="flex flex-col gap-1">
+							<p class="text-xs text-zinc-400">Profitable / Losing / Missed</p>
+							<div class="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm">
+								<span class="text-green-400">{filterStats.profitable}</span>
+								<span class="text-zinc-500"> / </span>
+								<span class="text-red-400">{filterStats.losing}</span>
+								<span class="text-zinc-500"> / </span>
+								<span class="text-zinc-500">{filterStats.missed}</span>
+							</div>
+						</div>
+
+						<div class="flex flex-col gap-1">
+							<p class="text-xs text-zinc-400">Winrate</p>
+							<div class="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm">
+            <span class="{filterStats.winrate >= 0.5 ? 'text-green-400' : 'text-red-400'}">
+                {(filterStats.winrate * 100).toFixed(1)}%
+            </span>
+							</div>
+						</div>
+					{/if}
+
 				</div>
+
 
 				<div class="flex flex-col gap-1">
 					<label for="filter-setup" class="text-xs text-zinc-400">Сетап (можно несколько, Ctrl+Click)</label>
