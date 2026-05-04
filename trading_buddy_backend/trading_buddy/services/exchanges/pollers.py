@@ -86,7 +86,7 @@ class OrderPoller:
                 self.finish_trade(exc, tool, db_pos)
 
     def poll_accounts_for_position_statuses(self):
-        accounts = Account.objects.all()
+        accounts = Account.objects.filter(exchange__ne=Account.Exchange.INVESTING)
 
         if self.runs % 60 == 0:
             self.logger.info('Starting polling accounts for position statuses...')
@@ -147,7 +147,7 @@ class OrderPoller:
 
         if not db_pos.breakeven and db_pos.move_stop_after_rr is not None:
             # self.logger.debug(server_pos.get('markPrice'))
-            reward_val = Decimal(server_pos['markPrice']) - db_pos.entry_price if db_pos.side == "LONG"\
+            reward_val = Decimal(server_pos['markPrice']) - db_pos.entry_price if db_pos.side == "LONG" \
                 else db_pos.entry_price - Decimal(server_pos['markPrice'])
             risk_val = abs(db_pos.entry_price - db_pos.stop_price)
 
