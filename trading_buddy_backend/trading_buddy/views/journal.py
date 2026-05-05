@@ -1,6 +1,4 @@
-from django.db import models
-from django.db.models import Window, OuterRef, Count, Subquery, Case, When, IntegerField
-from django.db.models.functions import RowNumber
+from django.db.models import OuterRef, Count, Subquery, Case, When, IntegerField
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from loguru import logger
@@ -36,16 +34,15 @@ def get_trade_number_subquery(user):
 
 
 def get_trade_stats(trades_qs):
-    logger.debug(f"get_trade_stats query: {trades_qs.query}")
     stats = trades_qs.aggregate(
         total=Count('id'),
         profitable=Count(Case(When(pnl_usd__gt=0, then=1), output_field=IntegerField())),
         losing=Count(Case(When(pnl_usd__lt=0, then=1), output_field=IntegerField())),
         missed=Count(Case(When(pnl_usd=0, then=1), output_field=IntegerField())),
     )
-    logger.debug(f"get_trade_stats result: {stats}")
     total = stats['total']
-    stats['winrate'] = round(stats['profitable'] / (total - stats['missed']), 4) if total > 0 else 0
+    denominator = total - stats['missed']
+    stats['winrate'] = round(stats['profitable'] / denominator, 4) if denominator > 0 else 0
     return stats
 
 
@@ -65,23 +62,18 @@ def get_all_trades(request):
 
 @api_view(['GET'])
 def get_filtered_trades(request):
-    logger.debug(f"get_filtered_trades params: {request.query_params}")
     filters = TradeFilters.from_request(request)
-    logger.debug(f"parsed filters: {filters}")
     try:
         trades = (
             request.user.get_filtered_trades(filters)
             .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
         )
-        logger.debug(f"trades count: {trades.count()}")
         stats = get_trade_stats(trades)
-        logger.debug(f"stats: {stats}")
         serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
         return Response({'trades': serializer.data, 'stats': stats})
     except Exception as e:
         logger.exception(f"get_filtered_trades failed: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 @extend_schema(responses=ShowTradeSerializer(many=True))
@@ -100,17 +92,13 @@ def get_all_investments(request):
 
 @api_view(['GET'])
 def get_filtered_investments(request):
-    logger.debug(f"get_filtered_investments params: {request.query_params}")
     filters = TradeFilters.from_request(request)
-    logger.debug(f"parsed filters: {filters}")
     try:
         trades = (
             request.user.get_filtered_trades(filters, investing=True)
             .annotate(trade_number=Subquery(get_trade_number_subquery(request.user)))
         )
-        logger.debug(f"trades count: {trades.count()}")
         stats = get_trade_stats(trades)
-        logger.debug(f"stats: {stats}")
         serializer = ShowTradeSerializer(trades, many=True, context={'request': request})
         return Response({'trades': serializer.data, 'stats': stats})
     except Exception as e:
