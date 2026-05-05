@@ -243,7 +243,7 @@ def remove_tool(request, account_name, tool_name):
 @api_view(['GET'])
 def get_preset_tools(request):
     suffix = '-USDT'
-    tool_names_bingx_format = ['BTC', 'AVAX', 'BNB', 'NEAR', 'XLM', 'TWT', 'COMP', 'WLD', 'GMT', 'ADA', 'TRU', 'LTC',
+    tool_names_bingx_format = ['BTC', 'AVAX', 'BNB', 'SOL', 'XLM', 'TWT', 'COMP', 'WLD', 'NEAR', 'GMT', 'ADA', 'TRU', 'LTC',
                                'POL',
                                'FIL', 'LINK', 'APT', 'ATOM', 'UNI', 'TAO', 'ONDO', 'RENDER', 'DOGE', 'TIA', 'OP', 'DOT',
                                'DUCK', 'VET', 'IOTA', 'KAS', 'ENA', 'ASTER', 'ZEC', 'ETH', 'DASH', 'STRK',

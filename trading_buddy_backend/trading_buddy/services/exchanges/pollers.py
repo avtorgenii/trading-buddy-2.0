@@ -86,7 +86,7 @@ class OrderPoller:
                 self.finish_trade(exc, tool, db_pos)
 
     def poll_accounts_for_position_statuses(self):
-        accounts = Account.objects.filter(exchange__ne=Account.Exchange.INVESTING)
+        accounts = Account.objects.exclude(exchange=Account.Exchange.INVESTING)
 
         if self.runs % 60 == 0:
             self.logger.info('Starting polling accounts for position statuses...')
